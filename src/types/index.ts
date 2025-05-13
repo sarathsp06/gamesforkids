@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import type { AdditionItem } from '@/lib/constants'; // PraiseMessage removed as it's used internally in constants
+import type { AdditionItem } from '@/lib/constants';
 
 export interface PerformanceData {
   correctPresses: number; // Correct letters typed
@@ -53,30 +53,28 @@ export interface AdditionProblem {
 
 export type AdditionAdventurePhase =
   | 'startScreen'
-  | 'instructions' // Displaying "Drag X items to Pile 1 and Y to Pile 2"
-  | 'buildingPiles'
-  | 'pilesBuilt_promptSum' // Piles are correct, now prompt for the sum
+  | 'buildingPiles' // User drags items to form the two addend piles
+  | 'pilesBuilt_summingTime' // Addend piles are built, user now drags items to a sum pile
   | 'finalFeedback' // Feedback for the sum answer
   | 'sessionOver';
 
 export interface AdditionAdventureGameState {
   currentProblem: AdditionProblem | null;
   score: number;
-  attempts: number; // Number of sum attempts
+  attempts: number; // Number of sum attempts/completions
   correctAttempts: number; // Number of correct sum answers
   currentStreak: number; // Correct sum answers in a row
   longestStreak: number;
 
   pile1Count: number;
   pile2Count: number;
+  sumPileCount: number; // Count of items in the sum pile
   
-  feedbackMessage: string | null; // General feedback or instructions
-  dragFeedback: string | null; // Specific to drag actions, e.g., "Pile full"
+  feedbackMessage: string | null; // General feedback or instructions (minimize use)
+  dragFeedback: string | null; // Specific to drag actions, e.g., "Pile full" (minimize use)
   isCorrect: boolean | null; // For sum answer correctness
 
   isPlaying: boolean; // Overall game session is active
-  // isSessionOver will be determined by phase: 'sessionOver'
-  // showStartScreen will be determined by phase: 'startScreen'
   
   gameStartTime: number | null;
   timeLeft: number; // in seconds for the entire session
@@ -84,7 +82,7 @@ export interface AdditionAdventureGameState {
   phase: AdditionAdventurePhase;
 
   showPraiseMessage: boolean;
-  praiseText: string | null;
+  praiseText: string | null; // Keep for potential alt text or debug, but UI will be icon-first
   praiseIcon: LucideIcon | null;
 }
 
@@ -97,4 +95,3 @@ export interface AdditionAdventureSessionStats {
   longestStreak: number;
   score: number;
 }
-

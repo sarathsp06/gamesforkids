@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { AdditionProblem, AdditionAdventureGameState, AdditionAdventureSessionStats, AdditionAdventurePhase } from '@/types';
-import { ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, ADDITION_GAME_DURATION_SECONDS, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY } from '@/lib/constants';
+import type { AdditionProblem, AdditionAdventureGameState, AdditionAdventureSessionStats } from '@/types';
+import { ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, ADDITION_GAME_DURATION_SECONDS, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY, ADDITION_MAX_ANSWER } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 export const DRAGGABLE_ITEM_TYPE_ADDITION = "addition_game_item";
 
@@ -17,6 +18,7 @@ const initialGameState: AdditionAdventureGameState = {
   longestStreak: 0,
   pile1Count: 0,
   pile2Count: 0,
+  sumPileCount: 0,
   feedbackMessage: null,
   dragFeedback: null,
   isCorrect: null,
@@ -35,8 +37,8 @@ function generateProblem(): AdditionProblem {
   const item = ADDITION_ITEMS[Math.floor(Math.random() * ADDITION_ITEMS.length)];
   return {
     id: Math.random().toString(36).substring(7),
-    num1, // Target for pile 1
-    num2, // Target for pile 2
+    num1,
+    num2,
     item,
     correctAnswer: num1 + num2,
   };
@@ -69,10 +71,7 @@ export function useAdditionAdventureGame() {
   useEffect(() => {
     loadSessions();
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      if (praiseTimeoutRef.current) clearTimeout(praiseTimeoutRef.current);
-      if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
+      clearAllTimeouts();
     };
   }, [loadSessions]);
 
@@ -83,12 +82,12 @@ export function useAdditionAdventureGame() {
     if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
   };
   
-  const showPraise = useCallback((type: 'pileComplete' | 'sumCorrect') => {
+  const showPraise = useCallback(() => {
     const praise = ADDITION_PRAISE_MESSAGES[Math.floor(Math.random() * ADDITION_PRAISE_MESSAGES.length)];
     setGameState(prev => ({
       ...prev,
       showPraiseMessage: true,
-      praiseText: type === 'pileComplete' ? "Great Piles!" : praise.text,
+      praiseText: praise.text, // Text kept for potential alt-attributes or debug
       praiseIcon: praise.icon
     }));
     if (praiseTimeoutRef.current) clearTimeout(praiseTimeoutRef.current);
@@ -100,7 +99,7 @@ export function useAdditionAdventureGame() {
   const endSession = useCallback((sessionEndingNaturally = true) => {
     clearAllTimeouts();
     setGameState(prev => {
-      if (prev.phase === 'sessionOver') return prev; // Avoid multiple calls
+      if (prev.phase === 'sessionOver') return prev;
 
       const accuracy = prev.attempts > 0 ? (prev.correctAttempts / prev.attempts) * 100 : 0;
       const sessionDuration = prev.gameStartTime ? (Date.now() - prev.gameStartTime) / 1000 : ADDITION_GAME_DURATION_SECONDS - prev.timeLeft;
@@ -119,18 +118,18 @@ export function useAdditionAdventureGame() {
       setPastSessions(updatedSessions);
       saveSessions(updatedSessions);
 
-      if (sessionEndingNaturally) { // Only toast if time ran out or user ended game
+      if (sessionEndingNaturally && prev.isPlaying) { // Only toast if game was active
         toast({
           title: "Great Effort!",
           description: `You solved ${prev.correctAttempts} problems. Score: ${prev.score}`,
         });
       }
-
+      
       return {
-        ...initialGameState, // Reset to initial state but keep past sessions
+        ...initialGameState,
+        isPlaying: false, // ensure isPlaying is false
         phase: 'sessionOver',
-        timeLeft: ADDITION_GAME_DURATION_SECONDS,
-        feedbackMessage: `Time's up! You scored ${prev.score}. Solved ${prev.correctAttempts} problems.`,
+        feedbackMessage: `Score: ${prev.score}`, // Simplified feedback
       };
     });
   }, [pastSessions, saveSessions, toast]);
@@ -141,8 +140,13 @@ export function useAdditionAdventureGame() {
     setGameState(prev => ({ ...prev, timeLeft: ADDITION_GAME_DURATION_SECONDS }));
     timerRef.current = setInterval(() => {
       setGameState(prev => {
+        if (!prev.isPlaying) { // If game stopped for other reasons
+            clearInterval(timerRef.current!);
+            return prev;
+        }
         if (prev.timeLeft <= 1) {
-          endSession(true); // Session ends due to time running out
+          clearInterval(timerRef.current!);
+          endSession(true); 
           return { ...prev, timeLeft: 0, isPlaying: false, phase: 'sessionOver' };
         }
         return { ...prev, timeLeft: prev.timeLeft - 1 };
@@ -151,25 +155,30 @@ export function useAdditionAdventureGame() {
   }, [endSession]);
 
   const setupNewProblem = useCallback(() => {
+    clearAllTimeouts(); // Clear any pending timeouts from previous problem
     const newProblem = generateProblem();
     setGameState(prev => ({
       ...prev,
       currentProblem: newProblem,
       pile1Count: 0,
       pile2Count: 0,
+      sumPileCount: 0,
       phase: 'buildingPiles',
-      feedbackMessage: `Drag ${newProblem.num1} ${newProblem.item.namePlural} to the first pile, and ${newProblem.num2} to the second pile.`,
+      feedbackMessage: null, // Will rely on visual cues primarily
       dragFeedback: null,
       isCorrect: null,
     }));
-  }, []);
+     if (prev.isPlaying && prev.timeLeft > 0 && !timerRef.current) {
+      startTimer(); // Restart timer if it was cleared but game is ongoing
+    }
+  }, [startTimer]); // Added startTimer dependency
 
   const startGame = useCallback(() => {
     clearAllTimeouts();
     setGameState(prev => ({
       ...initialGameState,
       isPlaying: true,
-      phase: 'buildingPiles', // Start directly with building piles
+      phase: 'buildingPiles',
       gameStartTime: Date.now(),
       timeLeft: ADDITION_GAME_DURATION_SECONDS,
     }));
@@ -183,106 +192,115 @@ export function useAdditionAdventureGame() {
 
       let newPile1Count = prev.pile1Count;
       let newPile2Count = prev.pile2Count;
-      let newDragFeedback: string | null = null;
+      let newDragFeedbackIcon: 'stop' | null = null; // Using icons for feedback
 
       if (pileId === 1) {
         if (prev.pile1Count < prev.currentProblem.num1) {
           newPile1Count++;
         } else {
-          newDragFeedback = `The first pile has enough ${prev.currentProblem.item.namePlural}!`;
+          newDragFeedbackIcon = 'stop';
         }
-      } else { // pileId === 2
+      } else { 
         if (prev.pile2Count < prev.currentProblem.num2) {
           newPile2Count++;
         } else {
-          newDragFeedback = `The second pile has enough ${prev.currentProblem.item.namePlural}!`;
+          newDragFeedbackIcon = 'stop';
         }
       }
       
       if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-      if (newDragFeedback) {
+      if (newDragFeedbackIcon) {
+        setGameState(gs => ({ ...gs, dragFeedback: newDragFeedbackIcon })); // Set icon directly
         dragFeedbackTimeoutRef.current = setTimeout(() => {
           setGameState(gs => ({ ...gs, dragFeedback: null }));
-        }, 2000);
+        }, 1500);
       }
 
       const pilesComplete = newPile1Count === prev.currentProblem.num1 && newPile2Count === prev.currentProblem.num2;
       let newPhase = prev.phase;
-      let newFeedbackMessage = prev.feedbackMessage;
 
       if (pilesComplete) {
-        newPhase = 'pilesBuilt_promptSum';
-        newFeedbackMessage = `Great! Now, what is ${prev.currentProblem.num1} + ${prev.currentProblem.num2}?`;
-        showPraise('pileComplete');
-      } else {
-         // Update instruction if not yet complete
-         newFeedbackMessage = `Drag ${prev.currentProblem.num1} ${prev.currentProblem.item.namePlural} to the first pile (${newPile1Count}/${prev.currentProblem.num1}), and ${prev.currentProblem.num2} to the second pile (${newPile2Count}/${prev.currentProblem.num2}).`;
+        newPhase = 'pilesBuilt_summingTime';
+        showPraise(); 
       }
 
       return {
         ...prev,
         pile1Count: newPile1Count,
         pile2Count: newPile2Count,
-        dragFeedback: newDragFeedback,
+        dragFeedback: newDragFeedbackIcon,
         phase: newPhase,
-        feedbackMessage: newFeedbackMessage,
       };
     });
   }, [showPraise]);
-  
-  const handleAnswer = useCallback((answer: number) => {
+
+  const handleDropOnSumPile = useCallback(() => {
     setGameState(prev => {
-      if (prev.phase !== 'pilesBuilt_promptSum' || !prev.currentProblem) return prev;
+      if (prev.phase !== 'pilesBuilt_summingTime' || !prev.currentProblem) return prev;
 
-      const correctAnswer = prev.currentProblem.correctAnswer;
-      const isSumCorrect = answer === correctAnswer;
-      
-      const newStreak = isSumCorrect ? prev.currentStreak + 1 : 0;
-      let newFeedbackMessage = "";
+      let newSumPileCount = prev.sumPileCount + 1;
+      let newPhase = prev.phase;
+      let newIsCorrect: boolean | null = prev.isCorrect;
+      let newDragFeedbackIcon: 'stop' | null = null;
 
-      if (isSumCorrect) {
-        newFeedbackMessage = "Correct!";
-        showPraise('sumCorrect');
-      } else {
-        newFeedbackMessage = `Oops! ${prev.currentProblem!.num1} + ${prev.currentProblem!.num2} = ${correctAnswer}.`;
-         if (typeof navigator.vibrate === 'function') {
-          navigator.vibrate(100);
-        }
+      if (newSumPileCount > prev.currentProblem.correctAnswer) {
+        newSumPileCount = prev.sumPileCount; // Don't overfill
+        newDragFeedbackIcon = 'stop'; // "Too many"
+        if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
+        setGameState(gs => ({ ...gs, dragFeedback: newDragFeedbackIcon }));
+        dragFeedbackTimeoutRef.current = setTimeout(() => {
+          setGameState(gs => ({ ...gs, dragFeedback: null }));
+        }, 1500);
       }
+      
+      if (newSumPileCount === prev.currentProblem.correctAnswer) {
+        newIsCorrect = true;
+        newPhase = 'finalFeedback';
+        showPraise();
+        
+        // Update score & stats
+        const newScore = prev.score + 10;
+        const newCorrectAttempts = prev.correctAttempts + 1;
+        const newCurrentStreak = prev.currentStreak + 1;
+        const newLongestStreak = Math.max(prev.longestStreak, newCurrentStreak);
 
-      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-      feedbackTimeoutRef.current = setTimeout(() => {
-        if (prev.timeLeft > 0) {
-          setupNewProblem();
-        } else {
-          endSession(true);
-        }
-      }, isSumCorrect ? 1700 : 2500);
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        feedbackTimeoutRef.current = setTimeout(() => {
+          if (gameState.timeLeft > 0 && gameState.isPlaying) { // Check timeLeft and isPlaying from a potentially updated state
+             setupNewProblem();
+          } else if (gameState.isPlaying) { // Time ran out during this problem
+             endSession(true);
+          }
+        }, 1800); // Delay before next problem
+
+        return {
+            ...prev,
+            sumPileCount: newSumPileCount,
+            isCorrect: newIsCorrect,
+            phase: newPhase,
+            score: newScore,
+            correctAttempts: newCorrectAttempts,
+            attempts: prev.attempts + 1,
+            currentStreak: newCurrentStreak,
+            longestStreak: newLongestStreak,
+            feedbackMessage: null, // Rely on visual and praise
+            dragFeedback: newDragFeedbackIcon,
+        };
+      }
 
       return {
         ...prev,
-        attempts: prev.attempts + 1,
-        correctAttempts: isSumCorrect ? prev.correctAttempts + 1 : prev.correctAttempts,
-        score: isSumCorrect ? prev.score + 10 : prev.score, // Keep simple scoring
-        currentStreak: newStreak,
-        longestStreak: Math.max(prev.longestStreak, newStreak),
-        isCorrect: isSumCorrect,
-        feedbackMessage: newFeedbackMessage,
-        phase: 'finalFeedback',
+        sumPileCount: newSumPileCount,
+        isCorrect: newIsCorrect, // Could be null if not yet correct
+        phase: newPhase,
+        dragFeedback: newDragFeedbackIcon,
       };
     });
-  }, [setupNewProblem, endSession, showPraise]);
-
-  // Function to manually end the game by the user
+  }, [showPraise, setupNewProblem, endSession, gameState.timeLeft, gameState.isPlaying]); // Added gameState dependencies
+  
   const userEndSession = () => {
-    endSession(false); // false indicates user initiated, not time run out
-    setGameState(prev => ({
-      ...prev,
-      feedbackMessage: `Game ended. You scored ${prev.score}. Solved ${prev.correctAttempts} problems.`,
-    }));
+    endSession(false); 
   };
 
-
-  return { gameState, startGame, handleDropOnPile, handleAnswer, userEndSession, pastSessions };
+  return { gameState, startGame, handleDropOnPile, handleDropOnSumPile, userEndSession, pastSessions };
 }
-
