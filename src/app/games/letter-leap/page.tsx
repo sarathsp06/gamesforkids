@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { NextPage } from 'next'; // Changed Metadata to NextPage for better type if needed
+import type { NextPage } from 'next'; 
 import { MainLayout } from '@/components/layout/main-layout';
 import { WordDisplay } from '@/components/word-display';
 import { GameControls } from '@/components/game-controls';
@@ -12,11 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Removed metadata export as this is a client component.
-// export const metadata: Metadata = {
-//   title: 'Letter Leap - Typing Game',
-//   description: 'Learn to type words quickly and accurately with Letter Leap!',
-// };
 
 const LetterLeapPage: NextPage = () => {
   const { gameState, startGame, endSession, pastSessions } = useLetterLeapGame();
@@ -43,11 +38,11 @@ const LetterLeapPage: NextPage = () => {
 
         {/* Praise Message Display */}
         {gameState.showPraiseMessage && gameState.praiseText && PraiseIcon && (
-          <div className="absolute top-[-20px] left-1/2 transform -translate-x-1/2 z-20 animate-praise-pop">
+          <div className="absolute top-[-30px] left-1/2 transform -translate-x-1/2 z-20 animate-praise-pop">
             <Card className="p-3 md:p-4 bg-secondary shadow-xl border-2 border-accent">
-              <CardContent className="flex items-center gap-2 md:gap-3 p-0">
-                <PraiseIcon className="h-6 w-6 md:h-8 md:w-8 text-accent" />
-                <p className="text-xl md:text-2xl font-bold text-secondary-foreground">{gameState.praiseText}</p>
+              <CardContent className="flex flex-col items-center gap-1 md:gap-2 p-0">
+                <PraiseIcon className="h-10 w-10 md:h-12 md:w-12 text-accent" />
+                <p className="text-lg md:text-xl font-bold text-secondary-foreground">{gameState.praiseText}</p>
               </CardContent>
             </Card>
           </div>
@@ -58,7 +53,7 @@ const LetterLeapPage: NextPage = () => {
             <div className="flex items-center justify-center w-full max-w-4xl my-4 relative">
               {/* Left Hand Indicator */}
               <div className={cn(
-                "hand-indicator-visual left",
+                "hand-indicator-visual left flex-shrink-0",
                 gameState.activeHand === 'left' && 'active'
               )}>
                 {gameState.activeHand === 'left' && <Hand className="h-8 w-8 md:h-10 md:w-10 text-accent-foreground" />}
@@ -74,7 +69,7 @@ const LetterLeapPage: NextPage = () => {
 
               {/* Right Hand Indicator */}
               <div className={cn(
-                "hand-indicator-visual right",
+                "hand-indicator-visual right flex-shrink-0",
                 gameState.activeHand === 'right' && 'active'
               )}>
                 {gameState.activeHand === 'right' && <Hand className="h-8 w-8 md:h-10 md:w-10 text-accent-foreground" />}

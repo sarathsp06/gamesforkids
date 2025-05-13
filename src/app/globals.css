@@ -164,7 +164,7 @@ body {
 
 /* Hand Indicator Styles */
 .hand-indicator-visual {
-  @apply w-16 h-16 md:w-20 md:h-20 mx-2 md:mx-4 rounded-lg flex items-center justify-center transition-all duration-300 ease-in-out opacity-30 scale-90;
+  @apply w-16 h-16 md:w-20 md:h-20 mx-2 md:mx-4 rounded-lg flex items-center justify-center transition-all duration-300 ease-in-out opacity-50 scale-90; /* Increased default opacity */
   background-color: hsl(var(--card));
 }
 
@@ -201,7 +201,3 @@ body {
 .animate-praise-pop {
   animation: praise-pop 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
 }
-
-/* Ensure WordDisplay doesn't get too squished by hand indicators */
-/* This might need adjustment based on actual content of WordDisplay */
-/* Example: .word-display-container { flex-grow: 1; min-width: 200px; } */
