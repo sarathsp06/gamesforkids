@@ -1,11 +1,12 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { AdditionProblem, AdditionAdventureGameState, AdditionAdventureSessionStats, AdditionAdventurePhase } from '@/types';
-import { ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, ADDITION_GAME_DURATION_SECONDS, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY } from '@/lib/constants';
+// This directive indicates that the component should be rendered on the client-side.
+
 import { useToast } from "@/hooks/use-toast";
-import { StopCircle } from 'lucide-react'; // For drag/click feedback
+import { ADDITION_GAME_DURATION_SECONDS, ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY } from '@/lib/constants';
+import type { AdditionAdventureGameState, AdditionAdventurePhase, AdditionAdventureSessionStats, AdditionProblem } from '@/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const DRAGGABLE_ITEM_TYPE_ADDITION = "addition_game_item";
 
@@ -118,7 +119,7 @@ export function useAdditionAdventureGame() {
       const finalCorrectAttempts = prev.correctAttempts || 0;
       let currentToastInfo: { title: string; description: string } | null = null;
       
-      if (prev.isPlaying || (prev.phase !== 'startScreen' && prev.phase !== 'sessionOver')) {
+      if (prev.isPlaying || prev.phase !== 'startScreen') {
         const accuracy = prev.attempts > 0 ? (prev.correctAttempts / prev.attempts) * 100 : 0;
         const sessionDuration = prev.gameStartTime ? (Date.now() - prev.gameStartTime) / 1000 : ADDITION_GAME_DURATION_SECONDS - prev.timeLeft;
         
@@ -325,4 +326,5 @@ export function useAdditionAdventureGame() {
 
   return { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions };
 }
+
 

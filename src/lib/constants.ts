@@ -1,4 +1,4 @@
-import { Sparkles, ThumbsUp, Star, Award, PartyPopper, LucideIcon } from 'lucide-react';
+import { Award, LucideIcon, PartyPopper, Sparkles, Star, ThumbsUp } from 'lucide-react';
 
 export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // Kept for now, might be unused
 
@@ -12,7 +12,17 @@ export const WORDS = [ // Simplified words for 4-8 year olds
   "FISH", "GOAT", "HEN", "INK", "JAR",
   "KITE", "LION", "MAN", "NET", "OWL",
   "PIG", "QUIZ", "RAT", "SOCK", "TEN",
-  "UP", "VAN", "WAX", "YAK", "ZIP"
+  "UP", "VAN", "WAX", "YAK", "ZIP",
+  "ANT", "BAT", "COW", "DEER", "EEL",
+  "FROG", "GUM", "HUG", "IVY", "JUMP",
+  "KISS", "LEAF", "MICE", "NUT", "OAK",
+  "PEAR", "QUACK", "RUG", "SAND", "TIGER",
+  "UNITE", "VINE", "WORM", "XMAS", "YARN",
+  "ELEPHANT", "ZEBRA", "GIRAFFE", "KANGAROO", "PENGUIN",
+  "DOLPHIN", "TIGER", "LIZARD", "MONKEY", "RABBIT",
+  "SNAKE", "TURTLE", "WHALE", "ZEBRA", "BEAR",
+  "CROCODILE", "FLAMINGO", "HIPPOPOTAMUS", "JAGUAR", "KITTEN",
+  "BIRD", "CATERPILLAR", "DRAGONFLY", "EAGLE", "FISH",
 ];
 
 
@@ -67,6 +77,13 @@ export const ADDITION_ITEMS: AdditionItem[] = [
   { name: "balloon", namePlural: "balloons", visual: "🎈" },
   { name: "book", namePlural: "books", visual: "📚" },
   { name: "duck", namePlural: "ducks", visual: "🦆" },
+  { name: "kite", namePlural: "kites", visual: "🪁" },
+  { name: "fish", namePlural: "fish", visual: "🐟" } ,
+  { name: "cake", namePlural: "cakes", visual: "🍰" },
+  { name: "robot", namePlural: "robots", visual: "🤖" },
+  { name: "panda", namePlural: "pandas", visual: "🐼" },
+  { name: "flower", namePlural: "flowers", visual: "🌸" },
+  { name: "butterfly", namePlural: "butterflies", visual: "🦋" },
 ];
 
 export const ADDITION_NUMBER_RANGE = { min: 1, max: 5 };
