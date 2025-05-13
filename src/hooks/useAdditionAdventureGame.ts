@@ -20,7 +20,7 @@ const initialGameState: AdditionAdventureGameState = {
   pile2Count: 0,
   sumPileCount: 0,
   feedbackMessage: null,
-  dragFeedback: null, // Will store 'stop' or similar to show icon
+  dragFeedback: null, 
   isCorrect: null,
   isPlaying: false,
   gameStartTime: null,
@@ -29,6 +29,7 @@ const initialGameState: AdditionAdventureGameState = {
   showPraiseMessage: false,
   praiseText: null,
   praiseIcon: null,
+  toastMessageInfo: null, // Initialize new field
 };
 
 function generateProblem(): AdditionProblem {
@@ -108,53 +109,66 @@ export function useAdditionAdventureGame() {
   const endSession = useCallback((sessionEndingNaturally = true) => {
     clearAllGameTimeouts();
     setGameState(prev => {
-      if (prev.phase === 'sessionOver' && !sessionEndingNaturally) return prev; // Avoid re-processing if user clicks end multiple times
-      if (prev.phase === 'sessionOver' && sessionEndingNaturally) return prev; // if already ended by timer
+      // If session is already over, prevent re-processing, especially for stats and toast.
+      if (prev.phase === 'sessionOver') {
+        return prev;
+      }
 
-      const accuracy = prev.attempts > 0 ? (prev.correctAttempts / prev.attempts) * 100 : 0;
-      const sessionDuration = prev.gameStartTime ? (Date.now() - prev.gameStartTime) / 1000 : ADDITION_GAME_DURATION_SECONDS - prev.timeLeft;
+      const finalScore = prev.score || 0;
+      const finalCorrectAttempts = prev.correctAttempts || 0;
+      let currentToastInfo: { title: string; description: string } | null = null;
       
-      const newSession: AdditionAdventureSessionStats = {
-        id: new Date().toISOString() + Math.random().toString(16).slice(2),
-        date: new Date().toISOString(),
-        problemsSolved: prev.correctAttempts,
-        accuracy: parseFloat(accuracy.toFixed(2)),
-        durationSeconds: parseFloat(sessionDuration.toFixed(0)),
-        longestStreak: prev.longestStreak,
-        score: prev.score,
-      };
-      
-      // Only save and toast if the game was actually playing or just ended
       if (prev.isPlaying || (prev.phase !== 'startScreen' && prev.phase !== 'sessionOver')) {
+        const accuracy = prev.attempts > 0 ? (prev.correctAttempts / prev.attempts) * 100 : 0;
+        const sessionDuration = prev.gameStartTime ? (Date.now() - prev.gameStartTime) / 1000 : ADDITION_GAME_DURATION_SECONDS - prev.timeLeft;
+        
+        const newSession: AdditionAdventureSessionStats = {
+          id: new Date().toISOString() + Math.random().toString(16).slice(2),
+          date: new Date().toISOString(),
+          problemsSolved: finalCorrectAttempts,
+          accuracy: parseFloat(accuracy.toFixed(2)),
+          durationSeconds: parseFloat(sessionDuration.toFixed(0)),
+          longestStreak: prev.longestStreak,
+          score: finalScore,
+        };
+        
         const updatedSessions = [newSession, ...pastSessions].slice(0, 10);
         setPastSessions(updatedSessions);
         saveSessions(updatedSessions);
 
         if (sessionEndingNaturally) {
-            toast({
+            currentToastInfo = {
               title: "Great Effort!",
-              description: `You solved ${prev.correctAttempts} problems. Score: ${prev.score}`,
-            });
-        } else if (!sessionEndingNaturally && prev.isPlaying) { // User ended manually
-             toast({
+              description: `You solved ${finalCorrectAttempts} problems. Score: ${finalScore}`,
+            };
+        } else if (!sessionEndingNaturally && prev.isPlaying) { 
+             currentToastInfo = {
               title: "Game Ended",
-              description: `You scored ${prev.score} points.`,
-            });
+              description: `You scored ${finalScore} points.`,
+            };
         }
       }
       
       return {
-        ...initialGameState, // Reset to initial, keep past sessions loaded
+        ...initialGameState, 
         isPlaying: false, 
         phase: 'sessionOver',
-        feedbackMessage: `Score: ${prev.score || 0}`, // Ensure score is shown even if 0
+        feedbackMessage: `Score: ${finalScore}`,
+        toastMessageInfo: currentToastInfo, // Set toast info to be picked up by useEffect
       };
     });
-  }, [pastSessions, saveSessions, toast, clearAllGameTimeouts]);
+  }, [pastSessions, saveSessions, clearAllGameTimeouts]);
+
+  // useEffect to show toast when toastMessageInfo is set
+  useEffect(() => {
+    if (gameState.toastMessageInfo) {
+      toast(gameState.toastMessageInfo);
+      setGameState(prev => ({ ...prev, toastMessageInfo: null })); // Clear after showing
+    }
+  }, [gameState.toastMessageInfo, toast]);
 
 
   const startTimer = useCallback(() => {
-    // Assumes any existing timer has been cleared by clearAllGameTimeouts in startGame
     setGameState(prev => ({ ...prev, timeLeft: ADDITION_GAME_DURATION_SECONDS }));
     timerRef.current = setInterval(() => {
       setGameState(currentGs => {
@@ -164,11 +178,9 @@ export function useAdditionAdventureGame() {
             return currentGs;
         }
         if (currentGs.timeLeft <= 1) {
-          // Important: clearInterval before calling endSession, as endSession might try to clear it too.
           if (timerRef.current) clearInterval(timerRef.current);
           timerRef.current = null;
-          endSession(true); // This will update phase to 'sessionOver' and isPlaying to false
-          // The state returned here is for the current tick, endSession will set the final state.
+          endSession(true); 
           return { ...currentGs, timeLeft: 0 }; 
         }
         return { ...currentGs, timeLeft: currentGs.timeLeft - 1 };
@@ -194,7 +206,7 @@ export function useAdditionAdventureGame() {
 
   const startGame = useCallback(() => {
     clearAllGameTimeouts();
-    setGameState(_ => ({ // Use _ if prev isn't used, or prev for specific carry-overs
+    setGameState(_ => ({ 
       ...initialGameState,
       isPlaying: true,
       phase: 'summingTime',
@@ -202,7 +214,7 @@ export function useAdditionAdventureGame() {
       timeLeft: ADDITION_GAME_DURATION_SECONDS,
     }));
     setupNewProblem();
-    startTimer();
+    startTimer(); // startTimer is now robust against multiple calls due to clearAllGameTimeouts
   }, [setupNewProblem, startTimer, clearAllGameTimeouts]);
   
   const handleDropOnPile = useCallback((pileId: 1 | 2) => {
@@ -214,16 +226,13 @@ export function useAdditionAdventureGame() {
         dragFeedbackTimeoutRef.current = setTimeout(() => {
           setGameState(gs => ({ ...gs, dragFeedback: null }));
         }, 1500);
-        return prev;
+        return prev; // Return previous state as this function is just for feedback on non-sum piles
     });
   }, []);
 
   const processSumItem = useCallback(() => {
     setGameState(prev => {
-      // This function is called when sumPileCount has reached the target.
-      // It handles the logic for a correct sum.
       if (prev.phase !== 'summingTime' || !prev.currentProblem || prev.sumPileCount !== prev.currentProblem.correctAnswer) {
-         // Should not happen if called correctly from useEffect, but as a safeguard.
         return prev;
       }
       
@@ -238,21 +247,17 @@ export function useAdditionAdventureGame() {
 
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = setTimeout(() => {
-        setGameState(currentGs => { // Use currentGs to get latest timeLeft & isPlaying
+        setGameState(currentGs => { 
             if (currentGs.timeLeft > 0 && currentGs.isPlaying) {
                 setupNewProblem();
-                 // setupNewProblem will set the new state, so we don't need to return a modified currentGs here regarding the problem.
-                 // However, setupNewProblem itself is a setGameState, so this might lead to chained setGameState calls.
-                 // This is generally fine if managed.
-                return currentGs; // Let setupNewProblem handle the state transition for the new problem.
-            } else if (currentGs.isPlaying) { // Time ran out or game stopped while waiting for feedback
-                endSession(true); // endSession handles its own state update
+                return currentGs; 
+            } else if (currentGs.isPlaying) { 
+                endSession(true); 
                 return currentGs; 
             }
-            // If game is no longer playing (e.g., user manually ended it during feedback timeout)
             return currentGs;
         });
-      }, 1800); // Delay before showing next problem or ending session
+      }, 1800); 
 
       return {
           ...prev,
@@ -260,10 +265,10 @@ export function useAdditionAdventureGame() {
           phase: newPhase,
           score: newScore,
           correctAttempts: newCorrectAttempts,
-          attempts: prev.attempts + 1, // Increment total attempts for this sum
+          attempts: prev.attempts + 1, 
           currentStreak: newCurrentStreak,
           longestStreak: newLongestStreak,
-          feedbackMessage: null, // Clear previous messages
+          feedbackMessage: null, 
           dragFeedback: null,
       };
     });
@@ -276,7 +281,7 @@ export function useAdditionAdventureGame() {
 
       if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); // Use functional update
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); 
         dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
         return prev;
       }
@@ -295,7 +300,7 @@ export function useAdditionAdventureGame() {
 
       if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); // Use functional update
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); 
         dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
         return prev;
       }

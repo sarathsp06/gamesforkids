@@ -83,6 +83,7 @@ export interface AdditionAdventureGameState {
   showPraiseMessage: boolean;
   praiseText: string | null; // Keep for potential alt text or debug, but UI will be icon-first
   praiseIcon: LucideIcon | null;
+  toastMessageInfo?: { title: string; description: string } | null; // For deferring toast calls
 }
 
 export interface AdditionAdventureSessionStats {
