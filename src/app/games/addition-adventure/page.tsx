@@ -6,16 +6,16 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAdditionAdventureGame, DRAGGABLE_ITEM_TYPE_ADDITION } from '@/hooks/useAdditionAdventureGame';
-import { ADDITION_MAX_ANSWER, ADDITION_GAME_DURATION_SECONDS } from '@/lib/constants';
+import { ADDITION_GAME_DURATION_SECONDS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Award, Lightbulb, Play, Clock, Repeat, Square, AlertCircle, CheckCircle, HelpCircle, Plus, Smile, XCircle, ThumbsUp, StopCircle } from 'lucide-react';
 
 const AdditionAdventurePage: NextPage = () => {
-  const { gameState, startGame, handleDropOnPile, handleDropOnSumPile, userEndSession, pastSessions } = useAdditionAdventureGame();
+  const { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions } = useAdditionAdventureGame();
   const {
     currentProblem,
     score,
-    feedbackMessage, 
+    // feedbackMessage, // Less reliant on this
     dragFeedback,    
     isCorrect,
     isPlaying,
@@ -23,15 +23,15 @@ const AdditionAdventurePage: NextPage = () => {
     showPraiseMessage,
     praiseIcon,
     phase,
-    pile1Count,
-    pile2Count,
+    pile1Count, // Will be pre-filled from problem.num1
+    pile2Count, // Will be pre-filled from problem.num2
     sumPileCount
   } = gameState;
 
   const PraiseIcon = praiseIcon;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (currentProblem) {
+    if (currentProblem && phase === 'summingTime') { // Only draggable if in summing phase
       e.dataTransfer.setData(DRAGGABLE_ITEM_TYPE_ADDITION, currentProblem.item.name);
     }
   };
@@ -39,84 +39,80 @@ const AdditionAdventurePage: NextPage = () => {
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault(); 
   };
-
-  const makeDropHandlerForAddendPile = (pileId: 1 | 2) => (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const itemType = e.dataTransfer.getData(DRAGGABLE_ITEM_TYPE_ADDITION);
-    if (itemType && currentProblem && itemType === currentProblem.item.name && phase === 'buildingPiles') {
-      handleDropOnPile(pileId);
-    }
-  };
-
+  
   const handleDropOnSumPileEvent = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const itemType = e.dataTransfer.getData(DRAGGABLE_ITEM_TYPE_ADDITION);
-    if (itemType && currentProblem && itemType === currentProblem.item.name && phase === 'pilesBuilt_summingTime') {
+    if (itemType && currentProblem && itemType === currentProblem.item.name && phase === 'summingTime') {
       handleDropOnSumPile();
+    }
+  };
+
+  const handleSumPileClick = () => {
+    if (phase === 'summingTime') {
+      incrementSumPileOnClick();
     }
   };
   
   const renderPileZone = (pileId: 1 | 2 | 'sum') => {
     if (!currentProblem) return null;
     
-    let count, targetCount, pileLabel, onDropHandler, isActivePhase;
+    let displayCount, targetCount, pileLabel, onDropHandler, onClickHandler, isActivePile, isPileComplete;
 
     if (pileId === 1) {
-      count = pile1Count;
+      displayCount = currentProblem.num1; // Always show the target number of items
       targetCount = currentProblem.num1;
       pileLabel = currentProblem.num1.toString();
-      onDropHandler = makeDropHandlerForAddendPile(1);
-      isActivePhase = phase === 'buildingPiles';
+      onDropHandler = () => {}; // No drop interaction for addend piles
+      onClickHandler = () => {}; // No click interaction
+      isActivePile = false; // Addend piles are not "active" for user input
+      isPileComplete = true; // Considered complete as they are pre-filled
     } else if (pileId === 2) {
-      count = pile2Count;
+      displayCount = currentProblem.num2; // Always show the target number of items
       targetCount = currentProblem.num2;
       pileLabel = currentProblem.num2.toString();
-      onDropHandler = makeDropHandlerForAddendPile(2);
-      isActivePhase = phase === 'buildingPiles';
+      onDropHandler = () => {}; // No drop interaction
+      onClickHandler = () => {}; // No click interaction
+      isActivePile = false;
+      isPileComplete = true;
     } else { // sum pile
-      count = sumPileCount;
+      displayCount = sumPileCount;
       targetCount = currentProblem.correctAnswer;
       pileLabel = "?"; 
       onDropHandler = handleDropOnSumPileEvent;
-      isActivePhase = phase === 'pilesBuilt_summingTime';
+      onClickHandler = handleSumPileClick;
+      isActivePile = phase === 'summingTime';
+      isPileComplete = displayCount === targetCount && phase === 'summingTime'; // Only complete if target reached in summingTime
     }
     
-    const isPileComplete = count === targetCount;
-    const isSumPileCorrect = pileId === 'sum' && isPileComplete && phase === 'finalFeedback' && isCorrect;
+    const isSumPileCorrectAndFinal = pileId === 'sum' && displayCount === targetCount && phase === 'finalFeedback' && isCorrect;
 
     return (
       <Card
-        onDragOver={handleDragOver}
-        onDrop={onDropHandler}
+        onDragOver={isActivePile ? handleDragOver : undefined} // Only allow drag over for active sum pile
+        onDrop={isActivePile ? onDropHandler : undefined} // Only allow drop for active sum pile
+        onClick={onClickHandler}
         className={cn(
-          "w-full md:w-1/3 min-h-[10rem] md:min-h-[12rem] border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-2 md:p-4 transition-all",
-          isActivePhase ? 'border-primary/50 hover:border-primary' : 'border-muted',
-          isPileComplete && pileId !== 'sum' && phase === 'buildingPiles' ? 'border-green-500 bg-green-500/10' : '',
-          isSumPileCorrect ? 'border-green-500 bg-green-500/10' : '',
+          "w-full md:w-1/3 min-h-[10rem] md:min-h-[12rem] border-2 rounded-lg flex flex-col items-center justify-center p-2 md:p-4 transition-all",
+          pileId === 'sum' ? (isActivePile ? 'border-dashed border-primary/50 hover:border-primary cursor-pointer' : 'border-muted') : 'border-solid border-muted', // Styling for addend vs sum pile
+          isPileComplete && pileId !== 'sum' ? 'border-green-500 bg-green-500/10' : '', // Addend piles always "complete"
+          isSumPileCorrectAndFinal ? 'border-green-500 bg-green-500/10' : '',
           pileId === 'sum' && phase === 'finalFeedback' && !isCorrect ? 'border-red-500 bg-red-500/10' : '',
         )}
       >
         <CardHeader className="p-1 mb-1">
             <CardTitle className="text-3xl md:text-4xl font-bold text-foreground">
-                 { pileId === 'sum' && (phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') ? `${count} / ${targetCount}` : pileLabel }
-                 { pileId !== 'sum' && phase === 'buildingPiles' ? ` (${count}/${targetCount})` : ''}
+                 { pileId === 'sum' && (phase === 'summingTime' || phase === 'finalFeedback') ? `${displayCount} / ${targetCount}` : pileLabel }
             </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center p-0">
           <div className="flex flex-wrap justify-center text-3xl md:text-4xl min-h-[40px] mb-1">
-            {Array.from({ length: count }).map((_, i) => (
+            {Array.from({ length: displayCount }).map((_, i) => (
               <span key={`${pileId}-${i}`} className="mx-0.5 animate-letter-appear">{currentProblem.item.visual}</span>
             ))}
           </div>
-           {pileId !== 'sum' && phase === 'buildingPiles' && count < targetCount && (
-             <div className="flex text-muted-foreground">
-                {Array.from({ length: targetCount - count }).map((_, i) => (
-                    <span key={`needed-${i}`} className="mx-0.5 opacity-30 text-2xl">{currentProblem.item.visual}</span>
-                ))}
-             </div>
-           )}
-           {pileId === 'sum' && phase === 'pilesBuilt_summingTime' && count < targetCount && (
-             <p className="text-sm text-muted-foreground">(Needs {targetCount - count} more)</p>
+           {pileId === 'sum' && phase === 'summingTime' && displayCount < targetCount && (
+             <p className="text-sm text-muted-foreground">(Needs {targetCount - displayCount} more)</p>
            )}
         </CardContent>
       </Card>
@@ -134,7 +130,7 @@ const AdditionAdventurePage: NextPage = () => {
                 <Smile className="w-10 h-10"/>Addition Adventure!
               </CardTitle>
               <CardDescription className="text-lg mt-2 text-muted-foreground">
-                Drag items to count and add!
+                Drag or tap to solve the sums!
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -151,7 +147,7 @@ const AdditionAdventurePage: NextPage = () => {
             <CardHeader>
               <CardTitle className="text-3xl font-bold text-primary">Round Over!</CardTitle>
                <CardDescription className="text-lg mt-2 text-muted-foreground">
-                {feedbackMessage || `You scored ${score} points!`}
+                {gameState.feedbackMessage || `You scored ${score} points!`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -172,12 +168,11 @@ const AdditionAdventurePage: NextPage = () => {
             </div>
         )}
 
-        {isPlaying && currentProblem && (phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && (
+        {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback') && (
           <div className="w-full max-w-4xl">
-            {/* Draggable Item Area - Simplified to match image */}
             <Card className="mb-6 p-4 shadow-md">
               <CardContent className="flex flex-col items-center p-2">
-                  {(phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime') && (
+                  {phase === 'summingTime' && (
                     <>
                       <Plus className="w-6 h-6 text-muted-foreground mb-2" />
                       <div
@@ -191,13 +186,13 @@ const AdditionAdventurePage: NextPage = () => {
                     </>
                   )}
                   {phase === 'finalFeedback' && (
-                     <div className="flex items-center justify-center h-20"> {/* Placeholder height for feedback icon */}
+                     <div className="flex items-center justify-center h-20"> 
                         {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
                      </div>
                   )}
-                  {dragFeedback && (
+                  {dragFeedback === 'stop' && ( // Show stop icon if dragFeedback is 'stop'
                     <div className="mt-2 text-sm text-destructive flex items-center">
-                        {dragFeedback === 'stop' && <StopCircle className="w-6 h-6 text-red-500"/>}
+                        <StopCircle className="w-6 h-6 text-red-500 mr-1"/> Target full!
                     </div>
                   )}
               </CardContent>
@@ -206,13 +201,11 @@ const AdditionAdventurePage: NextPage = () => {
             {/* Piles Area */}
             <div className="flex flex-col md:flex-row items-stretch justify-around gap-3 md:gap-4 mb-6">
               {renderPileZone(1)}
-              {(phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && 
-                <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">
-                  {phase === 'finalFeedback' && isCorrect === false ? '' : '+'} 
-                </div>
-              }
+              <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">
+                {phase === 'finalFeedback' && isCorrect === false ? '' : '+'} 
+              </div>
               {renderPileZone(2)}
-              {(phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && (
+              {(phase === 'summingTime' || phase === 'finalFeedback') && (
                 <>
                   <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">=</div>
                   {renderPileZone('sum')}
@@ -220,7 +213,7 @@ const AdditionAdventurePage: NextPage = () => {
               )}
             </div>
             
-            {phase === 'pilesBuilt_summingTime' && currentProblem && (
+            {phase === 'summingTime' && currentProblem && (
               <Card className="mb-6 shadow-lg">
                 <CardContent className="flex items-center justify-center flex-wrap py-4 min-h-[80px] gap-2 md:gap-4">
                   <div className="flex items-center">
@@ -309,3 +302,4 @@ const AdditionAdventurePage: NextPage = () => {
 };
 
 export default AdditionAdventurePage;
+

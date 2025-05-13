@@ -53,8 +53,7 @@ export interface AdditionProblem {
 
 export type AdditionAdventurePhase =
   | 'startScreen'
-  | 'buildingPiles' // User drags items to form the two addend piles
-  | 'pilesBuilt_summingTime' // Addend piles are built, user now drags items to a sum pile
+  | 'summingTime' // Addend piles are pre-filled, user drags/taps items to a sum pile
   | 'finalFeedback' // Feedback for the sum answer
   | 'sessionOver';
 
@@ -66,12 +65,12 @@ export interface AdditionAdventureGameState {
   currentStreak: number; // Correct sum answers in a row
   longestStreak: number;
 
-  pile1Count: number;
-  pile2Count: number;
-  sumPileCount: number; // Count of items in the sum pile
+  pile1Count: number; // Will be pre-filled based on currentProblem.num1
+  pile2Count: number; // Will be pre-filled based on currentProblem.num2
+  sumPileCount: number; // Count of items in the sum pile, user interacts with this
   
   feedbackMessage: string | null; // General feedback or instructions (minimize use)
-  dragFeedback: string | null; // Specific to drag actions, e.g., "Pile full" (minimize use)
+  dragFeedback: string | null; // Specific to drag actions or sum pile clicks, e.g., "stop" icon
   isCorrect: boolean | null; // For sum answer correctness
 
   isPlaying: boolean; // Overall game session is active
@@ -95,3 +94,4 @@ export interface AdditionAdventureSessionStats {
   longestStreak: number;
   score: number;
 }
+

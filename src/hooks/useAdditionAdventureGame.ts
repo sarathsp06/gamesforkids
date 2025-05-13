@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { AdditionProblem, AdditionAdventureGameState, AdditionAdventureSessionStats } from '@/types';
-import { ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, ADDITION_GAME_DURATION_SECONDS, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY, ADDITION_MAX_ANSWER } from '@/lib/constants';
+import type { AdditionProblem, AdditionAdventureGameState, AdditionAdventureSessionStats, AdditionAdventurePhase } from '@/types';
+import { ADDITION_ITEMS, ADDITION_NUMBER_RANGE, ADDITION_PRAISE_MESSAGES, ADDITION_GAME_DURATION_SECONDS, LOCAL_STORAGE_ADDITION_ADVENTURE_SESSIONS_KEY } from '@/lib/constants';
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { StopCircle } from 'lucide-react'; // For drag/click feedback
 
 export const DRAGGABLE_ITEM_TYPE_ADDITION = "addition_game_item";
 
@@ -20,7 +20,7 @@ const initialGameState: AdditionAdventureGameState = {
   pile2Count: 0,
   sumPileCount: 0,
   feedbackMessage: null,
-  dragFeedback: null,
+  dragFeedback: null, // Will store 'stop' or similar to show icon
   isCorrect: null,
   isPlaying: false,
   gameStartTime: null,
@@ -87,7 +87,7 @@ export function useAdditionAdventureGame() {
     setGameState(prev => ({
       ...prev,
       showPraiseMessage: true,
-      praiseText: praise.text, // Text kept for potential alt-attributes or debug
+      praiseText: praise.text, 
       praiseIcon: praise.icon
     }));
     if (praiseTimeoutRef.current) clearTimeout(praiseTimeoutRef.current);
@@ -118,7 +118,7 @@ export function useAdditionAdventureGame() {
       setPastSessions(updatedSessions);
       saveSessions(updatedSessions);
 
-      if (sessionEndingNaturally && prev.isPlaying) { // Only toast if game was active
+      if (sessionEndingNaturally && prev.isPlaying) {
         toast({
           title: "Great Effort!",
           description: `You solved ${prev.correctAttempts} problems. Score: ${prev.score}`,
@@ -127,9 +127,9 @@ export function useAdditionAdventureGame() {
       
       return {
         ...initialGameState,
-        isPlaying: false, // ensure isPlaying is false
+        isPlaying: false, 
         phase: 'sessionOver',
-        feedbackMessage: `Score: ${prev.score}`, // Simplified feedback
+        feedbackMessage: `Score: ${prev.score}`,
       };
     });
   }, [pastSessions, saveSessions, toast]);
@@ -140,7 +140,7 @@ export function useAdditionAdventureGame() {
     setGameState(prev => ({ ...prev, timeLeft: ADDITION_GAME_DURATION_SECONDS }));
     timerRef.current = setInterval(() => {
       setGameState(prev => {
-        if (!prev.isPlaying) { // If game stopped for other reasons
+        if (!prev.isPlaying) {
             clearInterval(timerRef.current!);
             return prev;
         }
@@ -155,152 +155,157 @@ export function useAdditionAdventureGame() {
   }, [endSession]);
 
   const setupNewProblem = useCallback(() => {
-    clearAllTimeouts(); // Clear any pending timeouts from previous problem
+    clearAllTimeouts();
     const newProblem = generateProblem();
     setGameState(prev => ({
       ...prev,
       currentProblem: newProblem,
-      pile1Count: 0,
-      pile2Count: 0,
+      pile1Count: newProblem.num1, // Pre-fill pile 1
+      pile2Count: newProblem.num2, // Pre-fill pile 2
       sumPileCount: 0,
-      phase: 'buildingPiles',
-      feedbackMessage: null, // Will rely on visual cues primarily
+      phase: 'summingTime', // Start directly in summing phase
+      feedbackMessage: null,
       dragFeedback: null,
       isCorrect: null,
     }));
      if (prev.isPlaying && prev.timeLeft > 0 && !timerRef.current) {
-      startTimer(); // Restart timer if it was cleared but game is ongoing
+      startTimer();
     }
-  }, [startTimer]); // Added startTimer dependency
+  }, [startTimer]);
 
   const startGame = useCallback(() => {
     clearAllTimeouts();
     setGameState(prev => ({
       ...initialGameState,
       isPlaying: true,
-      phase: 'buildingPiles',
+      phase: 'summingTime', // Initial phase after start
       gameStartTime: Date.now(),
       timeLeft: ADDITION_GAME_DURATION_SECONDS,
     }));
     setupNewProblem();
     startTimer();
   }, [setupNewProblem, startTimer]);
-
+  
+  // Addend piles are pre-filled, so this function is mostly a no-op or for feedback if mistakenly interacted with.
   const handleDropOnPile = useCallback((pileId: 1 | 2) => {
     setGameState(prev => {
-      if (prev.phase !== 'buildingPiles' || !prev.currentProblem) return prev;
+        if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev; // Should not be called if addends prefilled
 
-      let newPile1Count = prev.pile1Count;
-      let newPile2Count = prev.pile2Count;
-      let newDragFeedbackIcon: 'stop' | null = null; // Using icons for feedback
-
-      if (pileId === 1) {
-        if (prev.pile1Count < prev.currentProblem.num1) {
-          newPile1Count++;
-        } else {
-          newDragFeedbackIcon = 'stop';
-        }
-      } else { 
-        if (prev.pile2Count < prev.currentProblem.num2) {
-          newPile2Count++;
-        } else {
-          newDragFeedbackIcon = 'stop';
-        }
-      }
-      
-      if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-      if (newDragFeedbackIcon) {
-        setGameState(gs => ({ ...gs, dragFeedback: newDragFeedbackIcon })); // Set icon directly
+        // Give feedback that these piles are not interactive for adding
+        if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
         dragFeedbackTimeoutRef.current = setTimeout(() => {
           setGameState(gs => ({ ...gs, dragFeedback: null }));
         }, 1500);
-      }
+        return prev;
+    });
+  }, []);
 
-      const pilesComplete = newPile1Count === prev.currentProblem.num1 && newPile2Count === prev.currentProblem.num2;
-      let newPhase = prev.phase;
-
-      if (pilesComplete) {
-        newPhase = 'pilesBuilt_summingTime';
-        showPraise(); 
+  const processSumItem = useCallback(() => {
+    setGameState(prev => {
+      if (prev.phase !== 'summingTime' || !prev.currentProblem || prev.sumPileCount < prev.currentProblem.correctAnswer) {
+        // If not yet correct, or not in the right phase, or sum pile not full enough, return current state
+        // If sumPileCount increased but not yet target, this means the update is already reflected
+        // in the calling function's optimistic update or previous setState.
+        return prev;
       }
+      
+      // This part executes if sumPileCount IS prev.currentProblem.correctAnswer
+      const newIsCorrect = true;
+      const newPhase: AdditionAdventurePhase = 'finalFeedback';
+      showPraise();
+      
+      const newScore = prev.score + 10;
+      const newCorrectAttempts = prev.correctAttempts + 1;
+      const newCurrentStreak = prev.currentStreak + 1;
+      const newLongestStreak = Math.max(prev.longestStreak, newCurrentStreak);
+
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
+        // Use a functional update for setGameState if relying on latest timeLeft
+        setGameState(currentGs => {
+            if (currentGs.timeLeft > 0 && currentGs.isPlaying) {
+                setupNewProblem(); // This will reset sumPileCount etc.
+                return currentGs; // setupNewProblem handles its own state update
+            } else if (currentGs.isPlaying) {
+                endSession(true);
+                return currentGs; // endSession handles its own state update
+            }
+            return currentGs;
+        });
+      }, 1800);
 
       return {
-        ...prev,
-        pile1Count: newPile1Count,
-        pile2Count: newPile2Count,
-        dragFeedback: newDragFeedbackIcon,
-        phase: newPhase,
+          ...prev,
+          isCorrect: newIsCorrect,
+          phase: newPhase,
+          score: newScore,
+          correctAttempts: newCorrectAttempts,
+          attempts: prev.attempts + 1,
+          currentStreak: newCurrentStreak,
+          longestStreak: newLongestStreak,
+          feedbackMessage: null,
+          dragFeedback: null, // Clear any 'stop' feedback
       };
     });
-  }, [showPraise]);
+  }, [showPraise, setupNewProblem, endSession]);
+
 
   const handleDropOnSumPile = useCallback(() => {
     setGameState(prev => {
-      if (prev.phase !== 'pilesBuilt_summingTime' || !prev.currentProblem) return prev;
+      if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev;
 
-      let newSumPileCount = prev.sumPileCount + 1;
-      let newPhase = prev.phase;
-      let newIsCorrect: boolean | null = prev.isCorrect;
-      let newDragFeedbackIcon: 'stop' | null = null;
-
-      if (newSumPileCount > prev.currentProblem.correctAnswer) {
-        newSumPileCount = prev.sumPileCount; // Don't overfill
-        newDragFeedbackIcon = 'stop'; // "Too many"
+      if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-        setGameState(gs => ({ ...gs, dragFeedback: newDragFeedbackIcon }));
-        dragFeedbackTimeoutRef.current = setTimeout(() => {
-          setGameState(gs => ({ ...gs, dragFeedback: null }));
-        }, 1500);
-      }
-      
-      if (newSumPileCount === prev.currentProblem.correctAnswer) {
-        newIsCorrect = true;
-        newPhase = 'finalFeedback';
-        showPraise();
-        
-        // Update score & stats
-        const newScore = prev.score + 10;
-        const newCorrectAttempts = prev.correctAttempts + 1;
-        const newCurrentStreak = prev.currentStreak + 1;
-        const newLongestStreak = Math.max(prev.longestStreak, newCurrentStreak);
-
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          if (gameState.timeLeft > 0 && gameState.isPlaying) { // Check timeLeft and isPlaying from a potentially updated state
-             setupNewProblem();
-          } else if (gameState.isPlaying) { // Time ran out during this problem
-             endSession(true);
-          }
-        }, 1800); // Delay before next problem
-
-        return {
-            ...prev,
-            sumPileCount: newSumPileCount,
-            isCorrect: newIsCorrect,
-            phase: newPhase,
-            score: newScore,
-            correctAttempts: newCorrectAttempts,
-            attempts: prev.attempts + 1,
-            currentStreak: newCurrentStreak,
-            longestStreak: newLongestStreak,
-            feedbackMessage: null, // Rely on visual and praise
-            dragFeedback: newDragFeedbackIcon,
-        };
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
+        dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
+        return prev; // Pile is full or overfilled
       }
 
       return {
         ...prev,
-        sumPileCount: newSumPileCount,
-        isCorrect: newIsCorrect, // Could be null if not yet correct
-        phase: newPhase,
-        dragFeedback: newDragFeedbackIcon,
+        sumPileCount: prev.sumPileCount + 1,
+        dragFeedback: null, // Clear any previous stop
       };
     });
-  }, [showPraise, setupNewProblem, endSession, gameState.timeLeft, gameState.isPlaying]); // Added gameState dependencies
+    // processSumItem will be called in useEffect listening to sumPileCount if it reaches target
+    // OR, call it directly if you prefer explicit flow after state update.
+    // For simplicity, let's call it after the state update that increments sumPileCount.
+    // Need to ensure this call happens after sumPileCount is confirmed updated.
+    // Using a separate useEffect for sumPileCount changes to trigger processSumItem is safer.
+  }, []);
+  
+  // New function for click interaction
+  const incrementSumPileOnClick = useCallback(() => {
+    setGameState(prev => {
+      if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev;
+
+      if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
+        if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
+        dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
+        return prev; // Pile is full
+      }
+      
+      return {
+        ...prev,
+        sumPileCount: prev.sumPileCount + 1,
+        dragFeedback: null,
+      };
+    });
+  }, []);
+
+  // Effect to process sum item when sumPileCount changes
+  useEffect(() => {
+    if (gameState.phase === 'summingTime' && gameState.currentProblem && gameState.sumPileCount === gameState.currentProblem.correctAnswer) {
+      processSumItem();
+    }
+  }, [gameState.sumPileCount, gameState.phase, gameState.currentProblem, processSumItem]);
   
   const userEndSession = () => {
     endSession(false); 
   };
 
-  return { gameState, startGame, handleDropOnPile, handleDropOnSumPile, userEndSession, pastSessions };
+  return { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions };
 }
+
