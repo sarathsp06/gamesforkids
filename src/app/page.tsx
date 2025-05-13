@@ -27,8 +27,8 @@ export default function GameSelectionPage() {
                 <CardContent className="flex flex-col flex-grow justify-between">
                   <div className="my-4 rounded-lg w-full h-40 shadow-md overflow-hidden bg-secondary/30 flex items-center justify-center p-4" data-ai-hint="keyboard abstract">
                     <svg width="100%" height="100%" viewBox="0 0 100 50" preserveAspectRatio="xMidYMid meet">
-                      <path d="M10 15 Q 25 5, 40 15 T 70 15" stroke="hsl(var(--primary))" stroke-width="5" fill="none" opacity="0.8" stroke-linecap="round"/>
-                      <path d="M20 35 Q 35 25, 50 35 T 80 35" stroke="hsl(var(--accent))" stroke-width="5" fill="none" opacity="0.7" stroke-linecap="round"/>
+                      <path d="M10 15 Q 25 5, 40 15 T 70 15" stroke="hsl(var(--primary))" strokeWidth="5" fill="none" opacity="0.8" strokeLinecap="round"/>
+                      <path d="M20 35 Q 35 25, 50 35 T 80 35" stroke="hsl(var(--accent))" strokeWidth="5" fill="none" opacity="0.7" strokeLinecap="round"/>
                       <rect x="25" y="10" width="10" height="20" rx="3" fill="hsl(var(--secondary))" opacity="0.6" transform="rotate(-10 30 20)"/>
                       <rect x="65" y="20" width="10" height="15" rx="3" fill="hsl(var(--primary))" opacity="0.5" transform="rotate(10 70 27.5)"/>
                       <circle cx="85" cy="12" r="4" fill="hsl(var(--accent))" opacity="0.9"/>
@@ -85,4 +85,3 @@ export default function GameSelectionPage() {
     </MainLayout>
   );
 }
-
