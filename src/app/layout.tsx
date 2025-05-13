@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import { Geist } from 'next/font/google'; // Correct import for Geist Sans
 import './globals.css';
@@ -21,8 +22,8 @@ const geistMono = Geist({ // Assuming Geist can also be used for mono, or import
 
 
 export const metadata: Metadata = {
-  title: 'Typing Game Hub',
-  description: 'A collection of fun typing games to improve your skills!',
+  title: 'Kids Learning Games',
+  description: 'A collection of fun educational games for kids!',
 };
 
 export default function RootLayout({

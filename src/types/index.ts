@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { AdditionItem, PraiseMessage } from '@/lib/constants';
 
 export interface PerformanceData {
   correctPresses: number; // Correct letters typed
@@ -40,5 +41,40 @@ export interface GameState extends PerformanceData {
   activeHand: 'left' | 'right' | null;
 }
 
-// AdaptiveSpeedInput and AdaptiveSpeedOutput removed from here.
-// They are now defined and exported by src/ai/flows/adaptiveSpeedFlow.ts
+// Types for Addition Adventure Game
+export interface AdditionProblem {
+  id: string;
+  num1: number;
+  num2: number;
+  item: AdditionItem;
+  correctAnswer: number;
+}
+
+export interface AdditionAdventureGameState {
+  currentProblem: AdditionProblem | null;
+  score: number;
+  attempts: number;
+  correctAttempts: number;
+  currentStreak: number;
+  longestStreak: number;
+  feedbackMessage: string | null;
+  isCorrect: boolean | null;
+  isPlaying: boolean;
+  isSessionOver: boolean;
+  showStartScreen: true;
+  gameStartTime: number | null;
+  timeLeft: number; // in seconds
+  showPraiseMessage: boolean;
+  praiseText: string | null;
+  praiseIcon: LucideIcon | null;
+}
+
+export interface AdditionAdventureSessionStats {
+  id: string;
+  date: string; // ISO string
+  problemsSolved: number;
+  accuracy: number; // Percentage
+  durationSeconds: number;
+  longestStreak: number;
+  score: number;
+}

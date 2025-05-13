@@ -2,13 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-// Removed Metadata import as it's no longer used here
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Gamepad2 } from 'lucide-react'; // Added Gamepad2 for placeholder
-
-// Removed export const metadata: Metadata as it's not allowed in client components.
-// Metadata for this page will be handled by the layout or parent server components.
+import { ArrowRight, Calculator, Keyboard } from 'lucide-react'; 
 
 export default function GameSelectionPage() {
   return (
@@ -20,7 +16,10 @@ export default function GameSelectionPage() {
             <a className="block">
               <Card className="hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col group border-2 border-transparent hover:border-accent">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-2xl text-accent group-hover:text-primary transition-colors">Letter Leap</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl text-accent group-hover:text-primary transition-colors">Letter Leap</CardTitle>
+                    <Keyboard className="h-8 w-8 text-primary group-hover:text-accent transition-colors" />
+                  </div>
                   <CardDescription className="text-muted-foreground pt-1">
                     Master the art of typing words, one leap at a time!
                   </CardDescription>
@@ -41,28 +40,35 @@ export default function GameSelectionPage() {
             </a>
           </Link>
           
-          <Card className="bg-card/60 cursor-not-allowed opacity-70 h-full flex flex-col border-dashed border-muted-foreground/50">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-2xl text-muted-foreground">More Games Coming Soon!</CardTitle>
-                <CardDescription className="text-muted-foreground pt-1">
-                  Stay tuned for exciting new typing challenges.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col flex-grow justify-between">
-                <div 
-                  data-ai-hint="controller joystick"
-                  className="my-4 rounded-lg bg-muted/30 w-full h-40 flex items-center justify-center shadow-inner"
-                >
-                   <Gamepad2 className="h-16 w-16 text-muted-foreground/50" />
-                </div>
-                <div className="flex items-center justify-end text-muted-foreground font-semibold mt-auto">
-                  <span>Coming Soon...</span>
-                </div>
-              </CardContent>
-          </Card>
+          <Link href="/games/addition-adventure" passHref legacyBehavior>
+            <a className="block">
+              <Card className="hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col group border-2 border-transparent hover:border-accent">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl text-accent group-hover:text-primary transition-colors">Addition Adventure</CardTitle>
+                    <Calculator className="h-8 w-8 text-primary group-hover:text-accent transition-colors" />
+                  </div>
+                  <CardDescription className="text-muted-foreground pt-1">
+                    Learn addition with fun items like dolls and apples!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-grow justify-between">
+                  <img
+                    src="https://picsum.photos/seed/additiongame/400/200"
+                    alt="Addition Adventure Game Preview"
+                    data-ai-hint="abacus math"
+                    className="my-4 rounded-lg object-cover w-full h-40 shadow-md"
+                  />
+                  <div className="flex items-center justify-end text-primary group-hover:text-accent transition-colors font-semibold mt-auto">
+                    <span>Start Adding</span>
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </a>
+          </Link>
         </div>
       </div>
     </MainLayout>
   );
 }
-
