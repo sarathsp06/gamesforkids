@@ -1,5 +1,6 @@
+
 import type { LucideIcon } from 'lucide-react';
-import type { AdditionItem, PraiseMessage } from '@/lib/constants';
+import type { AdditionItem } from '@/lib/constants'; // PraiseMessage removed as it's used internally in constants
 
 export interface PerformanceData {
   correctPresses: number; // Correct letters typed
@@ -44,26 +45,44 @@ export interface GameState extends PerformanceData {
 // Types for Addition Adventure Game
 export interface AdditionProblem {
   id: string;
-  num1: number;
-  num2: number;
+  num1: number; // Target for pile 1
+  num2: number; // Target for pile 2
   item: AdditionItem;
-  correctAnswer: number;
+  correctAnswer: number; // num1 + num2
 }
+
+export type AdditionAdventurePhase =
+  | 'startScreen'
+  | 'instructions' // Displaying "Drag X items to Pile 1 and Y to Pile 2"
+  | 'buildingPiles'
+  | 'pilesBuilt_promptSum' // Piles are correct, now prompt for the sum
+  | 'finalFeedback' // Feedback for the sum answer
+  | 'sessionOver';
 
 export interface AdditionAdventureGameState {
   currentProblem: AdditionProblem | null;
   score: number;
-  attempts: number;
-  correctAttempts: number;
-  currentStreak: number;
+  attempts: number; // Number of sum attempts
+  correctAttempts: number; // Number of correct sum answers
+  currentStreak: number; // Correct sum answers in a row
   longestStreak: number;
-  feedbackMessage: string | null;
-  isCorrect: boolean | null;
-  isPlaying: boolean;
-  isSessionOver: boolean;
-  showStartScreen: true;
+
+  pile1Count: number;
+  pile2Count: number;
+  
+  feedbackMessage: string | null; // General feedback or instructions
+  dragFeedback: string | null; // Specific to drag actions, e.g., "Pile full"
+  isCorrect: boolean | null; // For sum answer correctness
+
+  isPlaying: boolean; // Overall game session is active
+  // isSessionOver will be determined by phase: 'sessionOver'
+  // showStartScreen will be determined by phase: 'startScreen'
+  
   gameStartTime: number | null;
-  timeLeft: number; // in seconds
+  timeLeft: number; // in seconds for the entire session
+
+  phase: AdditionAdventurePhase;
+
   showPraiseMessage: boolean;
   praiseText: string | null;
   praiseIcon: LucideIcon | null;
@@ -72,9 +91,10 @@ export interface AdditionAdventureGameState {
 export interface AdditionAdventureSessionStats {
   id: string;
   date: string; // ISO string
-  problemsSolved: number;
-  accuracy: number; // Percentage
+  problemsSolved: number; // Number of sums correctly answered
+  accuracy: number; // Percentage of correct sums
   durationSeconds: number;
   longestStreak: number;
   score: number;
 }
+
