@@ -15,8 +15,8 @@ const AdditionAdventurePage: NextPage = () => {
   const {
     currentProblem,
     score,
-    feedbackMessage, // Will be minimized
-    dragFeedback,    // Will be an icon type
+    feedbackMessage, 
+    dragFeedback,    
     isCorrect,
     isPlaying,
     timeLeft,
@@ -76,7 +76,7 @@ const AdditionAdventurePage: NextPage = () => {
     } else { // sum pile
       count = sumPileCount;
       targetCount = currentProblem.correctAnswer;
-      pileLabel = "?"; // Initially
+      pileLabel = "?"; 
       onDropHandler = handleDropOnSumPileEvent;
       isActivePhase = phase === 'pilesBuilt_summingTime';
     }
@@ -98,7 +98,7 @@ const AdditionAdventurePage: NextPage = () => {
       >
         <CardHeader className="p-1 mb-1">
             <CardTitle className="text-3xl md:text-4xl font-bold text-foreground">
-                 { pileId === 'sum' && phase === 'pilesBuilt_summingTime' ? `${count} / ${targetCount}` : pileLabel }
+                 { pileId === 'sum' && (phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') ? `${count} / ${targetCount}` : pileLabel }
                  { pileId !== 'sum' && phase === 'buildingPiles' ? ` (${count}/${targetCount})` : ''}
             </CardTitle>
         </CardHeader>
@@ -108,7 +108,6 @@ const AdditionAdventurePage: NextPage = () => {
               <span key={`${pileId}-${i}`} className="mx-0.5 animate-letter-appear">{currentProblem.item.visual}</span>
             ))}
           </div>
-           {/* Visual indication for target for addend piles, or sum pile state */}
            {pileId !== 'sum' && phase === 'buildingPiles' && count < targetCount && (
              <div className="flex text-muted-foreground">
                 {Array.from({ length: targetCount - count }).map((_, i) => (
@@ -168,49 +167,52 @@ const AdditionAdventurePage: NextPage = () => {
               <Card className="p-3 md:p-4 bg-secondary shadow-xl border-2 border-accent">
                 <CardContent className="flex flex-col items-center gap-1 md:gap-2 p-0">
                   <PraiseIcon className="h-10 w-10 md:h-12 md:w-12 text-accent" />
-                  {/* praiseText is intentionally omitted for non-readers */}
                 </CardContent>
               </Card>
             </div>
         )}
 
         {isPlaying && currentProblem && (phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && (
-          <div className="w-full max-w-4xl"> {/* Max width increased for 3 piles */}
-            {/* Instructions & Draggable Item Area */}
+          <div className="w-full max-w-4xl">
+            {/* Draggable Item Area - Simplified to match image */}
             <Card className="mb-6 p-4 shadow-md">
-              <CardHeader className="p-2 text-center">
-                 <CardTitle className="text-xl md:text-2xl text-primary h-12 flex items-center justify-center"> {/* Fixed height */}
-                  { phase === 'buildingPiles' && <HelpCircle className="w-8 h-8 mr-2"/> }
-                  { phase === 'pilesBuilt_summingTime' && <Plus className="w-8 h-8 mr-2"/> }
-                  { phase === 'finalFeedback' && (isCorrect ? <CheckCircle className="w-8 h-8 text-green-500"/> : <XCircle className="w-8 h-8 text-red-500"/>) }
-                  {/* Textual instructions minimized */}
-                </CardTitle>
-              </CardHeader>
-              {(phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime') && (
-                <CardContent className="flex flex-col items-center p-2">
-                    <div
-                      draggable
-                      onDragStart={handleDragStart}
-                      className="cursor-grab p-2 m-2 border-2 border-accent rounded-md bg-secondary shadow-lg hover:shadow-xl transition-shadow"
-                      aria-label={`Draggable ${currentProblem.item.name}`}
-                    >
-                      <span className="text-5xl md:text-6xl">{currentProblem.item.visual}</span>
-                    </div>
-                    {dragFeedback && (
-                      <div className="mt-2 text-sm text-destructive flex items-center">
-                         {dragFeedback === 'stop' && <StopCircle className="w-6 h-6 text-red-500"/>}
+              <CardContent className="flex flex-col items-center p-2">
+                  {(phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime') && (
+                    <>
+                      <Plus className="w-6 h-6 text-muted-foreground mb-2" />
+                      <div
+                        draggable
+                        onDragStart={handleDragStart}
+                        className="cursor-grab p-2 m-2 border-2 border-accent rounded-md bg-secondary shadow-lg hover:shadow-xl transition-shadow"
+                        aria-label={`Draggable ${currentProblem.item.name}`}
+                      >
+                        <span className="text-5xl md:text-6xl">{currentProblem.item.visual}</span>
                       </div>
-                    )}
-                </CardContent>
-              )}
+                    </>
+                  )}
+                  {phase === 'finalFeedback' && (
+                     <div className="flex items-center justify-center h-20"> {/* Placeholder height for feedback icon */}
+                        {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
+                     </div>
+                  )}
+                  {dragFeedback && (
+                    <div className="mt-2 text-sm text-destructive flex items-center">
+                        {dragFeedback === 'stop' && <StopCircle className="w-6 h-6 text-red-500"/>}
+                    </div>
+                  )}
+              </CardContent>
             </Card>
 
             {/* Piles Area */}
             <div className="flex flex-col md:flex-row items-stretch justify-around gap-3 md:gap-4 mb-6">
               {renderPileZone(1)}
-              {phase === 'buildingPiles' && <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">+</div>}
+              {(phase === 'buildingPiles' || phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && 
+                <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">
+                  {phase === 'finalFeedback' && isCorrect === false ? '' : '+'} 
+                </div>
+              }
               {renderPileZone(2)}
-              {phase === 'pilesBuilt_summingTime' && (
+              {(phase === 'pilesBuilt_summingTime' || phase === 'finalFeedback') && (
                 <>
                   <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">=</div>
                   {renderPileZone('sum')}
@@ -218,7 +220,6 @@ const AdditionAdventurePage: NextPage = () => {
               )}
             </div>
             
-            {/* Display full equation after piles are built, before summing */}
             {phase === 'pilesBuilt_summingTime' && currentProblem && (
               <Card className="mb-6 shadow-lg">
                 <CardContent className="flex items-center justify-center flex-wrap py-4 min-h-[80px] gap-2 md:gap-4">
@@ -241,7 +242,6 @@ const AdditionAdventurePage: NextPage = () => {
               </Card>
             )}
 
-            {/* Final Feedback visual */}
             {phase === 'finalFeedback' && currentProblem && (
               <Card className={cn(
                 "p-4 mt-4 shadow-md text-xl font-semibold",
@@ -267,7 +267,6 @@ const AdditionAdventurePage: NextPage = () => {
               </Card>
             )}
 
-            {/* Stats Bar and End Game Button */}
             <Card className="mt-8 p-4 shadow-md bg-card/70">
                <CardContent className="flex flex-col sm:flex-row justify-around items-center p-0 gap-2 sm:gap-0">
                 <div className="flex items-center text-lg">
