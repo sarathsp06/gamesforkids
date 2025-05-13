@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
     darkMode: ["class"],
@@ -9,6 +10,10 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
+        mono: ["var(--font-geist-mono)", ...fontFamily.mono],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -40,6 +45,12 @@ export default {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+        feedback: {
+          correct: 'hsl(var(--feedback-correct))',
+          'correct-foreground': 'hsl(var(--feedback-correct-foreground))',
+          incorrect: 'hsl(var(--feedback-incorrect))',
+          'incorrect-foreground': 'hsl(var(--feedback-incorrect-foreground))',
+        },
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
@@ -82,11 +93,28 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+        'letter-appear': {
+          '0%': { opacity: '0', transform: 'scale(0.5) translateY(20px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0px)' },
+        },
+        'feedback-pulse-correct': {
+          '0%': { backgroundColor: 'hsl(var(--feedback-correct) / 0.5)' },
+          '50%': { backgroundColor: 'hsl(var(--feedback-correct) / 1)' },
+          '100%': { backgroundColor: 'hsl(var(--feedback-correct) / 0.5)' },
+        },
+        'feedback-pulse-incorrect': {
+          '0%': { backgroundColor: 'hsl(var(--feedback-incorrect) / 0.5)' },
+          '50%': { backgroundColor: 'hsl(var(--feedback-incorrect) / 1)' },
+          '100%': { backgroundColor: 'hsl(var(--feedback-incorrect) / 0.5)' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        'letter-appear': 'letter-appear 0.3s ease-out forwards',
+        'feedback-correct': 'feedback-pulse-correct 0.5s ease-in-out',
+        'feedback-incorrect': 'feedback-pulse-incorrect 0.5s ease-in-out',
   		}
   	}
   },
