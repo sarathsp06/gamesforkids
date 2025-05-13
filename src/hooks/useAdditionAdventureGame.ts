@@ -68,19 +68,28 @@ export function useAdditionAdventureGame() {
     }
   }, []);
 
+  const clearProblemSpecificTimeouts = useCallback(() => {
+    if (feedbackTimeoutRef.current) { clearTimeout(feedbackTimeoutRef.current); feedbackTimeoutRef.current = null; }
+    if (praiseTimeoutRef.current) { clearTimeout(praiseTimeoutRef.current); praiseTimeoutRef.current = null; }
+    if (dragFeedbackTimeoutRef.current) { clearTimeout(dragFeedbackTimeoutRef.current); dragFeedbackTimeoutRef.current = null; }
+  }, []);
+
+  const clearAllGameTimeouts = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    clearProblemSpecificTimeouts();
+  }, [clearProblemSpecificTimeouts]);
+
+
   useEffect(() => {
     loadSessions();
     return () => {
-      clearAllTimeouts();
+      clearAllGameTimeouts();
     };
-  }, [loadSessions]);
+  }, [loadSessions, clearAllGameTimeouts]);
 
-  const clearAllTimeouts = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    if (praiseTimeoutRef.current) clearTimeout(praiseTimeoutRef.current);
-    if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-  };
   
   const showPraise = useCallback(() => {
     const praise = ADDITION_PRAISE_MESSAGES[Math.floor(Math.random() * ADDITION_PRAISE_MESSAGES.length)];
@@ -97,9 +106,10 @@ export function useAdditionAdventureGame() {
   }, []);
 
   const endSession = useCallback((sessionEndingNaturally = true) => {
-    clearAllTimeouts();
+    clearAllGameTimeouts();
     setGameState(prev => {
-      if (prev.phase === 'sessionOver') return prev;
+      if (prev.phase === 'sessionOver' && !sessionEndingNaturally) return prev; // Avoid re-processing if user clicks end multiple times
+      if (prev.phase === 'sessionOver' && sessionEndingNaturally) return prev; // if already ended by timer
 
       const accuracy = prev.attempts > 0 ? (prev.correctAttempts / prev.attempts) * 100 : 0;
       const sessionDuration = prev.gameStartTime ? (Date.now() - prev.gameStartTime) / 1000 : ADDITION_GAME_DURATION_SECONDS - prev.timeLeft;
@@ -114,84 +124,91 @@ export function useAdditionAdventureGame() {
         score: prev.score,
       };
       
-      const updatedSessions = [newSession, ...pastSessions].slice(0, 10);
-      setPastSessions(updatedSessions);
-      saveSessions(updatedSessions);
+      // Only save and toast if the game was actually playing or just ended
+      if (prev.isPlaying || (prev.phase !== 'startScreen' && prev.phase !== 'sessionOver')) {
+        const updatedSessions = [newSession, ...pastSessions].slice(0, 10);
+        setPastSessions(updatedSessions);
+        saveSessions(updatedSessions);
 
-      if (sessionEndingNaturally && prev.isPlaying) {
-        toast({
-          title: "Great Effort!",
-          description: `You solved ${prev.correctAttempts} problems. Score: ${prev.score}`,
-        });
+        if (sessionEndingNaturally) {
+            toast({
+              title: "Great Effort!",
+              description: `You solved ${prev.correctAttempts} problems. Score: ${prev.score}`,
+            });
+        } else if (!sessionEndingNaturally && prev.isPlaying) { // User ended manually
+             toast({
+              title: "Game Ended",
+              description: `You scored ${prev.score} points.`,
+            });
+        }
       }
       
       return {
-        ...initialGameState,
+        ...initialGameState, // Reset to initial, keep past sessions loaded
         isPlaying: false, 
         phase: 'sessionOver',
-        feedbackMessage: `Score: ${prev.score}`,
+        feedbackMessage: `Score: ${prev.score || 0}`, // Ensure score is shown even if 0
       };
     });
-  }, [pastSessions, saveSessions, toast]);
+  }, [pastSessions, saveSessions, toast, clearAllGameTimeouts]);
 
 
   const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    // Assumes any existing timer has been cleared by clearAllGameTimeouts in startGame
     setGameState(prev => ({ ...prev, timeLeft: ADDITION_GAME_DURATION_SECONDS }));
     timerRef.current = setInterval(() => {
-      setGameState(prev => {
-        if (!prev.isPlaying) {
-            clearInterval(timerRef.current!);
-            return prev;
+      setGameState(currentGs => {
+        if (!currentGs.isPlaying) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = null;
+            return currentGs;
         }
-        if (prev.timeLeft <= 1) {
-          clearInterval(timerRef.current!);
-          endSession(true); 
-          return { ...prev, timeLeft: 0, isPlaying: false, phase: 'sessionOver' };
+        if (currentGs.timeLeft <= 1) {
+          // Important: clearInterval before calling endSession, as endSession might try to clear it too.
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = null;
+          endSession(true); // This will update phase to 'sessionOver' and isPlaying to false
+          // The state returned here is for the current tick, endSession will set the final state.
+          return { ...currentGs, timeLeft: 0 }; 
         }
-        return { ...prev, timeLeft: prev.timeLeft - 1 };
+        return { ...currentGs, timeLeft: currentGs.timeLeft - 1 };
       });
     }, 1000);
   }, [endSession]);
 
   const setupNewProblem = useCallback(() => {
-    clearAllTimeouts();
+    clearProblemSpecificTimeouts(); 
     const newProblem = generateProblem();
     setGameState(prev => ({
       ...prev,
       currentProblem: newProblem,
-      pile1Count: newProblem.num1, // Pre-fill pile 1
-      pile2Count: newProblem.num2, // Pre-fill pile 2
+      pile1Count: newProblem.num1,
+      pile2Count: newProblem.num2,
       sumPileCount: 0,
-      phase: 'summingTime', // Start directly in summing phase
+      phase: 'summingTime',
       feedbackMessage: null,
       dragFeedback: null,
       isCorrect: null,
     }));
-     if (prev.isPlaying && prev.timeLeft > 0 && !timerRef.current) {
-      startTimer();
-    }
-  }, [startTimer]);
+  }, [clearProblemSpecificTimeouts]);
 
   const startGame = useCallback(() => {
-    clearAllTimeouts();
-    setGameState(prev => ({
+    clearAllGameTimeouts();
+    setGameState(_ => ({ // Use _ if prev isn't used, or prev for specific carry-overs
       ...initialGameState,
       isPlaying: true,
-      phase: 'summingTime', // Initial phase after start
+      phase: 'summingTime',
       gameStartTime: Date.now(),
       timeLeft: ADDITION_GAME_DURATION_SECONDS,
     }));
     setupNewProblem();
     startTimer();
-  }, [setupNewProblem, startTimer]);
+  }, [setupNewProblem, startTimer, clearAllGameTimeouts]);
   
-  // Addend piles are pre-filled, so this function is mostly a no-op or for feedback if mistakenly interacted with.
   const handleDropOnPile = useCallback((pileId: 1 | 2) => {
     setGameState(prev => {
-        if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev; // Should not be called if addends prefilled
+        if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev;
 
-        // Give feedback that these piles are not interactive for adding
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
         setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
         dragFeedbackTimeoutRef.current = setTimeout(() => {
@@ -203,14 +220,13 @@ export function useAdditionAdventureGame() {
 
   const processSumItem = useCallback(() => {
     setGameState(prev => {
-      if (prev.phase !== 'summingTime' || !prev.currentProblem || prev.sumPileCount < prev.currentProblem.correctAnswer) {
-        // If not yet correct, or not in the right phase, or sum pile not full enough, return current state
-        // If sumPileCount increased but not yet target, this means the update is already reflected
-        // in the calling function's optimistic update or previous setState.
+      // This function is called when sumPileCount has reached the target.
+      // It handles the logic for a correct sum.
+      if (prev.phase !== 'summingTime' || !prev.currentProblem || prev.sumPileCount !== prev.currentProblem.correctAnswer) {
+         // Should not happen if called correctly from useEffect, but as a safeguard.
         return prev;
       }
       
-      // This part executes if sumPileCount IS prev.currentProblem.correctAnswer
       const newIsCorrect = true;
       const newPhase: AdditionAdventurePhase = 'finalFeedback';
       showPraise();
@@ -222,18 +238,21 @@ export function useAdditionAdventureGame() {
 
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       feedbackTimeoutRef.current = setTimeout(() => {
-        // Use a functional update for setGameState if relying on latest timeLeft
-        setGameState(currentGs => {
+        setGameState(currentGs => { // Use currentGs to get latest timeLeft & isPlaying
             if (currentGs.timeLeft > 0 && currentGs.isPlaying) {
-                setupNewProblem(); // This will reset sumPileCount etc.
-                return currentGs; // setupNewProblem handles its own state update
-            } else if (currentGs.isPlaying) {
-                endSession(true);
-                return currentGs; // endSession handles its own state update
+                setupNewProblem();
+                 // setupNewProblem will set the new state, so we don't need to return a modified currentGs here regarding the problem.
+                 // However, setupNewProblem itself is a setGameState, so this might lead to chained setGameState calls.
+                 // This is generally fine if managed.
+                return currentGs; // Let setupNewProblem handle the state transition for the new problem.
+            } else if (currentGs.isPlaying) { // Time ran out or game stopped while waiting for feedback
+                endSession(true); // endSession handles its own state update
+                return currentGs; 
             }
+            // If game is no longer playing (e.g., user manually ended it during feedback timeout)
             return currentGs;
         });
-      }, 1800);
+      }, 1800); // Delay before showing next problem or ending session
 
       return {
           ...prev,
@@ -241,11 +260,11 @@ export function useAdditionAdventureGame() {
           phase: newPhase,
           score: newScore,
           correctAttempts: newCorrectAttempts,
-          attempts: prev.attempts + 1,
+          attempts: prev.attempts + 1, // Increment total attempts for this sum
           currentStreak: newCurrentStreak,
           longestStreak: newLongestStreak,
-          feedbackMessage: null,
-          dragFeedback: null, // Clear any 'stop' feedback
+          feedbackMessage: null, // Clear previous messages
+          dragFeedback: null,
       };
     });
   }, [showPraise, setupNewProblem, endSession]);
@@ -257,34 +276,28 @@ export function useAdditionAdventureGame() {
 
       if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-        setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); // Use functional update
         dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
-        return prev; // Pile is full or overfilled
+        return prev;
       }
 
       return {
         ...prev,
         sumPileCount: prev.sumPileCount + 1,
-        dragFeedback: null, // Clear any previous stop
+        dragFeedback: null,
       };
     });
-    // processSumItem will be called in useEffect listening to sumPileCount if it reaches target
-    // OR, call it directly if you prefer explicit flow after state update.
-    // For simplicity, let's call it after the state update that increments sumPileCount.
-    // Need to ensure this call happens after sumPileCount is confirmed updated.
-    // Using a separate useEffect for sumPileCount changes to trigger processSumItem is safer.
   }, []);
   
-  // New function for click interaction
   const incrementSumPileOnClick = useCallback(() => {
     setGameState(prev => {
       if (prev.phase !== 'summingTime' || !prev.currentProblem) return prev;
 
       if (prev.sumPileCount >= prev.currentProblem.correctAnswer) {
         if (dragFeedbackTimeoutRef.current) clearTimeout(dragFeedbackTimeoutRef.current);
-        setGameState(gs => ({ ...gs, dragFeedback: 'stop' }));
+        setGameState(gs => ({ ...gs, dragFeedback: 'stop' })); // Use functional update
         dragFeedbackTimeoutRef.current = setTimeout(() => setGameState(gs => ({ ...gs, dragFeedback: null })), 1500);
-        return prev; // Pile is full
+        return prev;
       }
       
       return {
@@ -295,7 +308,6 @@ export function useAdditionAdventureGame() {
     });
   }, []);
 
-  // Effect to process sum item when sumPileCount changes
   useEffect(() => {
     if (gameState.phase === 'summingTime' && gameState.currentProblem && gameState.sumPileCount === gameState.currentProblem.correctAnswer) {
       processSumItem();
