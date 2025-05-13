@@ -72,7 +72,7 @@ export function useLetterLeapGame() {
       }
       const accuracy = prev.correctPresses / prev.totalPresses;
       const elapsedMinutes = (Date.now() - prev.gameStartTime) / 60000;
-      const wpm = elapsedMinutes > 0 ? (prev.correctPresses / 5) / elapsedMinutes : 0;
+      const wpm = elapsedMinutes > 0 ? (prev.correctPresses / 5) / elapsedMinutes : 0; // Using correctPresses (chars) for WPM
       return { ...prev, currentAccuracy: accuracy, currentWPM: Math.round(wpm) };
     });
   }, []);
@@ -234,21 +234,22 @@ export function useLetterLeapGame() {
 
       // Prevent default browser action for single alphabet or number keys
       if (event.key.length === 1 && event.key.match(/^[a-zA-Z0-9]$/i)) {
-        event.preventDefault();
+        event.preventDefault(); 
+        event.stopImmediatePropagation(); // More assertively prevent other listeners
 
         // Only pass alphabet keys to the game's core input handler
         if (event.key.match(/^[a-zA-Z]$/i)) {
           handleKeyPress(event.key);
         }
-        // If it's a number, its default action is prevented.
-        // The game doesn't currently use numbers, so no further game logic for them here.
       }
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('keydown', handleKeyDown);
+      // Add listener in capture phase
+      window.addEventListener('keydown', handleKeyDown, true); 
       return () => {
-        window.removeEventListener('keydown', handleKeyDown);
+        // Remove listener in capture phase
+        window.removeEventListener('keydown', handleKeyDown, true); 
       };
     }
   }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentWord, handleKeyPress]);
