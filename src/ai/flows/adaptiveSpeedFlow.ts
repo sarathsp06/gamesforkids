@@ -12,9 +12,9 @@ import { ai } from '../genkit';
 import {
   MIN_LEVEL,
   MAX_LEVEL,
-  MIN_ACCURACY_FOR_LEVEL_UP,
-  MIN_WPM_FOR_LEVEL_UP,
-  MAX_ACCURACY_FOR_LEVEL_DOWN,
+  // MIN_ACCURACY_FOR_LEVEL_UP, // Commented out as AI logic is being re-evaluated
+  // MIN_WPM_FOR_LEVEL_UP,       // Commented out
+  // MAX_ACCURACY_FOR_LEVEL_DOWN // Commented out
 } from '@/lib/constants';
 
 // Define Zod schemas for input and output locally
@@ -22,7 +22,10 @@ const AdaptiveSpeedInputSchema = z.object({
   accuracy: z.number().min(0).max(1).describe("User's typing accuracy as a decimal (0 to 1)."),
   wpm: z.number().min(0).describe("User's words per minute."),
   currentLevel: z.number().min(MIN_LEVEL).max(MAX_LEVEL).describe("Current difficulty level of the game."),
-  totalLettersAttempted: z.number().min(0).describe("Total letters attempted by the user in the current context for level adjustment."),
+  // totalLettersAttempted: z.number().min(0).describe("Total letters attempted by the user in the current context for level adjustment."),
+  // Consider changing to totalWordsAttempted or similar if adapting for word-based game
+  itemsAttempted: z.number().min(0).describe("Total items (letters/words) attempted for this adjustment cycle."),
+  averageTimePerItem: z.number().optional().describe("Average time taken per item, if applicable.")
 });
 export type AdaptiveSpeedInput = z.infer<typeof AdaptiveSpeedInputSchema>;
 
@@ -37,20 +40,24 @@ const adaptiveSpeedPrompt = ai.definePrompt({
   input: { schema: AdaptiveSpeedInputSchema },
   output: { schema: AdaptiveSpeedOutputSchema },
   prompt: `
-      You are an expert typing tutor AI. Your goal is to adjust the difficulty level for a user learning to type.
+      You are an expert typing tutor AI. Your goal is to adjust the difficulty level for a user learning to type words.
       The user's current performance is:
       - Accuracy: {{accuracy}} (decimal, e.g., 0.85 for 85%)
       - Words Per Minute (WPM): {{wpm}}
       - Current Difficulty Level: {{currentLevel}} (where ${MIN_LEVEL} is easiest, ${MAX_LEVEL} is hardest)
-      - Total letters attempted for this adjustment cycle: {{totalLettersAttempted}}
+      - Total items attempted for this adjustment cycle: {{itemsAttempted}}
+      {{#if averageTimePerItem}}
+      - Average time per item: {{averageTimePerItem}}ms
+      {{/if}}
 
-      Guidelines for adjusting difficulty:
-      - Increase level (by 1) if accuracy is high (e.g., > ${MIN_ACCURACY_FOR_LEVEL_UP}) AND WPM is good for the current level (e.g., > ${MIN_WPM_FOR_LEVEL_UP} WPM).
-      - Decrease level (by 1) if accuracy is low (e.g., < ${MAX_ACCURACY_FOR_LEVEL_DOWN}).
+      Guidelines for adjusting difficulty (for word typing):
+      - Increase level (by 1) if accuracy is high (e.g., > 0.85) AND WPM is good for the current level (e.g., > 20 WPM for level 1, increasing with level).
+      - Decrease level (by 1) if accuracy is low (e.g., < 0.70).
       - Consider WPM: If accuracy is acceptable but WPM is very low for the level, consider not increasing or even decreasing.
       - Prioritize accuracy: Don't increase level if accuracy is poor, even with high WPM.
+      - Word complexity/length should ideally increase with level.
       - Avoid drastic changes: Increment or decrement by at most 1.
-      - The level must stay between ${MIN_LEVEL} and ${MAX_LEVEL}. If the current level is already at a boundary, it cannot be moved further in that direction.
+      - The level must stay between ${MIN_LEVEL} and ${MAX_LEVEL}.
 
       Based on this, determine the new difficulty level.
       Your response must be a JSON object matching the following schema:
@@ -65,58 +72,62 @@ const adaptiveSpeedPrompt = ai.definePrompt({
         "required": ["newLevel"]
       }
     `,
-  config: { temperature: 0.3 }, // Low temperature for more deterministic level suggestion
+  config: { temperature: 0.5 }, // Temperature might need adjustment for word-based logic
 });
 
 // Internal Genkit flow definition
 const adaptiveSpeedInternalGenkitFlow = ai.defineFlow(
   {
-    name: 'adaptiveSpeedInternalGenkitFlow', // Renamed for clarity
+    name: 'adaptiveSpeedInternalGenkitFlow', 
     inputSchema: AdaptiveSpeedInputSchema,
     outputSchema: AdaptiveSpeedOutputSchema,
   },
   async (input: AdaptiveSpeedInput): Promise<AdaptiveSpeedOutput> => {
-    console.log('AI Flow Input:', input);
+    console.log('AI Flow Input (Word Mode - Under Review):', input);
     let newLevel = input.currentLevel;
 
-    // Helper function for heuristic adjustment
+    // Heuristic adjustment (simplified for now, as AI prompt needs refinement for words)
     const heuristicAdjustment = (currentInput: AdaptiveSpeedInput): number => {
       let level = currentInput.currentLevel;
-      if (currentInput.accuracy >= MIN_ACCURACY_FOR_LEVEL_UP && currentInput.wpm >= MIN_WPM_FOR_LEVEL_UP && currentInput.currentLevel < MAX_LEVEL) {
+      // Simplified: if very high accuracy and WPM, consider level up
+      if (currentInput.accuracy >= 0.9 && currentInput.wpm >= (15 + currentInput.currentLevel * 5) && currentInput.currentLevel < MAX_LEVEL) {
         level = currentInput.currentLevel + 1;
-      } else if (currentInput.accuracy < MAX_ACCURACY_FOR_LEVEL_DOWN && currentInput.currentLevel > MIN_LEVEL) {
+      } 
+      // Simplified: if low accuracy, consider level down
+      else if (currentInput.accuracy < 0.65 && currentInput.currentLevel > MIN_LEVEL) {
         level = currentInput.currentLevel - 1;
       }
       return level;
     };
 
+    // The AI call is kept, but its effectiveness for word-based game needs review.
+    // For now, the game hook does not call this flow.
     try {
-      // Call the defined prompt object
-      // The global AI model is used from genkit.ts, temperature is set in adaptiveSpeedPrompt
       const { output } = await adaptiveSpeedPrompt(input);
 
       if (output && typeof output.newLevel === 'number') {
         let suggestedLevel = output.newLevel;
-
-        // Ensure AI suggestion is within bounds and doesn't overstep by more than 1
         if (suggestedLevel > input.currentLevel + 1) suggestedLevel = input.currentLevel + 1;
         if (suggestedLevel < input.currentLevel - 1) suggestedLevel = input.currentLevel - 1;
         newLevel = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, suggestedLevel));
       } else {
-         console.warn("AI returned invalid or empty output, using heuristic.", output);
+         console.warn("AI returned invalid or empty output (Word Mode), using heuristic.", output);
          newLevel = heuristicAdjustment(input);
       }
     } catch (error) {
-      console.error("Error calling AI model for adaptive speed:", error);
+      console.error("Error calling AI model for adaptive speed (Word Mode):", error);
       newLevel = heuristicAdjustment(input);
     }
     
-    console.log('AI Flow Output:', { newLevel });
+    console.log('AI Flow Output (Word Mode - Under Review):', { newLevel });
     return { newLevel };
   }
 );
 
 // Exported wrapper function (Server Action)
 export async function adaptiveSpeedFlow(input: AdaptiveSpeedInput): Promise<AdaptiveSpeedOutput> {
+  // This flow is currently NOT CALLED by useLetterLeapGame hook due to game mechanic changes.
+  // It needs to be re-evaluated and potentially redesigned for word-based gameplay.
+  console.warn("adaptiveSpeedFlow was called, but its integration with word-based gameplay is under review.");
   return adaptiveSpeedInternalGenkitFlow(input);
 }

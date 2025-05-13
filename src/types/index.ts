@@ -1,11 +1,12 @@
 export interface PerformanceData {
-  correctPresses: number;
-  totalPresses: number;
+  correctPresses: number; // Correct letters typed
+  totalPresses: number; // Total letters attempted
   gameStartTime: number | null; // Timestamp
   currentWPM: number;
   currentAccuracy: number;
-  currentStreak: number;
+  currentStreak: number; // Correct letters in a row
   longestStreak: number;
+  wordsTyped: number; // Number of words successfully typed
 }
 
 export interface SessionStats {
@@ -13,7 +14,8 @@ export interface SessionStats {
   date: string; // ISO string
   accuracy: number; // Percentage
   wpm: number;
-  lettersTyped: number;
+  lettersTyped: number; // Total correct letters
+  wordsTyped: number;
   durationMinutes: number;
   longestStreak: number;
 }
@@ -21,11 +23,14 @@ export interface SessionStats {
 export type FeedbackType = 'correct' | 'incorrect' | 'timeout' | null;
 
 export interface GameState extends PerformanceData {
-  currentLetter: string | null;
+  currentWord: string | null;
+  currentWordIndex: number; // Index of the current letter to type in currentWord
+  typedWordPortion: string; // The portion of the current word typed correctly so far
   isPlaying: boolean;
   feedback: FeedbackType;
-  letterIntervalMs: number; // Time per letter, adjusted by AI
-  currentLevel: number; // Difficulty level (1-10)
+  feedbackLetter: string | null; // The letter that received feedback
+  // letterIntervalMs: number; // Time per letter, might be deprecated or repurposed for words
+  currentLevel: number; // Difficulty level (1-10), might affect word choice
   isSessionOver: boolean;
   showStartScreen: boolean;
 }

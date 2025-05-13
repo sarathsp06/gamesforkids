@@ -1,25 +1,28 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-// Import types from the flow file
-import type { AdaptiveSpeedInput, AdaptiveSpeedOutput } from '@/ai/flows/adaptiveSpeedFlow';
 import type { GameState, FeedbackType, SessionStats } from '@/types';
-import { ALPHABET, INITIAL_LEVEL, LEVEL_TO_INTERVAL_MS, LETTERS_PER_LEVEL_ADJUSTMENT, MIN_LEVEL, MAX_LEVEL } from '@/lib/constants';
+import { WORDS, INITIAL_LEVEL, MIN_LEVEL, MAX_LEVEL /* LEVEL_TO_INTERVAL_MS might be unused directly */ } from '@/lib/constants';
 import { loadSessionStats, saveSessionStats } from '@/lib/store';
 import { useToast } from "@/hooks/use-toast";
-import { streamFlow } from '@genkit-ai/next/client';
-// Import the actual flow (exported wrapper function)
-import { adaptiveSpeedFlow } from '@/ai/flows/adaptiveSpeedFlow';
+// AI Flow import - will be disabled for now
+// import { streamFlow } from '@genkit-ai/next/client';
+// import type { AdaptiveSpeedInput, AdaptiveSpeedOutput } from '@/ai/flows/adaptiveSpeedFlow';
+// import { adaptiveSpeedFlow } from '@/ai/flows/adaptiveSpeedFlow';
 
 
 const initialGameState: GameState = {
-  currentLetter: null,
+  currentWord: null,
+  currentWordIndex: 0,
+  typedWordPortion: "",
   isPlaying: false,
   feedback: null,
-  letterIntervalMs: LEVEL_TO_INTERVAL_MS[INITIAL_LEVEL],
+  feedbackLetter: null,
+  // letterIntervalMs: LEVEL_TO_INTERVAL_MS[INITIAL_LEVEL], // Role changes
   currentLevel: INITIAL_LEVEL,
   correctPresses: 0,
   totalPresses: 0,
+  wordsTyped: 0,
   gameStartTime: null,
   currentWPM: 0,
   currentAccuracy: 0,
@@ -32,12 +35,29 @@ const initialGameState: GameState = {
 export function useLetterLeapGame() {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [pastSessions, setPastSessions] = useState<SessionStats[]>([]);
-  const letterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      synthRef.current = window.speechSynthesis;
+    }
     setPastSessions(loadSessionStats());
+  }, []);
+
+  const speakWord = useCallback((word: string) => {
+    if (synthRef.current && word) {
+      // Cancel any previous speech
+      synthRef.current.cancel();
+      const utterance = new SpeechSynthesisUtterance(word);
+      // Optional: Configure voice, rate, pitch
+      // const voices = synthRef.current.getVoices();
+      // utterance.voice = voices[0]; // Example: set a specific voice
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9; // Slightly slower for clarity
+      synthRef.current.speak(utterance);
+    }
   }, []);
 
   const calculateStats = useCallback(() => {
@@ -47,95 +67,61 @@ export function useLetterLeapGame() {
       }
       const accuracy = prev.correctPresses / prev.totalPresses;
       const elapsedMinutes = (Date.now() - prev.gameStartTime) / 60000;
-      const wpm = elapsedMinutes > 0 ? (prev.correctPresses / 5) / elapsedMinutes : 0; // Assuming 5 chars per word
+      // WPM based on characters typed (standard is 5 chars per word)
+      const wpm = elapsedMinutes > 0 ? (prev.correctPresses / 5) / elapsedMinutes : 0;
       return { ...prev, currentAccuracy: accuracy, currentWPM: Math.round(wpm) };
     });
   }, []);
 
-  const adjustSpeedViaAI = useCallback(async () => {
-    const { currentAccuracy, currentWPM, currentLevel, totalPresses } = gameState;
-    
-    // Only call AI if enough data points are available
-    if (totalPresses < LETTERS_PER_LEVEL_ADJUSTMENT / 2) return;
+  // AI speed adjustment is commented out as its logic is for single letters
+  // const adjustSpeedViaAI = useCallback(async () => { ... }, [gameState, toast]);
 
-    const input: AdaptiveSpeedInput = {
-      accuracy: currentAccuracy,
-      wpm: currentWPM,
-      currentLevel: currentLevel,
-      totalLettersAttempted: totalPresses, // This uses totalPresses from gameState, which might be one render behind.
-                                           // For more precision, this value could be passed down from handleKeyPress if needed.
-                                           // However, for periodic adjustments, this is often acceptable.
-    };
-
-    try {
-      // streamFlow expects the Server Action (the exported wrapper function)
-      const { response } = streamFlow<AdaptiveSpeedInput, AdaptiveSpeedOutput>({
-        flow: adaptiveSpeedFlow, 
-        input: input,
-      });
-      const output = await response; 
-
-      if (output) {
-        const newLevel = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, output.newLevel));
-        if (newLevel !== currentLevel) { // currentLevel from gameState
-          setGameState(prev => ({
-            ...prev,
-            currentLevel: newLevel,
-            letterIntervalMs: LEVEL_TO_INTERVAL_MS[newLevel],
-          }));
-          toast({ title: "Difficulty Adjusted!", description: `New level: ${newLevel}` });
-        }
-      } else {
-        console.warn("Adaptive speed flow returned no output.");
-      }
-    } catch (error) {
-      console.error("Error calling adaptiveSpeedFlow:", error);
-    }
-  }, [gameState, toast]); // gameState includes all dependent fields like currentAccuracy, currentWPM, currentLevel, totalPresses
-
-
-  const showNewLetter = useCallback(() => {
+  const showNewWord = useCallback(() => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
 
     setGameState(prev => {
       if (!prev.isPlaying) return prev;
-      const randomIndex = Math.floor(Math.random() * ALPHABET.length);
-      const nextLetter = ALPHABET[randomIndex];
+      const randomIndex = Math.floor(Math.random() * WORDS.length);
+      const nextWord = WORDS[randomIndex].toUpperCase(); // Ensure words are uppercase
       
-      letterTimeoutRef.current = setTimeout(() => {
-        handleKeyPress('', true); 
-      }, prev.letterIntervalMs);
+      speakWord(nextWord);
 
-      return { ...prev, currentLetter: nextLetter, feedback: null };
+      return { 
+        ...prev, 
+        currentWord: nextWord, 
+        currentWordIndex: 0,
+        typedWordPortion: "",
+        feedback: null,
+        feedbackLetter: null,
+      };
     });
-  }, []); 
+  }, [speakWord]); 
 
 
-  const handleKeyPress = useCallback((key: string, isTimeout: boolean = false) => {
+  const handleKeyPress = useCallback((key: string) => {
     setGameState(prev => {
-      if (!prev.isPlaying || !prev.currentLetter) return prev;
+      if (!prev.isPlaying || !prev.currentWord || prev.currentWordIndex >= prev.currentWord.length) return prev;
 
-      if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       
+      const targetLetter = prev.currentWord[prev.currentWordIndex];
       let feedbackType: FeedbackType = null;
-      let correct = false;
       let newCorrectPresses = prev.correctPresses;
       let newCurrentStreak = prev.currentStreak;
       let newLongestStreak = prev.longestStreak;
+      let newTypedWordPortion = prev.typedWordPortion;
+      let newCurrentWordIndex = prev.currentWordIndex;
+      let newWordsTyped = prev.wordsTyped;
 
-      if (isTimeout) {
-        feedbackType = 'timeout';
-        newCurrentStreak = 0;
-      } else if (key.toUpperCase() === prev.currentLetter) {
+      if (key.toUpperCase() === targetLetter.toUpperCase()) {
         feedbackType = 'correct';
-        correct = true;
         newCorrectPresses++;
         newCurrentStreak++;
         if (newCurrentStreak > newLongestStreak) {
           newLongestStreak = newCurrentStreak;
         }
+        newTypedWordPortion += targetLetter;
+        newCurrentWordIndex++;
       } else {
         feedbackType = 'incorrect';
         newCurrentStreak = 0;
@@ -143,66 +129,58 @@ export function useLetterLeapGame() {
       
       const newTotalPresses = prev.totalPresses + 1;
       
-      // Prepare state for potential AI adjustment
-      const updatedStateForAI = {
-        ...prev,
-        correctPresses: newCorrectPresses,
-        totalPresses: newTotalPresses,
-        currentStreak: newCurrentStreak,
-        longestStreak: newLongestStreak,
-        // currentWPM and currentAccuracy will be calculated based on these new values
-        // by calculateStats, which is called after this state update.
-        // adjustSpeedViaAI uses gameState, so it will pick up fresh stats after the next render.
-      };
-
-
-      feedbackTimeoutRef.current = setTimeout(showNewLetter, 300); 
-
-      // Adjust speed periodically using the latest values
-      if (newTotalPresses % LETTERS_PER_LEVEL_ADJUSTMENT === 0 && newTotalPresses > 0) {
-         // adjustSpeedViaAI will use the gameState from its own scope (which is one render behind this immediate update).
-         // To ensure it has the *very latest* numbers from this key press for accuracy/wpm,
-         // those would need to be calculated here and passed, or adjustSpeedViaAI would need to take them as params.
-         // For now, relying on the next render's gameState for adjustSpeedViaAI is simpler.
-         // The `gameState` dependency in `adjustSpeedViaAI` ensures it re-runs with updated values.
-        adjustSpeedViaAI();
+      const isWordComplete = newCurrentWordIndex === prev.currentWord.length;
+      if (isWordComplete && feedbackType === 'correct') {
+        newWordsTyped++;
+        feedbackTimeoutRef.current = setTimeout(showNewWord, 500); // Show next word after a short delay
+      } else {
+         feedbackTimeoutRef.current = setTimeout(() => {
+            setGameState(gs => ({ ...gs, feedback: null, feedbackLetter: null }));
+         }, 500); // Clear feedback after a delay
       }
       
+      // AI adjustment logic would go here if re-enabled and adapted
+      // if (newTotalPresses % SOME_THRESHOLD === 0) adjustSpeedViaAI();
+      
       return {
-        ...prev, // Start with previous state
+        ...prev,
         feedback: feedbackType,
+        feedbackLetter: targetLetter,
         correctPresses: newCorrectPresses,
         totalPresses: newTotalPresses,
+        wordsTyped: newWordsTyped,
         currentStreak: newCurrentStreak,
         longestStreak: newLongestStreak,
-        currentLetter: correct || isTimeout ? prev.currentLetter : prev.currentLetter, 
+        typedWordPortion: newTypedWordPortion,
+        currentWordIndex: newCurrentWordIndex,
       };
     });
-    calculateStats(); // Calculate stats immediately after state update.
-  }, [showNewLetter, calculateStats, adjustSpeedViaAI]);
+    calculateStats();
+  }, [showNewWord, calculateStats]);
 
 
   const startGame = useCallback(() => {
-    if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    if (synthRef.current) synthRef.current.cancel(); // Stop any ongoing speech
 
     setGameState(prev => ({
       ...initialGameState,
       currentLevel: prev.currentLevel, 
-      letterIntervalMs: LEVEL_TO_INTERVAL_MS[prev.currentLevel],
       isPlaying: true,
       gameStartTime: Date.now(),
       showStartScreen: false,
       isSessionOver: false,
     }));
-    showNewLetter();
-  }, [showNewLetter]);
+    // Delay slightly to ensure TTS engine is ready if it was just initialized
+    setTimeout(showNewWord, 100); 
+  }, [showNewWord]);
 
   const endSession = useCallback(() => {
     setGameState(prev => {
       if (!prev.isPlaying) return prev;
-      if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      if (synthRef.current) synthRef.current.cancel();
+
 
       const sessionEndTime = Date.now();
       const durationMs = prev.gameStartTime ? sessionEndTime - prev.gameStartTime : 0;
@@ -217,6 +195,7 @@ export function useLetterLeapGame() {
         accuracy: parseFloat((finalAccuracy * 100).toFixed(2)),
         wpm: finalWPM,
         lettersTyped: prev.correctPresses,
+        wordsTyped: prev.wordsTyped,
         durationMinutes: parseFloat(durationMinutes.toFixed(2)),
         longestStreak: prev.longestStreak,
       };
@@ -227,14 +206,16 @@ export function useLetterLeapGame() {
       
       toast({
         title: "Session Ended!",
-        description: `WPM: ${finalWPM}, Accuracy: ${(finalAccuracy * 100).toFixed(1)}%`,
+        description: `WPM: ${finalWPM}, Accuracy: ${(finalAccuracy * 100).toFixed(1)}%, Words: ${prev.wordsTyped}`,
       });
 
       return {
         ...prev,
         isPlaying: false,
         isSessionOver: true,
-        currentLetter: null,
+        currentWord: null,
+        currentWordIndex: 0,
+        typedWordPortion: "",
         showStartScreen: true, 
       };
     });
@@ -242,7 +223,7 @@ export function useLetterLeapGame() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentLetter) return;
+      if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentWord) return;
       if (event.key.length === 1 && event.key.match(/[a-zA-Z]/i)) {
         event.preventDefault();
         handleKeyPress(event.key);
@@ -253,11 +234,11 @@ export function useLetterLeapGame() {
       window.addEventListener('keydown', handleKeyDown);
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
-        if (letterTimeoutRef.current) clearTimeout(letterTimeoutRef.current);
         if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        if (synthRef.current) synthRef.current.cancel();
       };
     }
-  }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentLetter, handleKeyPress]);
+  }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentWord, handleKeyPress]);
   
   useEffect(() => {
     if (gameState.isPlaying) {

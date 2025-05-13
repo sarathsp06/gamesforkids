@@ -1,7 +1,7 @@
 "use client";
 
 import { MainLayout } from '@/components/layout/main-layout';
-import { LetterDisplay } from '@/components/letter-display';
+import { WordDisplay } from '@/components/word-display'; // Updated import
 import { GameControls } from '@/components/game-controls';
 import { CurrentStats } from '@/components/current-stats';
 import { SessionStats } from '@/components/session-stats';
@@ -19,12 +19,12 @@ export default function LetterLeapPage() {
             <CardHeader>
               <CardTitle className="text-3xl font-bold text-primary">Welcome to Letter Leap!</CardTitle>
               <CardDescription className="text-lg mt-2 text-muted-foreground">
-                Test your typing speed and accuracy. Letters will appear one by one. Type them quickly and correctly!
+                Test your typing speed and accuracy. Words will appear one by one. Type them quickly and correctly!
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="mt-4 text-sm text-muted-foreground">
-                The game will adapt to your skill level. Good luck!
+                The game will speak the word. Good luck!
               </p>
             </CardContent>
           </Card>
@@ -32,13 +32,20 @@ export default function LetterLeapPage() {
 
         {!gameState.showStartScreen && (
             <>
-                <LetterDisplay letter={gameState.currentLetter} feedback={gameState.feedback} />
+                <WordDisplay 
+                  word={gameState.currentWord}
+                  typedPortion={gameState.typedWordPortion}
+                  currentIndex={gameState.currentWordIndex}
+                  feedback={gameState.feedback}
+                  feedbackLetter={gameState.feedbackLetter}
+                />
                 <CurrentStats
                     wpm={gameState.currentWPM}
                     accuracy={gameState.currentAccuracy}
                     currentStreak={gameState.currentStreak}
                     longestStreak={gameState.longestStreak}
-                    level={gameState.currentLevel}
+                    level={gameState.currentLevel} // Level's role might change
+                    wordsTyped={gameState.wordsTyped}
                 />
             </>
         )}
