@@ -1,31 +1,46 @@
+import { Sparkles, ThumbsUp, Star, Award, PartyPopper } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
 export const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // Kept for now, might be unused
 
-export const WORDS = [
-  "APPLE", "BANANA", "CHERRY", "DATE", "ELDERBERRY",
-  "FIG", "GRAPE", "HONEYDEW", "KIWI", "LEMON",
-  "MANGO", "NECTARINE", "ORANGE", "PAPAYA", "QUINCE",
-  "RASPBERRY", "STRAWBERRY", "TANGERINE", "UGLI", "VANILLA",
-  "WATERMELON", "XYLIA", "YUZU", "ZUCCINI"
+export const WORDS = [ // Simplified words for 4-8 year olds
+  "CAT", "DOG", "SUN", "RUN", "BIG",
+  "RED", "BLUE", "YES", "NO", "TOP",
+  "HAT", "MAT", "SIT", "POT", "PAN",
+  "BALL", "TREE", "STAR", "MOON", "CAKE",
+  "PLAY", "JUMP", "SING", "READ", "HELP"
 ];
+
 
 export const INITIAL_LEVEL = 1; // Level might now relate to word length or complexity
 export const MAX_LEVEL = 5; // Example max level
 export const MIN_LEVEL = 1;
 
-// LEVEL_TO_INTERVAL_MS is less relevant if there's no automatic letter timeout.
-// Kept for now, but its usage will change or be removed from game logic.
 export const LEVEL_TO_INTERVAL_MS: { [key: number]: number } = {
-  1: 3500, // Slowest (longest words or more time per word)
+  1: 3500, 
   2: 3000,
   3: 2700,
   4: 2400,
-  5: 2100, // Fastest (shortest words or less time per word)
+  5: 2100, 
 };
 
-// These constants are for the AI speed adjustment, which needs to be rethought for word-based gameplay.
-// export const LETTERS_PER_LEVEL_ADJUSTMENT = 10; // Adjust speed every 10 letters (or N words)
-// export const MIN_WPM_FOR_LEVEL_UP = 15;
-// export const MIN_ACCURACY_FOR_LEVEL_UP = 0.85; // 85%
-// export const MAX_ACCURACY_FOR_LEVEL_DOWN = 0.70; // 70%
-
 export const LOCAL_STORAGE_SESSIONS_KEY = "letterLeapSessions";
+
+export interface PraiseMessage {
+  text: string;
+  icon: LucideIcon;
+}
+
+export const PRAISE_MESSAGES: PraiseMessage[] = [
+  { text: "Awesome!", icon: Sparkles },
+  { text: "Great Job!", icon: ThumbsUp },
+  { text: "Super!", icon: Star },
+  { text: "You did it!", icon: Award },
+  { text: "Fantastic!", icon: PartyPopper },
+  { text: "Well Done!", icon: ThumbsUp },
+  { text: "Amazing!", icon: Sparkles },
+];
+
+// Standard QWERTY layout for hand assignment
+export const LEFT_HAND_KEYS = ['Q', 'W', 'E', 'R', 'T', 'A', 'S', 'D', 'F', 'G', 'Z', 'X', 'C', 'V', 'B'];
+export const RIGHT_HAND_KEYS = ['Y', 'U', 'I', 'O', 'P', 'H', 'J', 'K', 'L', 'N', 'M'];

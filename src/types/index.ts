@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react';
+
 export interface PerformanceData {
   correctPresses: number; // Correct letters typed
   totalPresses: number; // Total letters attempted
@@ -29,10 +31,13 @@ export interface GameState extends PerformanceData {
   isPlaying: boolean;
   feedback: FeedbackType;
   feedbackLetter: string | null; // The letter that received feedback
-  // letterIntervalMs: number; // Time per letter, might be deprecated or repurposed for words
   currentLevel: number; // Difficulty level (1-10), might affect word choice
   isSessionOver: boolean;
   showStartScreen: boolean;
+  showPraiseMessage: boolean;
+  praiseText: string | null;
+  praiseIcon: LucideIcon | null;
+  activeHand: 'left' | 'right' | null;
 }
 
 // AdaptiveSpeedInput and AdaptiveSpeedOutput removed from here.

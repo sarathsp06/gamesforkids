@@ -161,3 +161,47 @@ body {
   animation: feedback-pulse-incorrect 0.5s ease-in-out;
   color: hsl(var(--feedback-incorrect-foreground));
 }
+
+/* Hand Indicator Styles */
+.hand-indicator-visual {
+  @apply w-16 h-16 md:w-20 md:h-20 mx-2 md:mx-4 rounded-lg flex items-center justify-center transition-all duration-300 ease-in-out opacity-30 scale-90;
+  background-color: hsl(var(--card));
+}
+
+.hand-indicator-visual.active {
+  background-color: hsl(var(--accent));
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 0 10px hsl(var(--accent) / 0.4), 0 0 20px hsl(var(--accent) / 0.3);
+}
+
+/* Responsive adjustments for hand indicators on smaller screens */
+@media (max-width: 768px) {
+  .hand-indicator-visual {
+    @apply w-12 h-12 mx-1;
+  }
+  .hand-indicator-visual .lucide { /* Target icons inside */
+    @apply w-6 h-6;
+  }
+}
+@media (max-width: 480px) {
+  .hand-indicator-visual {
+    @apply w-10 h-10 mx-1;
+    display: none; /* Hide completely on very small screens if too cluttered */
+  }
+}
+
+/* Praise Message Pop Animation */
+@keyframes praise-pop {
+  0% { transform: scale(0.5) translateY(10px); opacity: 0; }
+  70% { transform: scale(1.1) translateY(-5px); opacity: 1; }
+  100% { transform: scale(1) translateY(0px); opacity: 1; }
+}
+
+.animate-praise-pop {
+  animation: praise-pop 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+/* Ensure WordDisplay doesn't get too squished by hand indicators */
+/* This might need adjustment based on actual content of WordDisplay */
+/* Example: .word-display-container { flex-grow: 1; min-width: 200px; } */
