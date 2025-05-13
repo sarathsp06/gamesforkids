@@ -21,8 +21,8 @@ const geistMono = Geist({ // Assuming Geist can also be used for mono, or import
 
 
 export const metadata: Metadata = {
-  title: 'Letter Leap',
-  description: 'Learn to type with fun, adaptive challenges!',
+  title: 'Typing Game Hub',
+  description: 'A collection of fun typing games to improve your skills!',
 };
 
 export default function RootLayout({

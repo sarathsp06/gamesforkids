@@ -1,98 +1,68 @@
+
 "use client";
 
+import Link from 'next/link';
+// Removed Metadata import as it's no longer used here
 import { MainLayout } from '@/components/layout/main-layout';
-import { WordDisplay } from '@/components/word-display';
-import { GameControls } from '@/components/game-controls';
-import { CurrentStats } from '@/components/current-stats';
-import { SessionStats } from '@/components/session-stats';
-import { useLetterLeapGame } from '@/hooks/use-letter-leap-game';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Hand } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowRight, Gamepad2 } from 'lucide-react'; // Added Gamepad2 for placeholder
 
-export default function LetterLeapPage() {
-  const { gameState, startGame, endSession, pastSessions } = useLetterLeapGame();
-  const PraiseIcon = gameState.praiseIcon;
+// Removed export const metadata: Metadata as it's not allowed in client components.
+// Metadata for this page will be handled by the layout or parent server components.
 
+export default function GameSelectionPage() {
   return (
-    <MainLayout>
-      <div className="flex flex-col items-center justify-center text-center py-6 relative">
-        {gameState.showStartScreen && !gameState.isPlaying && (
-          <Card className="w-full max-w-md mb-8 p-6 shadow-xl animate-letter-appear">
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold text-primary">Welcome to Letter Leap!</CardTitle>
-              <CardDescription className="text-lg mt-2 text-muted-foreground">
-                Test your typing speed and accuracy. Words will appear one by one. Type them quickly and correctly!
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="mt-4 text-sm text-muted-foreground">
-                The game will speak the word. Listen carefully and type what you hear. Good luck!
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Praise Message Display */}
-        {gameState.showPraiseMessage && gameState.praiseText && PraiseIcon && (
-          <div className="absolute top-[-20px] left-1/2 transform -translate-x-1/2 z-20 animate-letter-appear"> {/* Adjusted top position */}
-            <Card className="p-3 md:p-4 bg-secondary shadow-xl border-2 border-accent">
-              <CardContent className="flex items-center gap-2 md:gap-3 p-0">
-                <PraiseIcon className="h-6 w-6 md:h-8 md:w-8 text-accent" />
-                <p className="text-xl md:text-2xl font-bold text-secondary-foreground">{gameState.praiseText}</p>
+    <MainLayout title="Game Hub">
+      <div className="flex flex-col items-center justify-center py-12">
+        <h2 className="text-4xl font-bold mb-10 text-center text-primary">Choose a Game</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full px-4">
+          <Link href="/games/letter-leap" passHref legacyBehavior>
+            <a className="block">
+              <Card className="hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col group border-2 border-transparent hover:border-accent">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-2xl text-accent group-hover:text-primary transition-colors">Letter Leap</CardTitle>
+                  <CardDescription className="text-muted-foreground pt-1">
+                    Master the art of typing words, one leap at a time!
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-grow justify-between">
+                  <img
+                    src="https://picsum.photos/seed/letterleapgame/400/200"
+                    alt="Letter Leap Game Preview"
+                    data-ai-hint="typing keyboard"
+                    className="my-4 rounded-lg object-cover w-full h-40 shadow-md"
+                  />
+                  <div className="flex items-center justify-end text-primary group-hover:text-accent transition-colors font-semibold mt-auto">
+                    <span>Play Now</span>
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </a>
+          </Link>
+          
+          <Card className="bg-card/60 cursor-not-allowed opacity-70 h-full flex flex-col border-dashed border-muted-foreground/50">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-2xl text-muted-foreground">More Games Coming Soon!</CardTitle>
+                <CardDescription className="text-muted-foreground pt-1">
+                  Stay tuned for exciting new typing challenges.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col flex-grow justify-between">
+                <div 
+                  data-ai-hint="controller joystick"
+                  className="my-4 rounded-lg bg-muted/30 w-full h-40 flex items-center justify-center shadow-inner"
+                >
+                   <Gamepad2 className="h-16 w-16 text-muted-foreground/50" />
+                </div>
+                <div className="flex items-center justify-end text-muted-foreground font-semibold mt-auto">
+                  <span>Coming Soon...</span>
+                </div>
               </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {!gameState.showStartScreen && (
-          <div className="flex flex-col items-center w-full">
-            <div className="flex items-center justify-center w-full max-w-4xl my-4 relative">
-              {/* Left Hand Indicator */}
-              <div className={cn(
-                "hand-indicator-visual left",
-                gameState.activeHand === 'left' && 'active'
-              )}>
-                {gameState.activeHand === 'left' && <Hand className="h-8 w-8 md:h-10 md:w-10 text-accent-foreground" />}
-              </div>
-
-              <WordDisplay 
-                word={gameState.currentWord}
-                typedPortion={gameState.typedWordPortion}
-                currentIndex={gameState.currentWordIndex}
-                feedback={gameState.feedback}
-                feedbackLetter={gameState.feedbackLetter}
-              />
-
-              {/* Right Hand Indicator */}
-              <div className={cn(
-                "hand-indicator-visual right",
-                gameState.activeHand === 'right' && 'active'
-              )}>
-                {gameState.activeHand === 'right' && <Hand className="h-8 w-8 md:h-10 md:w-10 text-accent-foreground" />}
-              </div>
-            </div>
-            <CurrentStats
-                wpm={gameState.currentWPM}
-                accuracy={gameState.currentAccuracy}
-                currentStreak={gameState.currentStreak}
-                longestStreak={gameState.longestStreak}
-                level={gameState.currentLevel}
-                wordsTyped={gameState.wordsTyped}
-            />
-          </div>
-        )}
-        
-        <GameControls
-          isPlaying={gameState.isPlaying}
-          isSessionOver={gameState.isSessionOver}
-          showStartScreen={gameState.showStartScreen}
-          onStart={startGame}
-          onStop={endSession}
-        />
-
-        <SessionStats sessions={pastSessions} />
+          </Card>
+        </div>
       </div>
     </MainLayout>
   );
 }
+
