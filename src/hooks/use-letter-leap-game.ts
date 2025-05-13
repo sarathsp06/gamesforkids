@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameState, FeedbackType, SessionStats } from '@/types';
-import { WORDS, INITIAL_LEVEL, MIN_LEVEL, MAX_LEVEL /* LEVEL_TO_INTERVAL_MS might be unused directly */ } from '@/lib/constants';
+import { WORDS, INITIAL_LEVEL, /* MIN_LEVEL, MAX_LEVEL, LEVEL_TO_INTERVAL_MS might be unused directly */ } from '@/lib/constants';
 import { loadSessionStats, saveSessionStats } from '@/lib/store';
 import { useToast } from "@/hooks/use-toast";
 // AI Flow import - will be disabled for now
@@ -18,7 +19,6 @@ const initialGameState: GameState = {
   isPlaying: false,
   feedback: null,
   feedbackLetter: null,
-  // letterIntervalMs: LEVEL_TO_INTERVAL_MS[INITIAL_LEVEL], // Role changes
   currentLevel: INITIAL_LEVEL,
   correctPresses: 0,
   totalPresses: 0,
@@ -36,6 +36,7 @@ export function useLetterLeapGame() {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [pastSessions, setPastSessions] = useState<SessionStats[]>([]);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wordDisplayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
@@ -44,18 +45,22 @@ export function useLetterLeapGame() {
       synthRef.current = window.speechSynthesis;
     }
     setPastSessions(loadSessionStats());
+
+    // Cleanup timeouts on unmount
+    return () => {
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      if (wordDisplayTimeoutRef.current) clearTimeout(wordDisplayTimeoutRef.current);
+      if (synthRef.current) synthRef.current.cancel();
+    };
   }, []);
 
   const speakWord = useCallback((word: string) => {
     if (synthRef.current && word) {
-      // Cancel any previous speech
       synthRef.current.cancel();
       const utterance = new SpeechSynthesisUtterance(word);
-      // Optional: Configure voice, rate, pitch
-      // const voices = synthRef.current.getVoices();
-      // utterance.voice = voices[0]; // Example: set a specific voice
       utterance.lang = 'en-US';
-      utterance.rate = 0.9; // Slightly slower for clarity
+      utterance.rate = 0.85; // Slower rate for younger children
+      utterance.pitch = 1.2; // Slightly higher pitch can be more engaging
       synthRef.current.speak(utterance);
     }
   }, []);
@@ -67,22 +72,20 @@ export function useLetterLeapGame() {
       }
       const accuracy = prev.correctPresses / prev.totalPresses;
       const elapsedMinutes = (Date.now() - prev.gameStartTime) / 60000;
-      // WPM based on characters typed (standard is 5 chars per word)
       const wpm = elapsedMinutes > 0 ? (prev.correctPresses / 5) / elapsedMinutes : 0;
       return { ...prev, currentAccuracy: accuracy, currentWPM: Math.round(wpm) };
     });
   }, []);
 
-  // AI speed adjustment is commented out as its logic is for single letters
-  // const adjustSpeedViaAI = useCallback(async () => { ... }, [gameState, toast]);
-
   const showNewWord = useCallback(() => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    if (wordDisplayTimeoutRef.current) clearTimeout(wordDisplayTimeoutRef.current);
+
 
     setGameState(prev => {
       if (!prev.isPlaying) return prev;
       const randomIndex = Math.floor(Math.random() * WORDS.length);
-      const nextWord = WORDS[randomIndex].toUpperCase(); // Ensure words are uppercase
+      const nextWord = WORDS[randomIndex].toUpperCase();
       
       speakWord(nextWord);
 
@@ -103,6 +106,7 @@ export function useLetterLeapGame() {
       if (!prev.isPlaying || !prev.currentWord || prev.currentWordIndex >= prev.currentWord.length) return prev;
 
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      if (wordDisplayTimeoutRef.current) clearTimeout(wordDisplayTimeoutRef.current);
       
       const targetLetter = prev.currentWord[prev.currentWordIndex];
       let feedbackType: FeedbackType = null;
@@ -125,6 +129,10 @@ export function useLetterLeapGame() {
       } else {
         feedbackType = 'incorrect';
         newCurrentStreak = 0;
+        // Simple haptic feedback for incorrect key if available and desired (platform dependent)
+        if (typeof navigator.vibrate === 'function') {
+          navigator.vibrate(100); // Vibrate for 100ms
+        }
       }
       
       const newTotalPresses = prev.totalPresses + 1;
@@ -132,20 +140,18 @@ export function useLetterLeapGame() {
       const isWordComplete = newCurrentWordIndex === prev.currentWord.length;
       if (isWordComplete && feedbackType === 'correct') {
         newWordsTyped++;
-        feedbackTimeoutRef.current = setTimeout(showNewWord, 500); // Show next word after a short delay
+        // Slightly longer delay for kids to process completion
+        wordDisplayTimeoutRef.current = setTimeout(showNewWord, 1200); 
       } else {
          feedbackTimeoutRef.current = setTimeout(() => {
             setGameState(gs => ({ ...gs, feedback: null, feedbackLetter: null }));
-         }, 500); // Clear feedback after a delay
+         }, 700); // Clear feedback a bit slower
       }
-      
-      // AI adjustment logic would go here if re-enabled and adapted
-      // if (newTotalPresses % SOME_THRESHOLD === 0) adjustSpeedViaAI();
       
       return {
         ...prev,
         feedback: feedbackType,
-        feedbackLetter: targetLetter,
+        feedbackLetter: targetLetter, // The letter that was targeted
         correctPresses: newCorrectPresses,
         totalPresses: newTotalPresses,
         wordsTyped: newWordsTyped,
@@ -161,7 +167,8 @@ export function useLetterLeapGame() {
 
   const startGame = useCallback(() => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-    if (synthRef.current) synthRef.current.cancel(); // Stop any ongoing speech
+    if (wordDisplayTimeoutRef.current) clearTimeout(wordDisplayTimeoutRef.current);
+    if (synthRef.current) synthRef.current.cancel();
 
     setGameState(prev => ({
       ...initialGameState,
@@ -171,14 +178,14 @@ export function useLetterLeapGame() {
       showStartScreen: false,
       isSessionOver: false,
     }));
-    // Delay slightly to ensure TTS engine is ready if it was just initialized
-    setTimeout(showNewWord, 100); 
+    setTimeout(showNewWord, 150); 
   }, [showNewWord]);
 
   const endSession = useCallback(() => {
     setGameState(prev => {
       if (!prev.isPlaying) return prev;
       if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      if (wordDisplayTimeoutRef.current) clearTimeout(wordDisplayTimeoutRef.current);
       if (synthRef.current) synthRef.current.cancel();
 
 
@@ -205,8 +212,8 @@ export function useLetterLeapGame() {
       saveSessionStats(updatedSessions);
       
       toast({
-        title: "Session Ended!",
-        description: `WPM: ${finalWPM}, Accuracy: ${(finalAccuracy * 100).toFixed(1)}%, Words: ${prev.wordsTyped}`,
+        title: "Great Job!",
+        description: `You typed ${prev.wordsTyped} words! WPM: ${finalWPM}, Accuracy: ${(finalAccuracy * 100).toFixed(1)}%`,
       });
 
       return {
@@ -224,9 +231,17 @@ export function useLetterLeapGame() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentWord) return;
-      if (event.key.length === 1 && event.key.match(/[a-zA-Z]/i)) {
+
+      // Prevent default browser action for single alphabet or number keys
+      if (event.key.length === 1 && event.key.match(/^[a-zA-Z0-9]$/i)) {
         event.preventDefault();
-        handleKeyPress(event.key);
+
+        // Only pass alphabet keys to the game's core input handler
+        if (event.key.match(/^[a-zA-Z]$/i)) {
+          handleKeyPress(event.key);
+        }
+        // If it's a number, its default action is prevented.
+        // The game doesn't currently use numbers, so no further game logic for them here.
       }
     };
 
@@ -234,8 +249,6 @@ export function useLetterLeapGame() {
       window.addEventListener('keydown', handleKeyDown);
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
-        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
-        if (synthRef.current) synthRef.current.cancel();
       };
     }
   }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentWord, handleKeyPress]);
@@ -248,3 +261,4 @@ export function useLetterLeapGame() {
 
   return { gameState, startGame, endSession, pastSessions };
 }
+
