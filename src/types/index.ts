@@ -42,6 +42,6 @@ export interface AdaptiveSpeedOutput {
   newLevel: number; // Suggested new difficulty level
 }
 
-// Placeholder for the actual AI flow function signature
-// This is just for type-checking the client-side call
-export type AdaptiveSpeedFlowType = (input: AdaptiveSpeedInput) => Promise<AdaptiveSpeedOutput>;
+// AdaptiveSpeedFlowType removed as it's no longer used.
+// The streamFlow utility from @genkit-ai/next/client infers types or uses generics
+// with the actual flow object.
