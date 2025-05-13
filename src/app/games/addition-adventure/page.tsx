@@ -6,7 +6,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAdditionAdventureGame } from '@/hooks/useAdditionAdventureGame';
-import { ADDITION_MAX_ANSWER } from '@/lib/constants';
+import { ADDITION_MAX_ANSWER, ADDITION_GAME_DURATION_SECONDS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Award, Lightbulb, Play, Clock, Repeat } from 'lucide-react';
 
@@ -161,3 +161,4 @@ const AdditionAdventurePage: NextPage = () => {
 };
 
 export default AdditionAdventurePage;
+
