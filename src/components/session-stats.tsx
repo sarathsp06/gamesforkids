@@ -45,7 +45,7 @@ export function SessionStats({ sessions }: SessionStatsProps) {
                 <TableHead className="text-right">WPM</TableHead>
                 <TableHead className="text-right">Accuracy</TableHead>
                 <TableHead className="text-right">Streak</TableHead>
-                <TableHead className="text-right">Words</TableHead> {/* Added Words column */}
+                <TableHead className="text-right">Words</TableHead>
                 <TableHead className="text-right">Duration</TableHead>
               </TableRow>
             </TableHeader>
@@ -56,7 +56,7 @@ export function SessionStats({ sessions }: SessionStatsProps) {
                   <TableCell className="text-right">{session.wpm}</TableCell>
                   <TableCell className="text-right">{session.accuracy}%</TableCell>
                   <TableCell className="text-right">{session.longestStreak}</TableCell>
-                  <TableCell className="text-right">{session.wordsTyped}</TableCell> {/* Added Words data */}
+                  <TableCell className="text-right">{session.wordsTyped}</TableCell>
                   <TableCell className="text-right">{session.durationMinutes.toFixed(1)} min</TableCell>
                 </TableRow>
               ))}
