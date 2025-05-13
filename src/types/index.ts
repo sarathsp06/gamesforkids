@@ -30,18 +30,5 @@ export interface GameState extends PerformanceData {
   showStartScreen: boolean;
 }
 
-// For AI Flow
-export interface AdaptiveSpeedInput {
-  accuracy: number; // 0-1
-  wpm: number;
-  currentLevel: number; // Current difficulty level
-  totalLettersAttempted: number;
-}
-
-export interface AdaptiveSpeedOutput {
-  newLevel: number; // Suggested new difficulty level
-}
-
-// AdaptiveSpeedFlowType removed as it's no longer used.
-// The streamFlow utility from @genkit-ai/next/client infers types or uses generics
-// with the actual flow object.
+// AdaptiveSpeedInput and AdaptiveSpeedOutput removed from here.
+// They are now defined and exported by src/ai/flows/adaptiveSpeedFlow.ts

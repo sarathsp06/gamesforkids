@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, FeedbackType, SessionStats, AdaptiveSpeedInput, AdaptiveSpeedOutput } from '@/types';
+// Import types from the flow file
+import type { AdaptiveSpeedInput, AdaptiveSpeedOutput } from '@/ai/flows/adaptiveSpeedFlow';
+import type { GameState, FeedbackType, SessionStats } from '@/types';
 import { ALPHABET, INITIAL_LEVEL, LEVEL_TO_INTERVAL_MS, LETTERS_PER_LEVEL_ADJUSTMENT, MIN_LEVEL, MAX_LEVEL } from '@/lib/constants';
 import { loadSessionStats, saveSessionStats } from '@/lib/store';
 import { useToast } from "@/hooks/use-toast";
 import { streamFlow } from '@genkit-ai/next/client';
-// Import the actual flow. Ensure this path is correct and the flow is properly defined/exported.
+// Import the actual flow (exported wrapper function)
 import { adaptiveSpeedFlow } from '@/ai/flows/adaptiveSpeedFlow';
 
 
@@ -60,19 +62,22 @@ export function useLetterLeapGame() {
       accuracy: currentAccuracy,
       wpm: currentWPM,
       currentLevel: currentLevel,
-      totalLettersAttempted: totalPresses,
+      totalLettersAttempted: totalPresses, // This uses totalPresses from gameState, which might be one render behind.
+                                           // For more precision, this value could be passed down from handleKeyPress if needed.
+                                           // However, for periodic adjustments, this is often acceptable.
     };
 
     try {
+      // streamFlow expects the Server Action (the exported wrapper function)
       const { response } = streamFlow<AdaptiveSpeedInput, AdaptiveSpeedOutput>({
-        flow: adaptiveSpeedFlow,
+        flow: adaptiveSpeedFlow, 
         input: input,
       });
-      const output = await response; // For non-streaming flows, await the response promise
+      const output = await response; 
 
       if (output) {
         const newLevel = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, output.newLevel));
-        if (newLevel !== currentLevel) {
+        if (newLevel !== currentLevel) { // currentLevel from gameState
           setGameState(prev => ({
             ...prev,
             currentLevel: newLevel,
@@ -85,9 +90,8 @@ export function useLetterLeapGame() {
       }
     } catch (error) {
       console.error("Error calling adaptiveSpeedFlow:", error);
-      // Optionally, implement a fallback non-AI based adjustment
     }
-  }, [gameState, toast]);
+  }, [gameState, toast]); // gameState includes all dependent fields like currentAccuracy, currentWPM, currentLevel, totalPresses
 
 
   const showNewLetter = useCallback(() => {
@@ -100,17 +104,12 @@ export function useLetterLeapGame() {
       const nextLetter = ALPHABET[randomIndex];
       
       letterTimeoutRef.current = setTimeout(() => {
-        handleKeyPress('', true); // Timeout is like a missed key press
+        handleKeyPress('', true); 
       }, prev.letterIntervalMs);
 
       return { ...prev, currentLetter: nextLetter, feedback: null };
     });
-  }, []); // gameState.isPlaying and gameState.letterIntervalMs were here, but showNewLetter is called by startGame which sets these.
-            // The primary dependency for showNewLetter's own logic is its ability to clear timeouts and set new ones,
-            // and to pick a letter. Its core logic doesn't directly depend on isPlaying or intervalMs from outer scope
-            // once it's running, as those are used by callers or to schedule the timeout.
-            // However, handleKeyPress (called by timeout) might depend on them. Given handleKeyPress is memoized,
-            // this dependency chain should be okay. Let's keep it minimal for now or review if issues arise.
+  }, []); 
 
 
   const handleKeyPress = useCallback((key: string, isTimeout: boolean = false) => {
@@ -143,31 +142,43 @@ export function useLetterLeapGame() {
       }
       
       const newTotalPresses = prev.totalPresses + 1;
+      
+      // Prepare state for potential AI adjustment
+      const updatedStateForAI = {
+        ...prev,
+        correctPresses: newCorrectPresses,
+        totalPresses: newTotalPresses,
+        currentStreak: newCurrentStreak,
+        longestStreak: newLongestStreak,
+        // currentWPM and currentAccuracy will be calculated based on these new values
+        // by calculateStats, which is called after this state update.
+        // adjustSpeedViaAI uses gameState, so it will pick up fresh stats after the next render.
+      };
 
-      // Set feedback and then show next letter after a short delay
-      feedbackTimeoutRef.current = setTimeout(showNewLetter, 300); // Show feedback for 300ms
 
-      // Adjust speed periodically
+      feedbackTimeoutRef.current = setTimeout(showNewLetter, 300); 
+
+      // Adjust speed periodically using the latest values
       if (newTotalPresses % LETTERS_PER_LEVEL_ADJUSTMENT === 0 && newTotalPresses > 0) {
-        // State for adjustSpeedViaAI will be from `prev` here, which is slightly stale.
-        // adjustSpeedViaAI itself uses gameState, which is one render behind.
-        // This is usually fine for periodic adjustments. If more precise state is needed,
-        // adjustSpeedViaAI would need to be passed the relevant parts of `prev`.
-        // For now, this is standard hook behavior.
+         // adjustSpeedViaAI will use the gameState from its own scope (which is one render behind this immediate update).
+         // To ensure it has the *very latest* numbers from this key press for accuracy/wpm,
+         // those would need to be calculated here and passed, or adjustSpeedViaAI would need to take them as params.
+         // For now, relying on the next render's gameState for adjustSpeedViaAI is simpler.
+         // The `gameState` dependency in `adjustSpeedViaAI` ensures it re-runs with updated values.
         adjustSpeedViaAI();
       }
       
       return {
-        ...prev,
+        ...prev, // Start with previous state
         feedback: feedbackType,
         correctPresses: newCorrectPresses,
         totalPresses: newTotalPresses,
         currentStreak: newCurrentStreak,
         longestStreak: newLongestStreak,
-        currentLetter: correct || isTimeout ? prev.currentLetter : prev.currentLetter, // Keep letter on incorrect until next cycle
+        currentLetter: correct || isTimeout ? prev.currentLetter : prev.currentLetter, 
       };
     });
-    calculateStats();
+    calculateStats(); // Calculate stats immediately after state update.
   }, [showNewLetter, calculateStats, adjustSpeedViaAI]);
 
 
@@ -177,7 +188,7 @@ export function useLetterLeapGame() {
 
     setGameState(prev => ({
       ...initialGameState,
-      currentLevel: prev.currentLevel, // Retain current level from previous game or initial
+      currentLevel: prev.currentLevel, 
       letterIntervalMs: LEVEL_TO_INTERVAL_MS[prev.currentLevel],
       isPlaying: true,
       gameStartTime: Date.now(),
@@ -210,7 +221,7 @@ export function useLetterLeapGame() {
         longestStreak: prev.longestStreak,
       };
 
-      const updatedSessions = [newSession, ...pastSessions].slice(0, 10); // Keep last 10 sessions
+      const updatedSessions = [newSession, ...pastSessions].slice(0, 10); 
       setPastSessions(updatedSessions);
       saveSessionStats(updatedSessions);
       
@@ -224,7 +235,7 @@ export function useLetterLeapGame() {
         isPlaying: false,
         isSessionOver: true,
         currentLetter: null,
-        showStartScreen: true, // To show the start screen elements again
+        showStartScreen: true, 
       };
     });
   }, [pastSessions, toast]);
@@ -248,21 +259,11 @@ export function useLetterLeapGame() {
     }
   }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentLetter, handleKeyPress]);
   
-  // Recalculate stats when correctPresses or totalPresses change
   useEffect(() => {
     if (gameState.isPlaying) {
       calculateStats();
     }
   }, [gameState.correctPresses, gameState.totalPresses, gameState.isPlaying, calculateStats]);
-
-  // Effect for showNewLetter re-scheduling:
-  // If isPlaying becomes true and was false, or if letterIntervalMs changes while playing.
-  // This is partly handled by startGame, but direct changes to level/interval might need this.
-  // current showNewLetter deps are minimal; this is more about *when* to call it initially or on changes.
-  // The current logic in startGame -> showNewLetter handles the initial call.
-  // Subsequent calls are chained via feedback timeouts.
-  // AI adjustments change letterIntervalMs, then the *next* letter timeout set by showNewLetter will use the new interval.
-
 
   return { gameState, startGame, endSession, pastSessions };
 }
