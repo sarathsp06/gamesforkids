@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -277,14 +276,28 @@ export function useLetterLeapGame() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentWord) return;
 
-      if (event.key.length === 1 && event.key.match(/^[a-zA-Z0-9]$/i)) {
-        event.preventDefault(); 
+      // Check if the physical key pressed is one of A-Z (KeyA-KeyZ) or 0-9 (Digit0-Digit9)
+      const isAlphaNumericPhysicalKey = /^(Key[A-Z]|Digit[0-9])$/.test(event.code);
+
+      if (isAlphaNumericPhysicalKey) {
+        // Prevent default browser action for these physical keys (e.g., Ctrl+B, browser search on typing)
+        event.preventDefault();
         event.stopImmediatePropagation();
 
-        if (event.key.match(/^[a-zA-Z]$/i)) {
-          handleKeyPress(event.key);
+        // Process for game logic only if no Ctrl, Meta, or Alt keys are pressed (Shift is allowed)
+        if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+          // Use event.key for the actual character, as it respects Shift (e.g., 'a' vs 'A')
+          // and check if it's a single alphabet character for the game.
+          if (event.key.length === 1 && /^[a-zA-Z]$/i.test(event.key)) {
+            handleKeyPress(event.key);
+          }
+          // Numbers (0-9) are not passed to handleKeyPress for LetterLeap,
+          // but their default browser actions are prevented if they match Digit0-Digit9.
         }
+        // If Ctrl/Meta/Alt were pressed with an A-Z/0-9 key, default action is prevented,
+        // but the key is not passed to game logic.
       }
+      // Other keys (e.g., Space, Enter, F-keys, symbols not on 0-9) are not affected by this block.
     };
 
     if (typeof window !== 'undefined') {
@@ -303,3 +316,4 @@ export function useLetterLeapGame() {
 
   return { gameState, startGame, endSession, pastSessions };
 }
+
