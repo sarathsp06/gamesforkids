@@ -25,15 +25,14 @@ export default function GameSelectionPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col flex-grow justify-between">
-                  <div className="my-4 rounded-lg w-full h-40 shadow-md overflow-hidden bg-secondary/30 flex items-center justify-center p-4" data-ai-hint="abstract pattern">
+                  <div className="my-4 rounded-lg w-full h-40 shadow-md overflow-hidden bg-secondary/30 flex items-center justify-center p-4" data-ai-hint="keyboard abstract">
                     <svg width="100%" height="100%" viewBox="0 0 100 50" preserveAspectRatio="xMidYMid meet">
-                      <defs>
-                        <pattern id="letterLeapPattern" patternUnits="userSpaceOnUse" width="20" height="20">
-                          <circle cx="5" cy="5" r="3" fill="hsl(var(--primary))" opacity="0.7"/>
-                          <rect x="10" y="10" width="6" height="6" fill="hsl(var(--accent))" opacity="0.6" transform="rotate(45 13 13)"/>
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#letterLeapPattern)" />
+                      <path d="M10 15 Q 25 5, 40 15 T 70 15" stroke="hsl(var(--primary))" stroke-width="5" fill="none" opacity="0.8" stroke-linecap="round"/>
+                      <path d="M20 35 Q 35 25, 50 35 T 80 35" stroke="hsl(var(--accent))" stroke-width="5" fill="none" opacity="0.7" stroke-linecap="round"/>
+                      <rect x="25" y="10" width="10" height="20" rx="3" fill="hsl(var(--secondary))" opacity="0.6" transform="rotate(-10 30 20)"/>
+                      <rect x="65" y="20" width="10" height="15" rx="3" fill="hsl(var(--primary))" opacity="0.5" transform="rotate(10 70 27.5)"/>
+                      <circle cx="85" cy="12" r="4" fill="hsl(var(--accent))" opacity="0.9"/>
+                       <circle cx="15" cy="40" r="3" fill="hsl(var(--secondary))" opacity="0.9"/>
                     </svg>
                   </div>
                   <div className="flex items-center justify-end text-primary group-hover:text-accent transition-colors font-semibold mt-auto">
@@ -58,15 +57,19 @@ export default function GameSelectionPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col flex-grow justify-between">
-                  <div className="my-4 rounded-lg w-full h-40 shadow-md overflow-hidden bg-primary/30 flex items-center justify-center p-4" data-ai-hint="abstract shapes">
+                  <div className="my-4 rounded-lg w-full h-40 shadow-md overflow-hidden bg-primary/30 flex items-center justify-center p-4" data-ai-hint="plus numbers">
                      <svg width="100%" height="100%" viewBox="0 0 100 50" preserveAspectRatio="xMidYMid meet">
-                      <defs>
-                        <pattern id="additionPattern" patternUnits="userSpaceOnUse" width="25" height="25">
-                          <path d="M0 0 L10 10 L0 20 Z" fill="hsl(var(--secondary))" opacity="0.7"/>
-                          <ellipse cx="18" cy="15" rx="5" ry="3" fill="hsl(var(--accent))" opacity="0.6"/>
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#additionPattern)" />
+                      {/* Plus Sign */}
+                      <rect x="42" y="10" width="16" height="30" rx="3" fill="hsl(var(--accent))" opacity="0.9" />
+                      <rect x="32" y="17" width="36" height="16" rx="3" fill="hsl(var(--accent))" opacity="0.9" />
+                      
+                      {/* Number-like shapes/items */}
+                      <circle cx="25" cy="15" r="8" fill="hsl(var(--primary))" opacity="0.8"/>
+                      <rect x="70" y="30" width="15" height="15" rx="4" fill="hsl(var(--secondary))" opacity="0.7"/>
+                      <circle cx="20" cy="38" r="6" fill="hsl(var(--primary))" opacity="0.6"/>
+                      <rect x="75" y="8" width="12" height="12" rx="3" fill="hsl(var(--secondary))" opacity="0.6"/>
+                       <polygon points="50,2 55,12 45,12" fill="hsl(var(--primary))" opacity="0.7" />
+                       <ellipse cx="50" cy="45" rx="10" ry="4" fill="hsl(var(--secondary))" opacity="0.7" />
                     </svg>
                   </div>
                   <div className="flex items-center justify-end text-primary group-hover:text-accent transition-colors font-semibold mt-auto">
