@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Metadata } from 'next';
+import type { NextPage } from 'next'; // Changed Metadata to NextPage for better type if needed
 import { MainLayout } from '@/components/layout/main-layout';
 import { WordDisplay } from '@/components/word-display';
 import { GameControls } from '@/components/game-controls';
@@ -12,12 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export const metadata: Metadata = {
-  title: 'Letter Leap - Typing Game',
-  description: 'Learn to type words quickly and accurately with Letter Leap!',
-};
+// Removed metadata export as this is a client component.
+// export const metadata: Metadata = {
+//   title: 'Letter Leap - Typing Game',
+//   description: 'Learn to type words quickly and accurately with Letter Leap!',
+// };
 
-export default function LetterLeapPage() {
+const LetterLeapPage: NextPage = () => {
   const { gameState, startGame, endSession, pastSessions } = useLetterLeapGame();
   const PraiseIcon = gameState.praiseIcon;
 
@@ -42,7 +43,7 @@ export default function LetterLeapPage() {
 
         {/* Praise Message Display */}
         {gameState.showPraiseMessage && gameState.praiseText && PraiseIcon && (
-          <div className="absolute top-[-20px] left-1/2 transform -translate-x-1/2 z-20 animate-letter-appear">
+          <div className="absolute top-[-20px] left-1/2 transform -translate-x-1/2 z-20 animate-praise-pop">
             <Card className="p-3 md:p-4 bg-secondary shadow-xl border-2 border-accent">
               <CardContent className="flex items-center gap-2 md:gap-3 p-0">
                 <PraiseIcon className="h-6 w-6 md:h-8 md:w-8 text-accent" />
@@ -103,3 +104,7 @@ export default function LetterLeapPage() {
     </MainLayout>
   );
 }
+
+export default LetterLeapPage;
+
+    
