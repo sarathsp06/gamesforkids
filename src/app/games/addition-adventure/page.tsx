@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Award, Lightbulb, Play, Clock, Repeat, Square, AlertCircle, CheckCircle, HelpCircle, Plus, Smile, XCircle, ThumbsUp, StopCircle, ArrowRightCircle } from 'lucide-react';
 
 const AdditionAdventurePage: NextPage = () => {
-  const { gameState, startGame, handleDropOnPile, incrementSumPileOnClick, userEndSession, pastSessions, confirmAndProceed } = useAdditionAdventureGame();
+  const { gameState, startGame, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions, confirmAndProceed } = useAdditionAdventureGame();
   const {
     currentProblem,
     score,
@@ -22,13 +22,12 @@ const AdditionAdventurePage: NextPage = () => {
     showPraiseMessage,
     praiseIcon,
     phase,
-    sumPileCount
+    sumPileCount,
+    draggedFromPile1Count,
+    draggedFromPile2Count,
   } = gameState;
 
   const PraiseIcon = praiseIcon;
-
-  // Draggable item and its specific drag handlers are removed.
-  // Interaction will be primarily through clicking the sum pile.
   
   const handleSumPileClick = () => {
     if (phase === 'summingTime') {
@@ -41,7 +40,8 @@ const AdditionAdventurePage: NextPage = () => {
   const renderPileZone = (pileId: 1 | 2 | 'sum') => {
     if (!currentProblem) return null;
     
-    let displayCount, targetCount, pileLabel, onClickHandler, isActivePile, isPileComplete;
+    let displayCount, targetCount, pileLabel, onClickHandler, isActivePile, isPileComplete, pileItemsToRender;
+    let currentDraggedCount = 0;
 
     if (pileId === 1) {
       displayCount = currentProblem.num1; 
@@ -50,6 +50,8 @@ const AdditionAdventurePage: NextPage = () => {
       onClickHandler = () => {}; 
       isActivePile = false; 
       isPileComplete = true; 
+      currentDraggedCount = draggedFromPile1Count;
+      pileItemsToRender = Array.from({ length: currentProblem.num1 });
     } else if (pileId === 2) {
       displayCount = currentProblem.num2; 
       targetCount = currentProblem.num2;
@@ -57,25 +59,39 @@ const AdditionAdventurePage: NextPage = () => {
       onClickHandler = () => {}; 
       isActivePile = false;
       isPileComplete = true;
+      currentDraggedCount = draggedFromPile2Count;
+      pileItemsToRender = Array.from({ length: currentProblem.num2 });
     } else { // sum pile
       displayCount = sumPileCount;
       targetCount = currentProblem.correctAnswer;
       pileLabel = "?"; 
-      onClickHandler = handleSumPileClick; // Will handle both summing and confirmation
+      onClickHandler = handleSumPileClick;
       isActivePile = phase === 'summingTime' || (phase === 'awaitingConfirmation' && isCorrect === true);
       isPileComplete = displayCount === targetCount && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation');
+      pileItemsToRender = Array.from({ length: displayCount });
     }
     
     const isSumPileCorrectAndFinal = pileId === 'sum' && displayCount === targetCount && (phase === 'finalFeedback' || phase === 'awaitingConfirmation') && isCorrect;
 
     return (
       <Card
-        // onDragOver and onDrop removed as primary interaction is click
-        onClick={pileId === 'sum' ? onClickHandler : undefined} // Only sum pile is clickable
+        onDragOver={(e) => {
+          if (pileId === 'sum' && phase === 'summingTime') e.preventDefault();
+        }}
+        onDrop={(e) => {
+          if (pileId === 'sum' && phase === 'summingTime') {
+            e.preventDefault();
+            const source = e.dataTransfer.getData('application/x-addition-item-source') as 'pile1' | 'pile2' | '';
+            if (source === 'pile1' || source === 'pile2') {
+              handleDropOnSumPile(source);
+            }
+          }
+        }}
+        onClick={pileId === 'sum' ? onClickHandler : undefined}
         className={cn(
           "w-full md:w-1/3 min-h-[10rem] md:min-h-[12rem] border-2 rounded-lg flex flex-col items-center justify-center p-2 md:p-4 transition-all",
           pileId === 'sum' ? (isActivePile && phase === 'summingTime' ? 'border-dashed border-primary/50 hover:border-primary cursor-pointer' : 'border-muted') : 'border-solid border-muted',
-          pileId === 'sum' && phase === 'awaitingConfirmation' && isCorrect ? 'can-proceed-pulse border-primary' : '', // Pulse for next
+          pileId === 'sum' && phase === 'awaitingConfirmation' && isCorrect ? 'can-proceed-pulse border-primary' : '', 
           isPileComplete && pileId !== 'sum' ? 'border-green-500 bg-green-500/10' : '', 
           isSumPileCorrectAndFinal ? 'border-green-500 bg-green-500/10' : '',
           pileId === 'sum' && phase === 'finalFeedback' && !isCorrect ? 'border-red-500 bg-red-500/10' : '',
@@ -88,8 +104,33 @@ const AdditionAdventurePage: NextPage = () => {
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center p-0">
           <div className="flex flex-wrap justify-center text-3xl md:text-4xl min-h-[40px] mb-1">
-            {Array.from({ length: displayCount }).map((_, i) => (
-              <span key={`${pileId}-${i}`} className="mx-0.5 animate-letter-appear">{currentProblem.item.visual}</span>
+            {pileItemsToRender.map((_, i) => (
+              <span 
+                key={`${pileId}-item-${i}`}
+                draggable={pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime'}
+                onDragStart={(e) => {
+                  if (pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime') {
+                    e.dataTransfer.setData('application/x-addition-item-source', pileId === 1 ? 'pile1' : 'pile2');
+                    // Optional: Set a custom drag image to match the item
+                    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+                    dragImage.style.opacity = "0.7";
+                    dragImage.style.position = "absolute";
+                    dragImage.style.top = "-1000px"; // Position off-screen
+                    document.body.appendChild(dragImage);
+                    e.dataTransfer.setDragImage(dragImage, e.currentTarget.offsetWidth / 2, e.currentTarget.offsetHeight / 2);
+                    setTimeout(() => document.body.removeChild(dragImage), 0);
+                  } else {
+                    e.preventDefault();
+                  }
+                }}
+                className={cn(
+                  "mx-0.5 animate-letter-appear",
+                  pileId !== 'sum' && (i < currentDraggedCount || phase !== 'summingTime') && "opacity-30 cursor-not-allowed",
+                  pileId !== 'sum' && phase === 'summingTime' && i >= currentDraggedCount && "cursor-grab active:cursor-grabbing"
+                )}
+              >
+                {currentProblem.item.visual}
+              </span>
             ))}
           </div>
            {pileId === 'sum' && phase === 'summingTime' && displayCount < targetCount && (
@@ -116,7 +157,7 @@ const AdditionAdventurePage: NextPage = () => {
                 <Smile className="w-10 h-10"/>Addition Adventure!
               </CardTitle>
               <CardDescription className="text-lg mt-2 text-muted-foreground">
-                Tap the sum pile to solve the sums!
+                Drag items or tap the sum pile to solve the sums!
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -156,29 +197,23 @@ const AdditionAdventurePage: NextPage = () => {
 
         {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
           <div className="w-full max-w-4xl">
-            {/* Card that used to hold the draggable item is now simplified */}
-            <Card className="mb-6 p-4 shadow-md min-h-[8rem] flex items-center justify-center">
-              <CardContent className="flex flex-col items-center justify-center p-2">
-                  {/* Draggable item display removed */}
-                  {(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
-                     <div className="flex items-center justify-center h-full"> 
-                        {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
-                     </div>
-                  )}
-                   {/* Show "Target full!" message if trying to increment a full sum pile via click */}
-                  {dragFeedback === 'stop' && phase === 'summingTime' && ( 
-                    <div className="mt-2 text-sm text-destructive flex items-center">
-                        <StopCircle className="w-6 h-6 text-red-500 mr-1"/> Target full!
-                    </div>
-                  )}
-                   {/* Placeholder content for summingTime if no feedback/error */}
-                   {phase === 'summingTime' && dragFeedback !== 'stop' && (
-                    <div className="flex items-center justify-center h-full">
-                      <Plus className="w-10 h-10 text-muted-foreground opacity-50" />
-                    </div>
-                   )}
-              </CardContent>
-            </Card>
+            {/* Top card removed as per request */}
+            {/* Feedback/Error display related to dragging or clicking sum pile */}
+             {(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
+                 <div className="flex items-center justify-center h-16 mb-4"> {/* Placeholder for height */}
+                    {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
+                 </div>
+              )}
+               {phase === 'summingTime' && dragFeedback === 'stop' && ( 
+                <div className="mb-4 text-sm text-destructive flex items-center justify-center">
+                    <StopCircle className="w-6 h-6 text-red-500 mr-1"/> Target full or source empty!
+                </div>
+              )}
+              {/* Ensure some space if no feedback is shown, to prevent layout jumps */}
+              {phase === 'summingTime' && !dragFeedback && !(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
+                <div className="h-16 mb-4"></div>
+              )}
+
 
             {/* Piles Area */}
             <div className="flex flex-col md:flex-row items-stretch justify-around gap-3 md:gap-4 mb-6">

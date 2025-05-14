@@ -66,8 +66,10 @@ export interface AdditionAdventureGameState {
   currentStreak: number; // Correct sum answers in a row
   longestStreak: number;
 
-  pile1Count: number; // Will be pre-filled based on currentProblem.num1
-  pile2Count: number; // Will be pre-filled based on currentProblem.num2
+  // pile1Count & pile2Count are defined by currentProblem.num1 & currentProblem.num2
+  // These track how many items have been *conceptually* taken from each pile
+  draggedFromPile1Count: number;
+  draggedFromPile2Count: number;
   sumPileCount: number; // Count of items in the sum pile, user interacts with this
   
   feedbackMessage: string | null; // General feedback or instructions (minimize use)
@@ -96,4 +98,3 @@ export interface AdditionAdventureSessionStats {
   longestStreak: number;
   score: number;
 }
-
