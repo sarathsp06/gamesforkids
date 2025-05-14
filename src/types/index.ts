@@ -55,6 +55,7 @@ export type AdditionAdventurePhase =
   | 'startScreen'
   | 'summingTime' // Addend piles are pre-filled, user drags/taps items to a sum pile
   | 'finalFeedback' // Feedback for the sum answer
+  | 'awaitingConfirmation' // Waiting for user to proceed after correct answer
   | 'sessionOver';
 
 export interface AdditionAdventureGameState {

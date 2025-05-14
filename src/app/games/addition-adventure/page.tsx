@@ -8,14 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAdditionAdventureGame, DRAGGABLE_ITEM_TYPE_ADDITION } from '@/hooks/useAdditionAdventureGame';
 import { ADDITION_GAME_DURATION_SECONDS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { Award, Lightbulb, Play, Clock, Repeat, Square, AlertCircle, CheckCircle, HelpCircle, Plus, Smile, XCircle, ThumbsUp, StopCircle } from 'lucide-react';
+import { Award, Lightbulb, Play, Clock, Repeat, Square, AlertCircle, CheckCircle, HelpCircle, Plus, Smile, XCircle, ThumbsUp, StopCircle, ArrowRightCircle } from 'lucide-react';
 
 const AdditionAdventurePage: NextPage = () => {
-  const { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions } = useAdditionAdventureGame();
+  const { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions, confirmAndProceed } = useAdditionAdventureGame();
   const {
     currentProblem,
     score,
-    // feedbackMessage, // Less reliant on this
     dragFeedback,    
     isCorrect,
     isPlaying,
@@ -23,27 +22,30 @@ const AdditionAdventurePage: NextPage = () => {
     showPraiseMessage,
     praiseIcon,
     phase,
-    pile1Count, // Will be pre-filled from problem.num1
-    pile2Count, // Will be pre-filled from problem.num2
     sumPileCount
   } = gameState;
 
   const PraiseIcon = praiseIcon;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (currentProblem && phase === 'summingTime') { // Only draggable if in summing phase
+    if (currentProblem && phase === 'summingTime') { 
       e.dataTransfer.setData(DRAGGABLE_ITEM_TYPE_ADDITION, currentProblem.item.name);
+    } else {
+      e.preventDefault(); // Prevent dragging if not in summingTime
     }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); 
+    if (phase === 'summingTime') {
+      e.preventDefault(); 
+    }
   };
   
   const handleDropOnSumPileEvent = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (phase !== 'summingTime') return;
     const itemType = e.dataTransfer.getData(DRAGGABLE_ITEM_TYPE_ADDITION);
-    if (itemType && currentProblem && itemType === currentProblem.item.name && phase === 'summingTime') {
+    if (itemType && currentProblem && itemType === currentProblem.item.name) {
       handleDropOnSumPile();
     }
   };
@@ -51,6 +53,8 @@ const AdditionAdventurePage: NextPage = () => {
   const handleSumPileClick = () => {
     if (phase === 'summingTime') {
       incrementSumPileOnClick();
+    } else if (phase === 'awaitingConfirmation' && gameState.isCorrect) {
+      confirmAndProceed();
     }
   };
   
@@ -60,49 +64,50 @@ const AdditionAdventurePage: NextPage = () => {
     let displayCount, targetCount, pileLabel, onDropHandler, onClickHandler, isActivePile, isPileComplete;
 
     if (pileId === 1) {
-      displayCount = currentProblem.num1; // Always show the target number of items
+      displayCount = currentProblem.num1; 
       targetCount = currentProblem.num1;
       pileLabel = currentProblem.num1.toString();
-      onDropHandler = () => {}; // No drop interaction for addend piles
-      onClickHandler = () => {}; // No click interaction
-      isActivePile = false; // Addend piles are not "active" for user input
-      isPileComplete = true; // Considered complete as they are pre-filled
+      onDropHandler = () => {}; 
+      onClickHandler = () => {}; 
+      isActivePile = false; 
+      isPileComplete = true; 
     } else if (pileId === 2) {
-      displayCount = currentProblem.num2; // Always show the target number of items
+      displayCount = currentProblem.num2; 
       targetCount = currentProblem.num2;
       pileLabel = currentProblem.num2.toString();
-      onDropHandler = () => {}; // No drop interaction
-      onClickHandler = () => {}; // No click interaction
+      onDropHandler = () => {}; 
+      onClickHandler = () => {}; 
       isActivePile = false;
       isPileComplete = true;
     } else { // sum pile
       displayCount = sumPileCount;
       targetCount = currentProblem.correctAnswer;
       pileLabel = "?"; 
-      onDropHandler = handleDropOnSumPileEvent;
-      onClickHandler = handleSumPileClick;
-      isActivePile = phase === 'summingTime';
-      isPileComplete = displayCount === targetCount && phase === 'summingTime'; // Only complete if target reached in summingTime
+      onDropHandler = phase === 'summingTime' ? handleDropOnSumPileEvent : undefined;
+      onClickHandler = handleSumPileClick; // Will handle both summing and confirmation
+      isActivePile = phase === 'summingTime' || (phase === 'awaitingConfirmation' && isCorrect === true);
+      isPileComplete = displayCount === targetCount && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation');
     }
     
-    const isSumPileCorrectAndFinal = pileId === 'sum' && displayCount === targetCount && phase === 'finalFeedback' && isCorrect;
+    const isSumPileCorrectAndFinal = pileId === 'sum' && displayCount === targetCount && (phase === 'finalFeedback' || phase === 'awaitingConfirmation') && isCorrect;
 
     return (
       <Card
-        onDragOver={isActivePile ? handleDragOver : undefined} // Only allow drag over for active sum pile
-        onDrop={isActivePile ? onDropHandler : undefined} // Only allow drop for active sum pile
-        onClick={onClickHandler}
+        onDragOver={isActivePile && phase === 'summingTime' ? handleDragOver : undefined}
+        onDrop={isActivePile && phase === 'summingTime' ? onDropHandler : undefined}
+        onClick={pileId === 'sum' ? onClickHandler : undefined} // Only sum pile is clickable
         className={cn(
           "w-full md:w-1/3 min-h-[10rem] md:min-h-[12rem] border-2 rounded-lg flex flex-col items-center justify-center p-2 md:p-4 transition-all",
-          pileId === 'sum' ? (isActivePile ? 'border-dashed border-primary/50 hover:border-primary cursor-pointer' : 'border-muted') : 'border-solid border-muted', // Styling for addend vs sum pile
-          isPileComplete && pileId !== 'sum' ? 'border-green-500 bg-green-500/10' : '', // Addend piles always "complete"
+          pileId === 'sum' ? (isActivePile && phase === 'summingTime' ? 'border-dashed border-primary/50 hover:border-primary cursor-pointer' : 'border-muted') : 'border-solid border-muted',
+          pileId === 'sum' && phase === 'awaitingConfirmation' && isCorrect ? 'can-proceed-pulse border-primary' : '', // Pulse for next
+          isPileComplete && pileId !== 'sum' ? 'border-green-500 bg-green-500/10' : '', 
           isSumPileCorrectAndFinal ? 'border-green-500 bg-green-500/10' : '',
           pileId === 'sum' && phase === 'finalFeedback' && !isCorrect ? 'border-red-500 bg-red-500/10' : '',
         )}
       >
         <CardHeader className="p-1 mb-1">
             <CardTitle className="text-3xl md:text-4xl font-bold text-foreground">
-                 { pileId === 'sum' && (phase === 'summingTime' || phase === 'finalFeedback') ? `${displayCount} / ${targetCount}` : pileLabel }
+                 { pileId === 'sum' && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') ? `${displayCount} / ${targetCount}` : pileLabel }
             </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center p-0">
@@ -113,6 +118,11 @@ const AdditionAdventurePage: NextPage = () => {
           </div>
            {pileId === 'sum' && phase === 'summingTime' && displayCount < targetCount && (
              <p className="text-sm text-muted-foreground">(Needs {targetCount - displayCount} more)</p>
+           )}
+           {pileId === 'sum' && phase === 'awaitingConfirmation' && isCorrect && displayCount === targetCount && (
+             <div className="mt-2 flex items-center text-sm text-primary">
+               <ArrowRightCircle className="w-4 h-4 mr-1"/> Tap or Press Enter
+             </div>
            )}
         </CardContent>
       </Card>
@@ -168,7 +178,7 @@ const AdditionAdventurePage: NextPage = () => {
             </div>
         )}
 
-        {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback') && (
+        {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
           <div className="w-full max-w-4xl">
             <Card className="mb-6 p-4 shadow-md">
               <CardContent className="flex flex-col items-center p-2">
@@ -176,21 +186,24 @@ const AdditionAdventurePage: NextPage = () => {
                     <>
                       <Plus className="w-6 h-6 text-muted-foreground mb-2" />
                       <div
-                        draggable
+                        draggable={phase === 'summingTime'} // Only draggable during summingTime
                         onDragStart={handleDragStart}
-                        className="cursor-grab p-2 m-2 border-2 border-accent rounded-md bg-secondary shadow-lg hover:shadow-xl transition-shadow"
+                        className={cn(
+                          "p-2 m-2 border-2 border-accent rounded-md bg-secondary shadow-lg transition-shadow",
+                          phase === 'summingTime' ? "cursor-grab hover:shadow-xl" : "cursor-default opacity-50" 
+                        )}
                         aria-label={`Draggable ${currentProblem.item.name}`}
                       >
                         <span className="text-5xl md:text-6xl">{currentProblem.item.visual}</span>
                       </div>
                     </>
                   )}
-                  {phase === 'finalFeedback' && (
+                  {(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
                      <div className="flex items-center justify-center h-20"> 
                         {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
                      </div>
                   )}
-                  {dragFeedback === 'stop' && ( // Show stop icon if dragFeedback is 'stop'
+                  {dragFeedback === 'stop' && ( 
                     <div className="mt-2 text-sm text-destructive flex items-center">
                         <StopCircle className="w-6 h-6 text-red-500 mr-1"/> Target full!
                     </div>
@@ -205,7 +218,7 @@ const AdditionAdventurePage: NextPage = () => {
                 {phase === 'finalFeedback' && isCorrect === false ? '' : '+'} 
               </div>
               {renderPileZone(2)}
-              {(phase === 'summingTime' || phase === 'finalFeedback') && (
+              {(phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
                 <>
                   <div className="flex items-center justify-center text-3xl md:text-5xl font-bold text-primary mx-1 self-center">=</div>
                   {renderPileZone('sum')}
@@ -302,4 +315,3 @@ const AdditionAdventurePage: NextPage = () => {
 };
 
 export default AdditionAdventurePage;
-

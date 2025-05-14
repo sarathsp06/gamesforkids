@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -187,7 +188,7 @@ body {
 @media (max-width: 480px) {
   .hand-indicator-visual {
     @apply w-10 h-10 mx-1;
-    display: none; /* Hide completely on very small screens if too cluttered */
+    /* display: none; Hide completely on very small screens if too cluttered */
   }
 }
 
@@ -200,4 +201,21 @@ body {
 
 .animate-praise-pop {
   animation: praise-pop 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+/* Pulse animation for "Next" indication */
+@keyframes pulse-primary {
+  0%, 100% { 
+    border-color: hsl(var(--primary) / 0.7); 
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.2); 
+  }
+  50% { 
+    border-color: hsl(var(--primary)); 
+    box-shadow: 0 0 10px 5px hsl(var(--primary) / 0.2); 
+  }
+}
+
+.can-proceed-pulse {
+  animation: pulse-primary 1.5s infinite;
+  cursor: pointer !important; /* Ensure cursor indicates clickability */
 }
