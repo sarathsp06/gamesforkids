@@ -124,9 +124,14 @@ const AdditionAdventurePage: NextPage = () => {
                   }
                 }}
                 className={cn(
-                  "mx-0.5 animate-letter-appear",
-                  pileId !== 'sum' && (i < currentDraggedCount || phase !== 'summingTime') && "opacity-30 cursor-not-allowed",
-                  pileId !== 'sum' && phase === 'summingTime' && i >= currentDraggedCount && "cursor-grab active:cursor-grabbing"
+                  "mx-0.5 animate-letter-appear", // Base styles
+                  pileId !== 'sum' && ( // Common condition for addend pile items
+                    i < currentDraggedCount // Check if item is "used up" first
+                      ? "opacity-30 cursor-not-allowed text-muted-foreground" // Styles for "used up" items
+                      : phase === 'summingTime' // If not used up, check if it's summing time
+                        ? "cursor-grab active:cursor-grabbing" // Styles for "draggable" items (will use default text color)
+                        : "opacity-50 text-muted-foreground" // Styles for "available but not currently interactive" items
+                  )
                 )}
               >
                 {currentProblem.item.visual}
