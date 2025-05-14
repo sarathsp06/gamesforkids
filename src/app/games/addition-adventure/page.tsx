@@ -5,13 +5,13 @@ import type { NextPage } from 'next';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAdditionAdventureGame, DRAGGABLE_ITEM_TYPE_ADDITION } from '@/hooks/useAdditionAdventureGame';
+import { useAdditionAdventureGame } from '@/hooks/useAdditionAdventureGame';
 import { ADDITION_GAME_DURATION_SECONDS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Award, Lightbulb, Play, Clock, Repeat, Square, AlertCircle, CheckCircle, HelpCircle, Plus, Smile, XCircle, ThumbsUp, StopCircle, ArrowRightCircle } from 'lucide-react';
 
 const AdditionAdventurePage: NextPage = () => {
-  const { gameState, startGame, handleDropOnPile, handleDropOnSumPile, incrementSumPileOnClick, userEndSession, pastSessions, confirmAndProceed } = useAdditionAdventureGame();
+  const { gameState, startGame, handleDropOnPile, incrementSumPileOnClick, userEndSession, pastSessions, confirmAndProceed } = useAdditionAdventureGame();
   const {
     currentProblem,
     score,
@@ -27,29 +27,9 @@ const AdditionAdventurePage: NextPage = () => {
 
   const PraiseIcon = praiseIcon;
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (currentProblem && phase === 'summingTime') { 
-      e.dataTransfer.setData(DRAGGABLE_ITEM_TYPE_ADDITION, currentProblem.item.name);
-    } else {
-      e.preventDefault(); // Prevent dragging if not in summingTime
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (phase === 'summingTime') {
-      e.preventDefault(); 
-    }
-  };
+  // Draggable item and its specific drag handlers are removed.
+  // Interaction will be primarily through clicking the sum pile.
   
-  const handleDropOnSumPileEvent = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (phase !== 'summingTime') return;
-    const itemType = e.dataTransfer.getData(DRAGGABLE_ITEM_TYPE_ADDITION);
-    if (itemType && currentProblem && itemType === currentProblem.item.name) {
-      handleDropOnSumPile();
-    }
-  };
-
   const handleSumPileClick = () => {
     if (phase === 'summingTime') {
       incrementSumPileOnClick();
@@ -61,13 +41,12 @@ const AdditionAdventurePage: NextPage = () => {
   const renderPileZone = (pileId: 1 | 2 | 'sum') => {
     if (!currentProblem) return null;
     
-    let displayCount, targetCount, pileLabel, onDropHandler, onClickHandler, isActivePile, isPileComplete;
+    let displayCount, targetCount, pileLabel, onClickHandler, isActivePile, isPileComplete;
 
     if (pileId === 1) {
       displayCount = currentProblem.num1; 
       targetCount = currentProblem.num1;
       pileLabel = currentProblem.num1.toString();
-      onDropHandler = () => {}; 
       onClickHandler = () => {}; 
       isActivePile = false; 
       isPileComplete = true; 
@@ -75,7 +54,6 @@ const AdditionAdventurePage: NextPage = () => {
       displayCount = currentProblem.num2; 
       targetCount = currentProblem.num2;
       pileLabel = currentProblem.num2.toString();
-      onDropHandler = () => {}; 
       onClickHandler = () => {}; 
       isActivePile = false;
       isPileComplete = true;
@@ -83,7 +61,6 @@ const AdditionAdventurePage: NextPage = () => {
       displayCount = sumPileCount;
       targetCount = currentProblem.correctAnswer;
       pileLabel = "?"; 
-      onDropHandler = phase === 'summingTime' ? handleDropOnSumPileEvent : undefined;
       onClickHandler = handleSumPileClick; // Will handle both summing and confirmation
       isActivePile = phase === 'summingTime' || (phase === 'awaitingConfirmation' && isCorrect === true);
       isPileComplete = displayCount === targetCount && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation');
@@ -93,8 +70,7 @@ const AdditionAdventurePage: NextPage = () => {
 
     return (
       <Card
-        onDragOver={isActivePile && phase === 'summingTime' ? handleDragOver : undefined}
-        onDrop={isActivePile && phase === 'summingTime' ? onDropHandler : undefined}
+        // onDragOver and onDrop removed as primary interaction is click
         onClick={pileId === 'sum' ? onClickHandler : undefined} // Only sum pile is clickable
         className={cn(
           "w-full md:w-1/3 min-h-[10rem] md:min-h-[12rem] border-2 rounded-lg flex flex-col items-center justify-center p-2 md:p-4 transition-all",
@@ -140,7 +116,7 @@ const AdditionAdventurePage: NextPage = () => {
                 <Smile className="w-10 h-10"/>Addition Adventure!
               </CardTitle>
               <CardDescription className="text-lg mt-2 text-muted-foreground">
-                Drag or tap to solve the sums!
+                Tap the sum pile to solve the sums!
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -180,34 +156,27 @@ const AdditionAdventurePage: NextPage = () => {
 
         {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
           <div className="w-full max-w-4xl">
-            <Card className="mb-6 p-4 shadow-md">
-              <CardContent className="flex flex-col items-center p-2">
-                  {phase === 'summingTime' && (
-                    <>
-                      <Plus className="w-6 h-6 text-muted-foreground mb-2" />
-                      <div
-                        draggable={phase === 'summingTime'} // Only draggable during summingTime
-                        onDragStart={handleDragStart}
-                        className={cn(
-                          "p-2 m-2 border-2 border-accent rounded-md bg-secondary shadow-lg transition-shadow",
-                          phase === 'summingTime' ? "cursor-grab hover:shadow-xl" : "cursor-default opacity-50" 
-                        )}
-                        aria-label={`Draggable ${currentProblem.item.name}`}
-                      >
-                        <span className="text-5xl md:text-6xl">{currentProblem.item.visual}</span>
-                      </div>
-                    </>
-                  )}
+            {/* Card that used to hold the draggable item is now simplified */}
+            <Card className="mb-6 p-4 shadow-md min-h-[8rem] flex items-center justify-center">
+              <CardContent className="flex flex-col items-center justify-center p-2">
+                  {/* Draggable item display removed */}
                   {(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
-                     <div className="flex items-center justify-center h-20"> 
+                     <div className="flex items-center justify-center h-full"> 
                         {isCorrect ? <CheckCircle className="w-12 h-12 text-green-500"/> : <XCircle className="w-12 h-12 text-red-500"/>}
                      </div>
                   )}
-                  {dragFeedback === 'stop' && ( 
+                   {/* Show "Target full!" message if trying to increment a full sum pile via click */}
+                  {dragFeedback === 'stop' && phase === 'summingTime' && ( 
                     <div className="mt-2 text-sm text-destructive flex items-center">
                         <StopCircle className="w-6 h-6 text-red-500 mr-1"/> Target full!
                     </div>
                   )}
+                   {/* Placeholder content for summingTime if no feedback/error */}
+                   {phase === 'summingTime' && dragFeedback !== 'stop' && (
+                    <div className="flex items-center justify-center h-full">
+                      <Plus className="w-10 h-10 text-muted-foreground opacity-50" />
+                    </div>
+                   )}
               </CardContent>
             </Card>
 
