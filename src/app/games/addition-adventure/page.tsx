@@ -127,7 +127,7 @@ const AdditionAdventurePage: NextPage = () => {
                   "mx-0.5 animate-letter-appear", // Base styles
                   pileId !== 'sum' && ( // Common condition for addend pile items
                     i < currentDraggedCount // Check if item is "used up" first
-                      ? "opacity-30 cursor-not-allowed text-muted-foreground" // Styles for "used up" items
+                      ? "opacity-30 cursor-not-allowed text-muted-foreground" // Styles for "used up" (passive) items
                       : phase === 'summingTime' // If not used up, check if it's summing time
                         ? "cursor-grab active:cursor-grabbing" // Styles for "draggable" items (will use default text color)
                         : "opacity-50 text-muted-foreground" // Styles for "available but not currently interactive" items
@@ -202,7 +202,6 @@ const AdditionAdventurePage: NextPage = () => {
 
         {isPlaying && currentProblem && (phase === 'summingTime' || phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
           <div className="w-full max-w-4xl">
-            {/* Top card removed as per request */}
             {/* Feedback/Error display related to dragging or clicking sum pile */}
              {(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
                  <div className="flex items-center justify-center h-16 mb-4"> {/* Placeholder for height */}
@@ -324,3 +323,5 @@ const AdditionAdventurePage: NextPage = () => {
 };
 
 export default AdditionAdventurePage;
+
+    
