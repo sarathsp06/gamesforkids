@@ -104,39 +104,45 @@ const AdditionAdventurePage: NextPage = () => {
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center p-0">
           <div className="flex flex-wrap justify-center text-3xl md:text-4xl min-h-[40px] mb-1">
-            {pileItemsToRender.map((_, i) => (
-              <span 
-                key={`${pileId}-item-${i}`}
-                draggable={pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime'}
-                onDragStart={(e) => {
-                  if (pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime') {
-                    e.dataTransfer.setData('application/x-addition-item-source', pileId === 1 ? 'pile1' : 'pile2');
-                    // Optional: Set a custom drag image to match the item
-                    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
-                    dragImage.style.opacity = "0.7";
-                    dragImage.style.position = "absolute";
-                    dragImage.style.top = "-1000px"; // Position off-screen
-                    document.body.appendChild(dragImage);
-                    e.dataTransfer.setDragImage(dragImage, e.currentTarget.offsetWidth / 2, e.currentTarget.offsetHeight / 2);
-                    setTimeout(() => document.body.removeChild(dragImage), 0);
-                  } else {
-                    e.preventDefault();
-                  }
-                }}
-                className={cn(
-                  "mx-0.5 animate-letter-appear", // Base styles
-                  pileId !== 'sum' && ( // Common condition for addend pile items
-                    i < currentDraggedCount // Check if item is "used up" first
+            {pileItemsToRender.map((_, i) => {
+              const isUsed = pileId !== 'sum' && i < currentDraggedCount;
+              const isAddendPileNotSummingTime = pileId !== 'sum' && !isUsed && phase !== 'summingTime';
+              const shouldAnimate = !isUsed && !isAddendPileNotSummingTime;
+
+              return (
+                <span 
+                  key={`${currentProblem.id}-${pileId}-item-${i}`} // Added currentProblem.id to key
+                  draggable={pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime'}
+                  onDragStart={(e) => {
+                    if (pileId !== 'sum' && i >= currentDraggedCount && phase === 'summingTime') {
+                      e.dataTransfer.setData('application/x-addition-item-source', pileId === 1 ? 'pile1' : 'pile2');
+                      const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+                      dragImage.style.opacity = "0.7";
+                      dragImage.style.position = "absolute";
+                      dragImage.style.top = "-1000px"; 
+                      document.body.appendChild(dragImage);
+                      e.dataTransfer.setDragImage(dragImage, e.currentTarget.offsetWidth / 2, e.currentTarget.offsetHeight / 2);
+                      setTimeout(() => document.body.removeChild(dragImage), 0);
+                    } else {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={cn(
+                    "mx-0.5", // Base margin
+                    shouldAnimate && "animate-letter-appear", // Conditional animation
+                    isUsed
                       ? "opacity-30 cursor-not-allowed text-muted-foreground" // Styles for "used up" (passive) items
-                      : phase === 'summingTime' // If not used up, check if it's summing time
-                        ? "cursor-grab active:cursor-grabbing" // Styles for "draggable" items (will use default text color)
-                        : "opacity-50 text-muted-foreground" // Styles for "available but not currently interactive" items
-                  )
-                )}
-              >
-                {currentProblem.item.visual}
-              </span>
-            ))}
+                      : pileId !== 'sum' // For non-used addend pile items
+                        ? phase === 'summingTime'
+                          ? "cursor-grab active:cursor-grabbing" // Styles for "draggable" items
+                          : "opacity-50 text-muted-foreground" // Styles for "available but not currently interactive"
+                        : "" // Sum pile items get animation if shouldAnimate is true, and default text color
+                  )}
+                >
+                  {currentProblem.item.visual}
+                </span>
+              );
+            })}
           </div>
            {pileId === 'sum' && phase === 'summingTime' && displayCount < targetCount && (
              <p className="text-sm text-muted-foreground">(Needs {targetCount - displayCount} more)</p>
@@ -323,5 +329,7 @@ const AdditionAdventurePage: NextPage = () => {
 };
 
 export default AdditionAdventurePage;
+
+    
 
     
