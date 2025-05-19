@@ -15,7 +15,6 @@ Welcome to Kids Learning Games! This is an interactive web application built wit
 5.  [Project Structure](#project-structure)
 6.  [Scripts](#scripts)
 7.  [Generative AI with Genkit](#generative-ai-with-genkit)
-8.  [Deployment](#deployment)
 9.  [Contributing & Customization](#contributing--customization)
 
 ## Project Overview
@@ -29,8 +28,6 @@ This application provides a platform for educational games tailored for children
 *   **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 *   **Generative AI**: [Genkit (Firebase Genkit)](https://firebase.google.com/docs/genkit)
-*   **State Management**: React Hooks (useState, useContext, useReducer)
-*   **Testing**: [Jest](https://jestjs.io/)
 *   **Deployment**: [Firebase Hosting](https://firebase.google.com/docs/hosting) via GitHub Actions
 
 ## Games Available
