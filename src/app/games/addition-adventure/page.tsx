@@ -220,7 +220,7 @@ const AdditionAdventurePage: NextPage = () => {
                 </div>
               )}
               {/* Ensure some space if no feedback is shown, to prevent layout jumps */}
-              {phase === 'summingTime' && !dragFeedback && !(phase === 'finalFeedback' || phase === 'awaitingConfirmation') && (
+              {phase === 'summingTime' && !dragFeedback && (
                 <div className="h-16 mb-4"></div>
               )}
 
