@@ -35,7 +35,7 @@ const initialGameState: GameState = {
   activeHand: null,
 };
 
-export function useLetterLeapGame() {
+export function useLetterLeapGame(inputRef: React.RefObject<HTMLInputElement>) {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [pastSessions, setPastSessions] = useState<SessionStats[]>([]);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,7 +111,10 @@ export function useLetterLeapGame() {
         activeHand: firstCharHand, // Set hand for the first letter
       };
     });
-  }, [speakWord]); 
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [speakWord, inputRef]); 
 
 
   const handleKeyPress = useCallback((key: string) => {
@@ -217,8 +220,11 @@ export function useLetterLeapGame() {
       showStartScreen: false,
       isSessionOver: false,
     }));
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
     setTimeout(showNewWord, 150); 
-  }, [showNewWord]);
+  }, [showNewWord, inputRef]);
 
   const endSession = useCallback(() => {
     setGameState(prev => {
@@ -270,11 +276,22 @@ export function useLetterLeapGame() {
         praiseIcon: null,
       };
     });
-  }, [pastSessions, toast]);
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  }, [pastSessions, toast, inputRef]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentWord) return;
+
+      // If the hidden input is the target, let the onInput handler deal with it primarily.
+      // This helps avoid double processing if keydown also results in an input event.
+      if (event.target === inputRef.current) {
+        // We might still want to prevent default for some keys if not handled by onInput,
+        // but for character keys, onInput should be the primary.
+        // For now, let's allow onInput to handle it.
+      }
 
       // Check if the physical key pressed is one of A-Z (KeyA-KeyZ) or 0-9 (Digit0-Digit9)
       const isAlphaNumericPhysicalKey = /^(Key[A-Z]|Digit[0-9])$/.test(event.code);
@@ -300,13 +317,35 @@ export function useLetterLeapGame() {
       // Other keys (e.g., Space, Enter, F-keys, symbols not on 0-9) are not affected by this block.
     };
 
+    const handleHiddenInput = (event: Event) => {
+      if (!gameState.isPlaying || gameState.isSessionOver || !gameState.currentWord) return;
+
+      const target = event.target as HTMLInputElement;
+      const inputValue = target.value;
+
+      if (inputValue && inputValue.length > 0) {
+        // Process the last character entered, common for mobile auto-suggest/swipe
+        const charToProcess = inputValue.slice(-1);
+        if (/^[a-zA-Z]$/i.test(charToProcess)) { // Ensure it's an alphabet character
+          handleKeyPress(charToProcess);
+        }
+        target.value = ""; // Clear the input field
+      }
+      // event.preventDefault(); // Usually not needed for input event on text field, but can be added if issues arise.
+    };
+
+    const currentInputRef = inputRef.current;
+
     if (typeof window !== 'undefined') {
-      window.addEventListener('keydown', handleKeyDown, true); 
+      window.addEventListener('keydown', handleKeyDown, true);
+      currentInputRef?.addEventListener('input', handleHiddenInput);
+      
       return () => {
-        window.removeEventListener('keydown', handleKeyDown, true); 
+        window.removeEventListener('keydown', handleKeyDown, true);
+        currentInputRef?.removeEventListener('input', handleHiddenInput);
       };
     }
-  }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentWord, handleKeyPress]);
+  }, [gameState.isPlaying, gameState.isSessionOver, gameState.currentWord, handleKeyPress, inputRef]);
   
   useEffect(() => {
     if (gameState.isPlaying) {
