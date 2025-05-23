@@ -2,6 +2,7 @@
 "use client";
 
 import type { NextPage } from 'next'; 
+import { useRef } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { WordDisplay } from '@/components/word-display';
 import { GameControls } from '@/components/game-controls';
@@ -14,7 +15,8 @@ import { cn } from '@/lib/utils';
 
 
 const LetterLeapPage: NextPage = () => {
-  const { gameState, startGame, endSession, pastSessions } = useLetterLeapGame();
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const { gameState, startGame, endSession, pastSessions } = useLetterLeapGame(hiddenInputRef);
   const PraiseIcon = gameState.praiseIcon;
 
   return (
@@ -85,6 +87,21 @@ const LetterLeapPage: NextPage = () => {
             />
           </div>
         )}
+
+        {/* Hidden input for mobile keyboard */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          id="hidden-input-for-mobile"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            opacity: 0,
+            width: '1px',
+            height: '1px',
+          }}
+        />
         
         <GameControls
           isPlaying={gameState.isPlaying}
