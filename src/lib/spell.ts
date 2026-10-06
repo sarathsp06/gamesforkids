@@ -52,3 +52,33 @@ export function choices(word: string, language: Language, count = 3): string[] {
 	}
 	return [word, ...wrong].sort(() => Math.random() - 0.5);
 }
+
+/** Everyday words young children know: animals, food, home, body, weather. 4+ letters so there is something to spell. */
+export const SPELL_WORDS: Record<Language, string[]> = {
+	en: [
+		'APPLE', 'BALL', 'BEAR', 'BIRD', 'BOAT', 'BOOK', 'CAKE', 'DUCK', 'FISH', 'FROG',
+		'TREE', 'STAR', 'MOON', 'MILK', 'LION', 'TIGER', 'HORSE', 'MOUSE', 'HOUSE', 'TRAIN',
+		'RAIN', 'SNOW', 'FLOWER', 'MONKEY', 'RABBIT', 'BANANA', 'YELLOW', 'GREEN', 'WATER', 'HAPPY',
+		'DADDY', 'MOMMY', 'BABY', 'SHOE', 'HAND', 'NOSE', 'BEACH', 'SCHOOL', 'CANDY', 'PIZZA'
+	],
+	nl: [
+		'APPEL', 'BOOM', 'HUIS', 'EEND', 'PAARD', 'MUIS', 'BEER', 'GEIT', 'SCHAAP', 'KONIJN',
+		'POES', 'HOND', 'KIKKER', 'VLINDER', 'MAAN', 'STER', 'ROOD', 'GEEL', 'GROEN', 'BLAUW',
+		'BOEK', 'MELK', 'BROOD', 'PEER', 'BANAAN', 'TAART', 'FIETS', 'BOOT', 'TREIN', 'BLOEM',
+		'REGEN', 'SNEEUW', 'STRAND', 'SCHOEN', 'HAND', 'NEUS', 'MOND', 'WATER', 'SCHOOL', 'MAMA'
+	]
+};
+
+const bags = new Map<Language, string[]>();
+let last = '';
+/** Shuffle bag per language: no repeats until the list is used up, never the same word twice in a row. */
+export function pickSpellWord(language: Language): string {
+	let bag = bags.get(language);
+	if (!bag?.length) {
+		bag = [...SPELL_WORDS[language]].sort(() => Math.random() - 0.5);
+		if (bag.length > 1 && bag.at(-1) === last) bag.unshift(bag.pop()!);
+		bags.set(language, bag);
+	}
+	last = bag.pop()!;
+	return last;
+}

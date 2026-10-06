@@ -4,7 +4,7 @@ import { LANGUAGES, type Language } from './words';
  * Speak text in the given language. onDone fires on end, on error, or at once when TTS is missing.
  * The first call must happen synchronously inside a user gesture (Safari/iOS block it otherwise).
  */
-export function speak(text: string, language: Language, onDone?: () => void) {
+export function speak(text: string, language: Language, onDone?: () => void, rate = 0.6) {
 	const synth = typeof speechSynthesis === 'undefined' ? null : speechSynthesis;
 	if (!synth) return onDone?.();
 	// Chrome silently drops speak() issued right after cancel(), so only cancel when busy.
@@ -17,7 +17,7 @@ export function speak(text: string, language: Language, onDone?: () => void) {
 	const voice =
 		voices.find((v) => v.lang.replace('_', '-') === lang) ?? voices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
 	if (voice) u.voice = voice;
-	u.rate = 0.6; // slow and clear for young children
+	u.rate = rate; // 0.6 default: slow and clear for young children
 	u.pitch = 1.2;
 	u.onend = u.onerror = () => onDone?.();
 	synth.speak(u);

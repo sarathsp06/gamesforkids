@@ -2,11 +2,12 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
-	import { choices } from '#lib/spell.ts';
-	import { LANGUAGES, PRAISE, pickWord, type Language } from '#lib/words.ts';
+	import { choices, pickSpellWord } from '#lib/spell.ts';
+	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
 	import { loadLanguage, saveLanguage } from '#lib/storage.ts';
 
 	const ROUND_WORDS = 5;
+	const SLOW = 0.45; // extra slow: the child has to catch every sound
 	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
@@ -28,13 +29,11 @@
 	});
 
 	function nextWord() {
-		// Words of 4+ letters make better spelling puzzles.
-		do word = pickWord(language, 3 + Math.floor(Math.random() * 3));
-		while (options.includes(word));
+		word = pickSpellWord(language);
 		options = choices(word, language);
 		crossed = [];
 		solved = false;
-		speak(word.toLowerCase(), language);
+		speak(word.toLowerCase(), language, undefined, SLOW);
 	}
 
 	function play() {
@@ -49,7 +48,7 @@
 			solved = true;
 			wordsDone++;
 			sfx.chime();
-			speak(`${word.toLowerCase()}. ${random(PRAISE[language])}`, language);
+			speak(`${word.toLowerCase()}. ${random(PRAISE[language])}`, language, undefined, SLOW);
 			clearTimeout(timer);
 			timer = window.setTimeout(() => {
 				if (wordsDone >= ROUND_WORDS) phase = 'reward';
@@ -58,7 +57,7 @@
 		} else {
 			crossed = [...crossed, option];
 			sfx.bloop();
-			speak(word.toLowerCase(), language);
+			speak(word.toLowerCase(), language, undefined, SLOW);
 		}
 	}
 </script>
@@ -98,7 +97,7 @@
 			{/each}
 		</ol>
 		<section class="stage">
-			<button type="button" class="big-btn ear" aria-label="Hear the word again" onclick={() => speak(word.toLowerCase(), language)}>🔊</button>
+			<button type="button" class="big-btn ear" aria-label="Hear the word again" onclick={() => speak(word.toLowerCase(), language, undefined, SLOW)}>🔊</button>
 			<div class="options" role="group" aria-label="Pick the right spelling">
 				{#key word}
 					{#each options as option (option)}
