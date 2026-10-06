@@ -17,7 +17,7 @@ export function speak(text: string, language: Language, onDone?: () => void) {
 	const voice =
 		voices.find((v) => v.lang.replace('_', '-') === lang) ?? voices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
 	if (voice) u.voice = voice;
-	u.rate = 0.8;
+	u.rate = 0.6; // slow and clear for young children
 	u.pitch = 1.2;
 	u.onend = u.onerror = () => onDone?.();
 	synth.speak(u);
