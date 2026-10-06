@@ -38,15 +38,18 @@
 		user-select: none;
 		transition: background-color 150ms, transform 150ms, box-shadow 150ms;
 	}
+	/* Parents may set --cap-w / --key-w so a whole word or keyboard row fits narrow screens. */
 	.big {
-		width: clamp(4.2rem, 15vw, 10rem);
-		height: clamp(4.8rem, 17vw, 11.5rem);
-		font-size: clamp(3rem, 12vw, 8.5rem);
+		--w: var(--cap-w, clamp(4.2rem, 15vw, 10rem));
+		width: var(--w);
+		height: calc(var(--w) * 1.15);
+		font-size: calc(var(--w) * 0.8);
 	}
 	.small {
-		width: clamp(2.6rem, 8vw, 4.2rem);
-		height: clamp(2.8rem, 8.5vw, 4.4rem);
-		font-size: clamp(1.2rem, 3.4vw, 1.8rem);
+		--w: var(--key-w, clamp(2.6rem, 8vw, 4.2rem));
+		width: var(--w);
+		height: calc(var(--w) * var(--key-ratio, 1.06));
+		font-size: clamp(1.1rem, calc(var(--w) * 0.45), 1.8rem);
 		border-width: 3px;
 		border-radius: 10px;
 		box-shadow: 0 3px 0 var(--ink);

@@ -133,7 +133,7 @@
 			<div class="word-row">
 				{@render handCue('left')}
 			{#key game.word + (game.phase === 'listening')}
-				<div class="word" aria-live="polite" aria-label={game.phase === 'listening' ? 'Listen' : game.word}>
+				<div class="word" style="--n: {game.word.length}" aria-live="polite" aria-label={game.phase === 'listening' ? 'Listen' : game.word}>
 					{#each game.word.split('') as letter, i (i)}
 						{#key i >= game.index - 1 && i <= game.index ? game.lastPress.n : 0}
 							<span style="--delay: {i * 60}ms; display: contents">
@@ -162,7 +162,7 @@
 
 			<div class="keyboard" role="group" aria-label="Keyboard">
 				{#each KEY_ROWS as row, r (row)}
-					<div class="row" style="--indent: {r * 1.4}rem">
+					<div class="row" style="--indent: {r / 3}">
 						{#each row.split('') as letter (letter)}
 							{#key letter === target ? game.lastPress.n : 0}
 								<Keycap
@@ -386,13 +386,13 @@
 		list-style: none;
 	}
 	.dots li {
-		width: 2.4rem;
-		height: 2.4rem;
+		width: clamp(1.6rem, 6vw, 2.4rem);
+		height: clamp(1.6rem, 6vw, 2.4rem);
 		border: 3px solid var(--ink);
 		border-radius: 50%;
 		display: grid;
 		place-items: center;
-		font-size: 1.5rem;
+		font-size: clamp(1rem, 3.8vw, 1.5rem);
 		line-height: 1;
 	}
 	.dots li.on {
@@ -401,23 +401,25 @@
 	}
 
 	.word-row {
+		--hand-w: clamp(2.8rem, 10vw, 6rem);
+		--row-gap: clamp(0.3rem, 2vw, 1.5rem);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: clamp(0.5rem, 2vw, 1.5rem);
+		gap: var(--row-gap);
 		width: 100%;
 	}
 	/* Both slots always exist so the word never shifts when the hand changes sides. */
 	.hand {
 		flex: none;
-		width: clamp(3.5rem, 9vw, 6rem);
+		width: var(--hand-w);
 		aspect-ratio: 1;
 		display: grid;
 		place-items: center;
 		border: var(--line) solid var(--ink);
 		border-radius: 50%;
 		box-shadow: 0 var(--line) 0 var(--ink);
-		font-size: clamp(2rem, 5.5vw, 3.6rem);
+		font-size: calc(var(--hand-w) * 0.6);
 		line-height: 1;
 		visibility: hidden;
 	}
@@ -442,11 +444,16 @@
 		}
 	}
 	.word {
+		--gap: clamp(0.25rem, 1.4vw, 1rem);
+		/* Shrink letters so the whole word plus both hand slots fits one line. */
+		--cap-w: min(
+			clamp(4.2rem, 15vw, 10rem),
+			calc((100vw - 2rem - 2 * var(--hand-w) - 2 * var(--row-gap) - (var(--n) - 1) * var(--gap)) / var(--n))
+		);
 		display: flex;
-		flex-wrap: wrap;
 		justify-content: center;
-		gap: clamp(0.4rem, 1.4vw, 1rem);
-		max-width: 96vw;
+		gap: var(--gap);
+		min-width: 0;
 	}
 	.replay {
 		width: 5.5rem;
@@ -468,17 +475,27 @@
 	}
 
 	.keyboard {
+		/* 10 keys in the top row: fit them inside the viewport minus padding, gaps and borders. */
+		--key-gap: clamp(0.2rem, 1vw, 0.45rem);
+		--key-w: min(4.2rem, calc((100vw - 2rem - 2 * var(--kb-pad) - 9 * var(--key-gap) - 2 * var(--line)) / 10));
+		--kb-pad: clamp(0.4rem, 2vw, 1rem);
 		display: flex;
 		flex-direction: column;
-		gap: 0.55rem;
-		padding: 1rem;
+		gap: var(--key-gap);
+		padding: var(--kb-pad);
 		border: var(--line) solid var(--ink);
 		border-radius: 22px;
 	}
 	.row {
 		display: flex;
-		gap: 0.45rem;
-		padding-left: var(--indent);
+		gap: var(--key-gap);
+		padding-left: calc(var(--indent) * var(--key-w));
+	}
+	/* Phones held upright: narrow keys, but plenty of height, so make them taller to tap. */
+	@media (orientation: portrait) and (max-width: 600px) {
+		.keyboard {
+			--key-ratio: 1.45;
+		}
 	}
 
 	.sticker {
