@@ -1,3 +1,10 @@
+{#snippet handCue(side: 'left' | 'right')}
+	{@const on = !!target && hand(target) === side}
+	{#key on && game.index}
+		<div class="hand {side}" class:on aria-hidden="true"><span>✋</span></div>
+	{/key}
+{/snippet}
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { game, ROUND_WORDS } from '#lib/game.svelte.ts';
@@ -119,6 +126,8 @@
 		</ol>
 
 		<section class="stage">
+			<div class="word-row">
+				{@render handCue('left')}
 			{#key game.word + (game.phase === 'listening')}
 				<div class="word" aria-live="polite" aria-label={game.phase === 'listening' ? 'Listen' : game.word}>
 					{#each game.word.split('') as letter, i (i)}
@@ -135,6 +144,8 @@
 					{/each}
 				</div>
 			{/key}
+				{@render handCue('right')}
+			</div>
 
 			<button
 				type="button"
@@ -383,6 +394,47 @@
 		animation: countpop 300ms ease-out;
 	}
 
+	.word-row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: clamp(0.5rem, 2vw, 1.5rem);
+		width: 100%;
+	}
+	/* Both slots always exist so the word never shifts when the hand changes sides. */
+	.hand {
+		flex: none;
+		width: clamp(3.5rem, 9vw, 6rem);
+		aspect-ratio: 1;
+		display: grid;
+		place-items: center;
+		border: var(--line) solid var(--ink);
+		border-radius: 50%;
+		box-shadow: 0 var(--line) 0 var(--ink);
+		font-size: clamp(2rem, 5.5vw, 3.6rem);
+		line-height: 1;
+		visibility: hidden;
+	}
+	.hand.on {
+		visibility: visible;
+		animation: pop 220ms cubic-bezier(0.3, 1.6, 0.6, 1);
+	}
+	.hand.left {
+		background: var(--red);
+	}
+	.hand.right {
+		background: var(--blue);
+	}
+	/* ✋ is a right hand; mirror it for the left. */
+	.hand.left span {
+		display: inline-block;
+		transform: scaleX(-1);
+	}
+	@keyframes pop {
+		from {
+			transform: scale(0.6);
+		}
+	}
 	.word {
 		display: flex;
 		flex-wrap: wrap;
