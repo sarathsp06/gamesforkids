@@ -8,6 +8,8 @@ Three games for young children (about 4–8), picked from the home screen.
 
 **Spell Pick** (`/spell/`) is a spelling game. It says a word out loud in English or Dutch, and the child picks the right spelling from three choices; the wrong ones are plausible misspellings (swapped letters, sound-alike substitutions like b/d or ei/ij). Five words earn a trophy.
 
+All games grade each answer by **how close** it was, not just right/wrong — picking *kat* for *cat* is a phonetic near miss (warm amber, "Almost!"), answering 56 for 57 is a counting slip. Stars are gold (first try), silver (one near miss) or bronze. The research behind this is in [docs/learning.md](docs/learning.md).
+
 Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech uses the browser's `speechSynthesis`.
 
 ## Develop
@@ -36,7 +38,8 @@ src/routes/letter-leap/       Letter Leap screens: start, play, reward, sticker 
 src/routes/spell/             Spell Pick screens: start, play, reward
 src/routes/math/              Number Dash screens: levels, questionnaires, play, result
 src/lib/math.ts               Number Dash levels, seeded questionnaires, unlock rule
-src/lib/spell.ts              Spell Pick misspelling generator
+src/lib/spell.ts              Spell Pick misspelling generator and phonetic similarity
+src/lib/score.ts              graded closeness scoring shared by all games
 src/lib/game.svelte.ts        game state machine and timings
 src/lib/words.ts              word lists, difficulty tiers, stickers, praise
 src/lib/audio.ts              speech and sound effects
@@ -44,5 +47,7 @@ src/lib/storage.ts            localStorage keys
 src/lib/Keycap.svelte         keyboard key
 src/lib/ParentDialog.svelte   parent settings
 docs/redesign.md              design spec
+docs/learning.md              research notes: how children learn, mapped to the scoring engine
+tests/score.test.ts           scoring assertions (npx tsx tests/score.test.ts)
 okf/                          knowledge bundle describing the previous Next.js version
 ```

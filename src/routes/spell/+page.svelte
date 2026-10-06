@@ -2,20 +2,31 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
-	import { choices, pickSpellWord } from '#lib/spell.ts';
+	import { choices, pickSpellWord, similarity } from '#lib/spell.ts';
+	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
 	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
 	import { loadLanguage, saveLanguage } from '#lib/storage.ts';
 
 	const ROUND_WORDS = 5;
 	const SLOW = 0.45; // extra slow: the child has to catch every sound
 	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+	/** Positive-first framing: a near miss is "almost", never "wrong". */
+	const ALMOST: Record<Language, string[]> = {
+		en: ['Almost!', 'So close!'],
+		nl: ['Bijna!', 'Heel dichtbij!']
+	};
+	const MEDAL: Record<Grade, string> = { gold: '★', silver: '★', bronze: '★' };
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
 	let word = $state('');
 	let options = $state<string[]>([]);
-	/** Wrong picks this word, greyed out. */
+	/** Wrong picks this word: greyed out, near misses in amber. */
 	let crossed = $state<string[]>([]);
+	let nearPicks = $state<string[]>([]);
+	/** Similarity of each wrong pick this word; folds into the word's grade. */
+	let wrongSims: number[] = [];
+	let grades = $state<Grade[]>([]);
 	let solved = $state(false);
 	let wordsDone = $state(0);
 	let timer = 0;
@@ -32,12 +43,15 @@
 		word = pickSpellWord(language);
 		options = choices(word, language);
 		crossed = [];
+		nearPicks = [];
+		wrongSims = [];
 		solved = false;
 		speak(word.toLowerCase(), language, undefined, SLOW);
 	}
 
 	function play() {
 		wordsDone = 0;
+		grades = [];
 		phase = 'play';
 		nextWord();
 	}
@@ -47,6 +61,7 @@
 		if (option === word) {
 			solved = true;
 			wordsDone++;
+			grades = [...grades, gradeAttempts(wrongSims)];
 			sfx.chime();
 			speak(`${word.toLowerCase()}. ${random(PRAISE[language])}`, language, undefined, SLOW);
 			clearTimeout(timer);
@@ -55,9 +70,18 @@
 				else nextWord();
 			}, 1800);
 		} else {
+			const sim = similarity(option, word, language);
+			wrongSims.push(sim);
 			crossed = [...crossed, option];
-			sfx.bloop();
-			speak(word.toLowerCase(), language, undefined, SLOW);
+			if (sim >= NEAR) {
+				// Sounds right, spelled differently: encourage, then repeat the word.
+				nearPicks = [...nearPicks, option];
+				sfx.tok();
+				speak(`${random(ALMOST[language])} ${word.toLowerCase()}`, language, undefined, SLOW);
+			} else {
+				sfx.bloop();
+				speak(word.toLowerCase(), language, undefined, SLOW);
+			}
 		}
 	}
 </script>
@@ -93,7 +117,7 @@
 	{:else if phase === 'play'}
 		<ol class="dots" aria-label="{wordsDone} of {ROUND_WORDS}">
 			{#each Array.from({ length: ROUND_WORDS }, (_, i) => i) as i (i)}
-				<li class:on={i < wordsDone}>{i < wordsDone ? '★' : ''}</li>
+				<li class={grades[i]}>{grades[i] ? '★' : ''}</li>
 			{/each}
 		</ol>
 		<section class="stage">
@@ -105,6 +129,7 @@
 							type="button"
 							class="option"
 							class:right={solved && option === word}
+							class:near={nearPicks.includes(option)}
 							class:wrong={crossed.includes(option)}
 							disabled={solved || crossed.includes(option)}
 							onclick={() => pick(option)}>{option.toLowerCase()}</button
@@ -114,11 +139,12 @@
 			</div>
 		</section>
 	{:else}
+		{@const golds = grades.filter((g) => g === 'gold').length}
 		<section class="stage">
-			<div class="trophy" aria-label="Round done">🏆</div>
+			<div class="trophy" aria-label="Round done">{golds === ROUND_WORDS ? '🏆' : golds >= 3 ? '🥇' : '🥈'}</div>
 			<div class="stars" aria-hidden="true">
-				{#each Array.from({ length: ROUND_WORDS }, (_, i) => i) as i (i)}
-					<span style="--d: {i * 120}ms">★</span>
+				{#each grades as g, i (i)}
+					<span class={g} style="--d: {i * 120}ms">★</span>
 				{/each}
 			</div>
 			<div class="actions">
@@ -231,8 +257,18 @@
 		font-size: clamp(1rem, 3.8vw, 1.5rem);
 		line-height: 1;
 	}
-	.dots li.on {
+	/* Grade colors: gold (first try), silver (one near miss), bronze (kept trying). */
+	.dots li.gold,
+	.stars span.gold {
 		background: var(--sun);
+	}
+	.dots li.silver,
+	.stars span.silver {
+		background: #c9ced6;
+	}
+	.dots li.bronze,
+	.stars span.bronze {
+		background: #e0a172;
 	}
 
 	.options {
@@ -279,6 +315,12 @@
 		text-decoration: line-through;
 		text-decoration-thickness: 4px;
 	}
+	/* A near miss sounded right: warm amber, no strike-through shaming. */
+	.option.near {
+		background: #ffe2a8;
+		color: #8a6d1a;
+		text-decoration: none;
+	}
 
 	.trophy {
 		font-size: clamp(6rem, 24vw, 10rem);
@@ -288,9 +330,16 @@
 	.stars {
 		display: flex;
 		gap: 0.6rem;
-		font-size: 2.6rem;
-		color: var(--sun);
-		-webkit-text-stroke: 2px var(--ink);
+	}
+	.stars span {
+		display: grid;
+		place-items: center;
+		width: 2.6rem;
+		height: 2.6rem;
+		border: 3px solid var(--ink);
+		border-radius: 50%;
+		font-size: 1.6rem;
+		line-height: 1;
 	}
 	.stars span {
 		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;

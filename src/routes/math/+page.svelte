@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { sfx } from '#lib/audio.ts';
+	import { NEAR, gradeAttempts, numberSimilarity, type Grade } from '#lib/score.ts';
 	import { loadMath, saveMath, type MathProgress } from '#lib/storage.ts';
 	import {
 		LEVELS, PASS_MS, PASS_SETS, QUESTIONS_PER_SET, SETS_PER_LEVEL,
@@ -19,6 +20,11 @@
 	let input = $state('');
 	let mistakes = $state(0);
 	let wrongFlash = $state(0);
+	/** Was the last miss close (off-by-one, swapped digits)? Warmer flash. */
+	let nearMiss = $state(false);
+	/** Grade per answered question: gold / silver / bronze. */
+	let grades = $state<Grade[]>([]);
+	let wrongSims: number[] = [];
 	let startedAt = 0;
 	let now = $state(0);
 	let finishMs = $state(0);
@@ -46,6 +52,9 @@
 		input = '';
 		mistakes = 0;
 		wrongFlash = 0;
+		nearMiss = false;
+		grades = [];
+		wrongSims = [];
 		startedAt = now = performance.now();
 		clearInterval(tick);
 		tick = window.setInterval(() => (now = performance.now()), 100);
@@ -68,10 +77,16 @@
 		if (!input) return;
 		if (Number(input) === questions[index].answer) {
 			sfx.tok();
+			grades = [...grades, gradeAttempts(wrongSims)];
+			wrongSims = [];
 			input = '';
 			if (++index === questions.length) finish();
 		} else {
-			sfx.bloop();
+			const sim = numberSimilarity(Number(input), questions[index].answer);
+			wrongSims.push(sim);
+			nearMiss = sim >= NEAR;
+			if (nearMiss) sfx.tok();
+			else sfx.bloop();
 			mistakes++;
 			wrongFlash++;
 			input = '';
@@ -159,12 +174,12 @@
 
 			<ol class="dots" aria-label="{index} of {QUESTIONS_PER_SET}">
 				{#each questions as _, i (i)}
-					<li class:on={i < index} class:now={i === index}></li>
+					<li class={grades[i]} class:on={i < index} class:now={i === index}></li>
 				{/each}
 			</ol>
 
 			{#key wrongFlash}
-				<div class="question" class:wobble={wrongFlash > 0} aria-live="polite">
+				<div class="question" class:wobble={wrongFlash > 0} class:near={nearMiss} aria-live="polite">
 					<span>{questions[index].text} =</span>
 					<output class="answer" class:empty={!input}>{input || '?'}</output>
 				</div>
@@ -196,6 +211,11 @@
 				{#if !record}<span class="pill">🏆 {seconds(previousBest!)}</span>{/if}
 				<span class="pill">✗ {mistakes}</span>
 			</p>
+			<span class="grade-stars" aria-label="Stars per question">
+				{#each grades as g, i (i)}
+					<i class={g}>★</i>
+				{/each}
+			</span>
 			<span class="pips big" aria-label="{Math.min(passedSets(progress.best, level), PASS_SETS)} of {PASS_SETS} passed">
 				{#each Array.from({ length: PASS_SETS }, (_, p) => p) as p (p)}
 					<i class:on={p < passedSets(progress.best, level)}></i>
@@ -326,6 +346,23 @@
 		width: 1.6rem;
 		height: 1.6rem;
 	}
+	/* One star per question on the done screen, colored by grade. */
+	.grade-stars {
+		display: flex;
+		gap: 0.3rem;
+		font-size: 1.5rem;
+		-webkit-text-stroke: 1.5px var(--ink);
+	}
+	.grade-stars i {
+		font-style: normal;
+		color: #e0a172;
+	}
+	.grade-stars i.gold {
+		color: var(--sun);
+	}
+	.grade-stars i.silver {
+		color: #c9ced6;
+	}
 
 	.title {
 		margin: 0;
@@ -418,6 +455,13 @@
 	.dots li.now {
 		background: var(--sun);
 	}
+	/* Question grades: silver = one near miss, bronze = kept trying. */
+	.dots li.silver {
+		background: #c9ced6;
+	}
+	.dots li.bronze {
+		background: #e0a172;
+	}
 
 	.question {
 		display: flex;
@@ -444,6 +488,20 @@
 	}
 	.wobble .answer {
 		animation: wobble 300ms ease-in-out;
+	}
+	/* A near miss (off-by-one, swapped digits) wobbles warm amber, not red. */
+	.near.wobble .answer {
+		animation-name: wobble-near;
+	}
+	@keyframes wobble-near {
+		25% {
+			transform: rotate(-6deg);
+			background: #ffe2a8;
+		}
+		75% {
+			transform: rotate(6deg);
+			background: #ffe2a8;
+		}
 	}
 	@keyframes wobble {
 		25% {

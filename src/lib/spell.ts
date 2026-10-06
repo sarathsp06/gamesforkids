@@ -1,3 +1,4 @@
+import { editSimilarity } from './score';
 import type { Language } from './words';
 
 const random = <T>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
@@ -51,6 +52,43 @@ export function choices(word: string, language: Language, count = 3): string[] {
 		if (m !== word) wrong.add(m);
 	}
 	return [word, ...wrong].sort(() => Math.random() - 0.5);
+}
+
+/** Digraphs that sound identical: normalize before measuring distance. */
+const SOUND_NORM: Record<Language, [RegExp, string][]> = {
+	en: [[/CK/g, 'K'], [/PH/g, 'F']],
+	nl: [[/IJ/g, 'EI'], [/OU/g, 'AU'], [/CH/g, 'G']]
+};
+const VOWELS = 'AEIOUY';
+
+/**
+ * Phonetic closeness 0–1: weighted edit distance where edits that barely
+ * change the sound are cheap. KAT→CAT ≈ 0.83 (sound-alike first letter),
+ * MAN→CAT ≈ 0.33. Getting the first sound wrong costs double: the word
+ * onset is what children latch onto first.
+ */
+export function similarity(guess: string, word: string, language: Language): number {
+	let a = guess, b = word;
+	for (const [re, to] of SOUND_NORM[language]) {
+		a = a.replace(re, to);
+		b = b.replace(re, to);
+	}
+	const cheap = new Set(
+		CONFUSIONS[language]
+			.filter(([x, y]) => x.length === 1 && y.length === 1)
+			.flatMap(([x, y]) => [x + y, y + x])
+	);
+	return editSimilarity(a, b, {
+		sub: (x, y, i, j) => {
+			if (x === y) return 0;
+			const base = cheap.has(x + y) ? 0.25 : VOWELS.includes(x) && VOWELS.includes(y) ? 0.5 : 1;
+			return i === 0 && j === 0 ? base * 2 : base;
+		},
+		// Deleting/inserting one half of a double letter keeps the sound: cheap.
+		indel: (s, i) => (s[i] === s[i - 1] || s[i] === s[i + 1] ? 0.35 : 1),
+		// Adjacent swap: right letters, wrong order — but it sounds different.
+		swap: 0.8
+	});
 }
 
 /** Everyday words young children know: animals, food, home, body, weather. 4+ letters so there is something to spell. */

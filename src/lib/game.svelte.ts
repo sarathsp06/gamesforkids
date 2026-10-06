@@ -4,6 +4,7 @@ import {
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
 import { MAX_TIER, PRAISE, STICKERS, pickWord, type Language } from './words';
+import { gradeAttempts, keySimilarity, type Grade } from './score';
 
 export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward' | 'stickers';
 
@@ -30,11 +31,15 @@ class Game {
 	/** Next key pulses after an idle replay or a miss. */
 	hint = $state(false);
 	roundWords = $state(0);
+	/** Grade per finished word this round: gold / silver / bronze stars. */
+	grades = $state<Grade[]>([]);
 	newSticker = $state('');
 
 	#missesOnLetter = 0;
 	#idleReplays = 0;
 	#roundMisses = 0;
+	/** Similarity of each wrong press on the current word. */
+	#wrongSims: number[] = [];
 	#session = { startedAt: 0, correct: 0, total: 0, words: 0, streak: 0, longestStreak: 0, stickers: 0 };
 	#timers: number[] = [];
 
@@ -70,6 +75,7 @@ class Game {
 			this.#session = { startedAt: Date.now(), correct: 0, total: 0, words: 0, streak: 0, longestStreak: 0, stickers: 0 };
 		}
 		this.roundWords = 0;
+		this.grades = [];
 		this.#roundMisses = 0;
 		this.#nextWord();
 	}
@@ -78,6 +84,7 @@ class Game {
 		this.word = pickWord(this.language, this.progress.tier);
 		this.index = 0;
 		this.#missesOnLetter = 0;
+		this.#wrongSims = [];
 		this.#idleReplays = 0;
 		this.hint = false;
 		this.#clearTimers();
@@ -132,6 +139,7 @@ class Game {
 			s.streak = 0;
 			this.#roundMisses++;
 			this.#missesOnLetter++;
+			this.#wrongSims.push(keySimilarity(letter, target));
 			this.hint = true;
 			this.lastPress = { ok: false, n: this.lastPress.n + 1 };
 			sfx.bloop();
@@ -145,6 +153,7 @@ class Game {
 		this.phase = 'wordDone';
 		this.#session.words++;
 		this.roundWords++;
+		this.grades = [...this.grades, gradeAttempts(this.#wrongSims)];
 		let done = false;
 		const next = () => {
 			if (done || this.phase !== 'wordDone') return;

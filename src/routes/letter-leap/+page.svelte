@@ -125,7 +125,7 @@
 		</div>
 		<ol class="dots" aria-label="{game.roundWords} of {ROUND_WORDS}">
 			{#each Array.from({ length: ROUND_WORDS }, (_, i) => i) as i (i)}
-				<li class:on={i < game.roundWords}>{i < game.roundWords ? '★' : ''}</li>
+				<li class={game.grades[i]} class:on={i < game.roundWords}>{i < game.roundWords ? '★' : ''}</li>
 			{/each}
 		</ol>
 
@@ -398,6 +398,13 @@
 	.dots li.on {
 		background: var(--sun);
 		animation: countpop 300ms ease-out;
+	}
+	/* Word grades: silver = one near slip (neighbour key…), bronze = kept trying. */
+	.dots li.silver {
+		background: #c9ced6;
+	}
+	.dots li.bronze {
+		background: #e0a172;
 	}
 
 	.word-row {
