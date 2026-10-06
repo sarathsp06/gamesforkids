@@ -59,3 +59,15 @@ export const loadProgress = (): Progress => {
 	return p?.v === 1 ? { ...defaultProgress(), ...p } : defaultProgress();
 };
 export const saveProgress = (p: Progress) => write(PROGRESS, p);
+
+/** Number Dash: best finishing time in ms per questionnaire, keyed `${level}-${set}`. */
+export interface MathProgress {
+	v: 1;
+	best: Record<string, number>;
+}
+const MATH = 'mathProgress';
+export const loadMath = (): MathProgress => {
+	const p = read<Partial<MathProgress> | null>(MATH, null);
+	return p?.v === 1 && p.best && typeof p.best === 'object' ? { v: 1, best: p.best } : { v: 1, best: {} };
+};
+export const saveMath = (p: MathProgress) => write(MATH, p);
