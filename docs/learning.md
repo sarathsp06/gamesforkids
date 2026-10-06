@@ -37,6 +37,16 @@ word (positive-first framing, immediate, spoken — pre-readers can't read error
 far misses get a gentle bloop and the prompt again. Grades show as colored stars, which are
 performance information (safe) rather than contracted prizes (overjustification risk, Lepper).
 
+## Known deviations from the research
+
+- **Number Dash shows a ticking clock bar** during play, which the numeracy brief advises
+  against for ages 4–6 (Boaler; Henry & Brown). Kept for now because the game was designed
+  around beating best times; the fix (opt-in speed play, invisible timing) is listed below.
+- **The spelling scorer is edit distance with phonetic costs, not true phonological distance**:
+  the brief recommends grapheme-to-phoneme comparison (Tangel–Blachman style). Our kernel
+  approximates it — sound-alike substitutions and digraph normalization are cheap — but it
+  compares letters, not phonemes, so some sound-identical spellings still score below 1.
+
 ## Recorded for later (not yet built)
 
 - **Adaptive difficulty at the 85% rule** (Wilson 2019): target 75–90% success on a rolling
