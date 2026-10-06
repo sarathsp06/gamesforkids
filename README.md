@@ -1,6 +1,10 @@
-# Letter Leap
+# Games for Kids
 
-A typing game for young children (about 4–8). The game says a word out loud in English or Dutch, and the child finds its letters on the keyboard. Left-hand keys are red, right-hand keys are blue, and the next key glows yellow. Five words earn a sticker.
+Two games for young children (about 4–8), picked from the home screen.
+
+**Letter Leap** (`/letter-leap/`) is a typing game. It says a word out loud in English or Dutch, and the child finds its letters on the keyboard. Left-hand keys are red, right-hand keys are blue, the next key glows yellow, and a hand badge beside the word shows which hand to use. Five words earn a sticker.
+
+**Number Dash** (`/math/`) is a timed math game. It has 10 levels of increasing difficulty, from sums up to 5 to the times tables. Each level has 10 fixed questionnaires of 10 questions, so times can be compared. Every questionnaire keeps its best time. Finishing 3 questionnaires of a level in under 1 minute each unlocks the next level. Unlocked levels stay open for practice.
 
 Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech uses the browser's `speechSynthesis`.
 
@@ -25,7 +29,10 @@ Hold the gear on the start screen for 3 seconds to open settings: language, word
 ## Layout
 
 ```
-src/routes/+page.svelte       screens: start, play, reward, sticker book
+src/routes/+page.svelte       game hub
+src/routes/letter-leap/       Letter Leap screens: start, play, reward, sticker book
+src/routes/math/              Number Dash screens: levels, questionnaires, play, result
+src/lib/math.ts               Number Dash levels, seeded questionnaires, unlock rule
 src/lib/game.svelte.ts        game state machine and timings
 src/lib/words.ts              word lists, difficulty tiers, stickers, praise
 src/lib/audio.ts              speech and sound effects
