@@ -18,28 +18,32 @@ const plus = (a: number, b: number): Question => ({ text: `${a} + ${b}`, answer:
 const minus = (a: number, b: number): Question => ({ text: `${a} − ${b}`, answer: a - b });
 const times = (a: number, b: number): Question => ({ text: `${a} × ${b}`, answer: a * b });
 
-function addWithin(rng: Rng, max: number, minSum = 2) {
-	const sum = int(rng, minSum, max);
-	const a = int(rng, 1, sum - 1);
-	return plus(a, sum - a);
+/** Random number with exactly `d` digits (1-digit excludes 0). */
+const digits = (rng: Rng, d: number) => int(rng, d === 1 ? 1 : 10 ** (d - 1), 10 ** d - 1);
+const add = (rng: Rng, da: number, db: number) => plus(digits(rng, da), digits(rng, db));
+/** a − b with a of `da` digits and b of `db` digits, never negative. */
+function sub(rng: Rng, da: number, db: number) {
+	const lo = db === 1 ? 1 : 10 ** (db - 1);
+	const a = Math.max(digits(rng, da), lo + 1);
+	return minus(a, int(rng, lo, Math.min(10 ** db - 1, a - 1)));
 }
-function subtractWithin(rng: Rng, max: number, minTop = 2) {
-	const a = int(rng, minTop, max);
-	return minus(a, int(rng, 1, a - 1));
-}
+const addOrSub = (rng: Rng, da: number, db: number) => (rng() < 0.5 ? add(rng, da, db) : sub(rng, da, db));
 
 /** Ordered easiest to hardest; `example` is shown on the level button. */
 export const LEVELS: { example: string; make: (rng: Rng) => Question }[] = [
-	{ example: '2 + 1', make: (r) => addWithin(r, 5) },
-	{ example: '4 + 5', make: (r) => addWithin(r, 10, 6) },
-	{ example: '7 − 3', make: (r) => subtractWithin(r, 10) },
-	{ example: '6 ± 2', make: (r) => (r() < 0.5 ? addWithin(r, 10) : subtractWithin(r, 10)) },
-	{ example: '8 + 7', make: (r) => addWithin(r, 20, 11) },
-	{ example: '15 − 6', make: (r) => subtractWithin(r, 20, 11) },
-	{ example: '13 ± 5', make: (r) => (r() < 0.5 ? addWithin(r, 20, 11) : subtractWithin(r, 20, 11)) },
-	{ example: '34 + 8', make: (r) => (r() < 0.5 ? plus(int(r, 10, 90), int(r, 2, 9)) : minus(int(r, 12, 99), int(r, 2, 9))) },
-	{ example: '5 × 4', make: (r) => times([2, 5, 10][int(r, 0, 2)], int(r, 1, 10)) },
-	{ example: '7 × 8', make: (r) => times(int(r, 2, 10), int(r, 2, 10)) }
+	{ example: '4 + 5', make: (r) => add(r, 1, 1) },
+	{ example: '23 + 45', make: (r) => add(r, 2, 2) },
+	{ example: '123 + 456', make: (r) => add(r, 3, 3) },
+	{ example: '34 ± 8', make: (r) => addOrSub(r, 2, 1) },
+	{ example: '74 − 36', make: (r) => sub(r, 2, 2) },
+	{ example: '345 ± 27', make: (r) => addOrSub(r, 3, 2) },
+	{ example: '612 − 348', make: (r) => sub(r, 3, 3) },
+	{ example: '7 × 8', make: (r) => times(digits(r, 1), digits(r, 1)) },
+	{ example: '24 × 3', make: (r) => times(digits(r, 2), digits(r, 1)) },
+	{ example: '48 ÷ 6', make: (r) => {
+		const b = int(r, 2, 9), q = int(r, 2, 12);
+		return { text: `${b * q} ÷ ${b}`, answer: q };
+	} }
 ];
 
 /** mulberry32: tiny seeded PRNG so questionnaire N of a level is the same every time (times stay comparable). */
@@ -56,7 +60,7 @@ function seeded(seed: number): Rng {
 export function questionnaire(level: number, set: number): Question[] {
 	const rng = seeded(level * 1000 + set + 1);
 	const out: Question[] = [];
-	// Level 1 has exactly 10 distinct sums, so allow a repeat only if uniqueness is impossible.
+	// Reject repeats within a set; the try cap is only a safety net.
 	for (let tries = 0; out.length < QUESTIONS_PER_SET; tries++) {
 		const q = LEVELS[level].make(rng);
 		if (tries > 500 || !out.some((o) => o.text === q.text)) out.push(q);

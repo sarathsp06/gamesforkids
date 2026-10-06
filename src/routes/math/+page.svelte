@@ -82,7 +82,7 @@
 		if (screen !== 'play') return;
 		if (key === '⌫') input = input.slice(0, -1);
 		else if (key === '✓') submit();
-		else if (input.length < 3) input += key;
+		else if (input.length < 4) input += key;
 	}
 
 	function onkeydown(e: KeyboardEvent) {
