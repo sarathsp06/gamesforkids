@@ -10,6 +10,9 @@
 		<a class="game numbers" href={resolve('/math')} aria-label="Number Dash">
 			<span class="caps" aria-hidden="true"><b>1</b><i>+</i><b>2</b></span>
 		</a>
+		<a class="game spelling" href={resolve('/spell')} aria-label="Spell Pick">
+			<span class="caps" aria-hidden="true"><i>🔊</i><b class="g">C</b></span>
+		</a>
 	</nav>
 </main>
 
@@ -47,6 +50,13 @@
 	}
 	.numbers {
 		background: var(--sun);
+	}
+	.spelling {
+		background: var(--paper);
+	}
+	b.g {
+		background: var(--leaf);
+		color: var(--paper);
 	}
 	.caps {
 		display: flex;
