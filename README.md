@@ -6,9 +6,9 @@ Three games for young children (about 4–8), picked from the home screen.
 
 **Number Dash** (`/math/`) is a timed math game with 10 levels of increasing difficulty: 1-digit +, 2-digit +, 3-digit +, 2-digit ± 1-digit, 2-digit −, 3-digit ± 2-digit, 3-digit −, times tables, 2-digit × 1-digit, and division. Each level has 10 fixed questionnaires of 10 questions, so times can be compared. Every questionnaire keeps its best time. Finishing 3 questionnaires of a level in under 1 minute each unlocks the next level. Unlocked levels stay open for practice.
 
-**Spell Pick** (`/spell/`) is a spelling game. It says a word out loud in English or Dutch, and the child picks the right spelling from three choices; the wrong ones are plausible misspellings (swapped letters, sound-alike substitutions like b/d or ei/ij). Five words earn a trophy.
+**Spell Pick** (`/spell/`) is a word-recognition game. After a short pause it says a word out loud in English or Dutch, and the child picks it from three real words (e.g. *book*, *car*, *cat*). Five words earn a trophy.
 
-All games grade each answer by **how close** it was, not just right/wrong — picking *kat* for *cat* is a phonetic near miss (warm amber, "Almost!"), answering 56 for 57 is a counting slip. Stars are gold (first try), silver (one near miss) or bronze. The research behind this is in [docs/learning.md](docs/learning.md).
+All games grade each answer by **how close** it was, not just right/wrong — typing R for T (neighbour key) is a near slip, answering 56 for 57 is a counting slip (warm amber, "Almost!"). Stars are gold (first try), silver (one near miss) or bronze. The research behind this is in [docs/learning.md](docs/learning.md).
 
 Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech uses the browser's `speechSynthesis`.
 

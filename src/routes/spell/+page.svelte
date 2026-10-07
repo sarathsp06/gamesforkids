@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
+	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
 	import { choices, pickSpellWord, similarity } from '#lib/spell.ts';
 	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
 	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
@@ -9,6 +9,7 @@
 
 	const ROUND_WORDS = 5;
 	const SLOW = 0.45; // extra slow: the child has to catch every sound
+	const BREATHE_MS = 900; // small pause before the word is spoken, on start and between words
 	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
 	/** Positive-first framing: a near miss is "almost", never "wrong". */
 	const ALMOST: Record<Language, string[]> = {
@@ -35,9 +36,12 @@
 		language = loadLanguage();
 		return () => {
 			clearTimeout(timer);
+			clearTimeout(speakTimer);
 			stopSpeech();
 		};
 	});
+
+	let speakTimer = 0;
 
 	function nextWord() {
 		word = pickSpellWord(language);
@@ -46,18 +50,21 @@
 		nearPicks = [];
 		wrongSims = [];
 		solved = false;
-		speak(word.toLowerCase(), language, undefined, SLOW);
+		clearTimeout(speakTimer);
+		speakTimer = window.setTimeout(() => speak(word.toLowerCase(), language, undefined, SLOW), BREATHE_MS);
 	}
 
 	function play() {
 		wordsDone = 0;
 		grades = [];
 		phase = 'play';
+		unlockSpeech(); // the word itself is spoken after a pause, outside the gesture
 		nextWord();
 	}
 
 	function pick(option: string) {
 		if (solved || crossed.includes(option)) return;
+		clearTimeout(speakTimer); // a pick answers the word: don't speak it over the feedback
 		if (option === word) {
 			solved = true;
 			wordsDone++;
@@ -91,7 +98,7 @@
 		{#if phase === 'start'}
 			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); stopSpeech(); phase = 'start'; }}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); clearTimeout(speakTimer); stopSpeech(); phase = 'start'; }}>⌂</button>
 		{/if}
 	</div>
 

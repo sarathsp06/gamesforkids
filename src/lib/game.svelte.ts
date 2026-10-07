@@ -1,4 +1,4 @@
-import { speak, stopSpeech, sfx, soundOn } from './audio';
+import { speak, stopSpeech, sfx, soundOn, unlockSpeech } from './audio';
 import {
 	loadLanguage, loadProgress, loadSessions, saveLanguage, saveProgress, saveSessions,
 	defaultProgress, type Progress, type SessionStats
@@ -10,6 +10,7 @@ export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward' | '
 
 export const ROUND_WORDS = 5;
 const REVEAL_FALLBACK_MS = 4000;
+const BREATHE_MS = 900; // small pause before each word is spoken
 const IDLE_MS = 8000;
 const MAX_IDLE_REPLAYS = 2;
 const NEXT_AFTER_PRAISE_MS = 600;
@@ -77,6 +78,7 @@ class Game {
 		this.roundWords = 0;
 		this.grades = [];
 		this.#roundMisses = 0;
+		unlockSpeech(); // the word itself is spoken after a pause, outside the gesture
 		this.#nextWord();
 	}
 
@@ -96,8 +98,8 @@ class Game {
 			this.phase = 'typing';
 			this.#armIdle();
 		};
-		speak(this.word.toLowerCase(), this.language, reveal);
-		this.#later(reveal, REVEAL_FALLBACK_MS); // Chrome sometimes never fires onend
+		this.#later(() => speak(this.word.toLowerCase(), this.language, reveal), BREATHE_MS);
+		this.#later(reveal, BREATHE_MS + REVEAL_FALLBACK_MS); // Chrome sometimes never fires onend
 	}
 
 	replay() {

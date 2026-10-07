@@ -1,9 +1,7 @@
 import { editSimilarity } from './score';
 import type { Language } from './words';
 
-const random = <T>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
-
-/** Plausible misspellings: sound-alike or look-alike substitutions per language. */
+/** Sound-alike or look-alike letters per language: cheap substitutions in `similarity`. */
 const CONFUSIONS: Record<Language, [string, string][]> = {
 	en: [
 		['A', 'E'], ['E', 'I'], ['O', 'U'], ['C', 'K'], ['S', 'Z'], ['B', 'D'], ['F', 'V'],
@@ -15,43 +13,10 @@ const CONFUSIONS: Record<Language, [string, string][]> = {
 	]
 };
 
-function mutate(word: string, language: Language): string {
-	const kind = Math.floor(Math.random() * 4);
-	const i = Math.floor(Math.random() * word.length);
-	if (kind === 0) {
-		// Substitute via a confusion pair, either direction.
-		const pairs = CONFUSIONS[language].flatMap(([a, b]) => [[a, b], [b, a]]);
-		const hits = pairs.filter(([a]) => word.includes(a));
-		if (hits.length) {
-			const [a, b] = random(hits);
-			const at = word.indexOf(a);
-			return word.slice(0, at) + b + word.slice(at + a.length);
-		}
-	}
-	if (kind === 1 && word.length >= 3) {
-		// Swap two adjacent letters.
-		const j = Math.min(i, word.length - 2);
-		if (word[j] !== word[j + 1]) return word.slice(0, j) + word[j + 1] + word[j] + word.slice(j + 2);
-	}
-	if (kind === 2) {
-		// Double a letter, or collapse an existing double.
-		const dbl = word.match(/(.)\1/);
-		if (dbl) return word.replace(dbl[0], dbl[1]);
-		return word.slice(0, i + 1) + word[i] + word.slice(i + 1);
-	}
-	// Drop a letter (words of 4+ only).
-	if (word.length >= 4) return word.slice(0, i) + word.slice(i + 1);
-	return word;
-}
-
-/** The right spelling plus `count − 1` wrong ones, shuffled. */
+/** The spoken word plus `count − 1` other real words from the list, shuffled. */
 export function choices(word: string, language: Language, count = 3): string[] {
-	const wrong = new Set<string>();
-	for (let tries = 0; wrong.size < count - 1 && tries < 100; tries++) {
-		const m = mutate(word, language);
-		if (m !== word) wrong.add(m);
-	}
-	return [word, ...wrong].sort(() => Math.random() - 0.5);
+	const others = SPELL_WORDS[language].filter((w) => w !== word).sort(() => Math.random() - 0.5);
+	return [word, ...others.slice(0, count - 1)].sort(() => Math.random() - 0.5);
 }
 
 /** Digraphs that sound identical: normalize before measuring distance. */
@@ -91,15 +56,17 @@ export function similarity(guess: string, word: string, language: Language): num
 	});
 }
 
-/** Everyday words young children know: animals, food, home, body, weather. 4+ letters so there is something to spell. */
+/** Everyday words young children know: animals, food, home, body, weather. */
 export const SPELL_WORDS: Record<Language, string[]> = {
 	en: [
+		'CAT', 'DOG', 'CAR', 'SUN', 'BUS', 'PIG', 'HAT', 'BED', 'CUP', 'EGG',
 		'APPLE', 'BALL', 'BEAR', 'BIRD', 'BOAT', 'BOOK', 'CAKE', 'DUCK', 'FISH', 'FROG',
 		'TREE', 'STAR', 'MOON', 'MILK', 'LION', 'TIGER', 'HORSE', 'MOUSE', 'HOUSE', 'TRAIN',
 		'RAIN', 'SNOW', 'FLOWER', 'MONKEY', 'RABBIT', 'BANANA', 'YELLOW', 'GREEN', 'WATER', 'HAPPY',
 		'DADDY', 'MOMMY', 'BABY', 'SHOE', 'HAND', 'NOSE', 'BEACH', 'SCHOOL', 'CANDY', 'PIZZA'
 	],
 	nl: [
+		'KAT', 'BUS', 'ZON', 'BED', 'VIS', 'AAP', 'KOE', 'PET', 'KOP', 'AUTO',
 		'APPEL', 'BOOM', 'HUIS', 'EEND', 'PAARD', 'MUIS', 'BEER', 'GEIT', 'SCHAAP', 'KONIJN',
 		'POES', 'HOND', 'KIKKER', 'VLINDER', 'MAAN', 'STER', 'ROOD', 'GEEL', 'GROEN', 'BLAUW',
 		'BOEK', 'MELK', 'BROOD', 'PEER', 'BANAAN', 'TAART', 'FIETS', 'BOOT', 'TREIN', 'BLOEM',

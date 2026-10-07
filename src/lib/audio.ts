@@ -25,6 +25,14 @@ export function speak(text: string, language: Language, onDone?: () => void, rat
 
 export const stopSpeech = () => typeof speechSynthesis !== 'undefined' && speechSynthesis.cancel();
 
+/** Call inside the tap that starts a game: iOS only allows later, delayed speech once speech began in a gesture. */
+export function unlockSpeech() {
+	if (typeof speechSynthesis === 'undefined') return;
+	const u = new SpeechSynthesisUtterance(' ');
+	u.volume = 0;
+	speechSynthesis.speak(u);
+}
+
 let ctx: AudioContext | null = null;
 export let soundOn = { value: true };
 
