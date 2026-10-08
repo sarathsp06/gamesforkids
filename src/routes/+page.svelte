@@ -14,6 +14,7 @@
 			<span class="caps" aria-hidden="true"><i>🔊</i><b class="g">C</b></span>
 		</a>
 	</nav>
+	<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
 </main>
 
 <style>
@@ -21,7 +22,23 @@
 		min-height: 100dvh;
 		display: grid;
 		place-items: center;
+		align-content: center;
+		gap: 2.5rem;
 		padding: 2rem 1rem;
+	}
+	.about {
+		padding: 0.6rem 1.2rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 999px;
+		box-shadow: 0 4px 0 var(--ink);
+		background: var(--paper);
+		color: inherit;
+		text-decoration: none;
+		font-weight: 700;
+	}
+	.about:active {
+		transform: translateY(4px);
+		box-shadow: none;
 	}
 	nav {
 		display: flex;
