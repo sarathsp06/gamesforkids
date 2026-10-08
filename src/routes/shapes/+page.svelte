@@ -90,9 +90,16 @@
 			done++;
 			grades = [...grades, gradeAttempts(wrongSims)];
 			sfx.chime();
-			speak(`${random(PRAISE[language])} ${q!.ask === 'find' ? FACT[language][q!.kind] : ''}`, language);
+			// Move on only after the praise and fact are fully spoken (fallback if TTS never reports the end).
+			const current = q;
+			const go = () => {
+				if (phase !== 'play' || q !== current) return;
+				clearTimeout(timer);
+				timer = window.setTimeout(() => (done >= ROUND ? finish() : next()), 700);
+			};
+			speak(`${random(PRAISE[language])} ${q!.ask === 'find' ? FACT[language][q!.kind] : ''}`, language, go);
 			clearTimeout(timer);
-			timer = window.setTimeout(() => (done >= ROUND ? finish() : next()), 2600);
+			timer = window.setTimeout(go, 12000);
 		} else {
 			wrongSims.push(o.sim);
 			crossed = [...crossed, o.id];
