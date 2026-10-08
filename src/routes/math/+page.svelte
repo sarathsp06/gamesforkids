@@ -201,6 +201,7 @@
 	{:else if screen === 'done'}
 		{@const passed = finishMs <= PASS_MS}
 		{@const record = previousBest === undefined || finishMs < previousBest}
+		{@const nextSet = Array.from({ length: SETS_PER_LEVEL }, (_, k) => (set + 1 + k) % SETS_PER_LEVEL).find((s) => best(level, s) === undefined) ?? (set + 1) % SETS_PER_LEVEL}
 		<section class="stage">
 			<div class="result" class:passed>
 				<span class="badge" aria-hidden="true">{passed ? '⭐' : '⏱'}</span>
@@ -222,10 +223,8 @@
 				{/each}
 			</span>
 			<div class="actions">
-				<button type="button" class="action play" aria-label="Try again" onclick={() => start(set)}>↻</button>
-				{#if set + 1 < SETS_PER_LEVEL}
-					<button type="button" class="action" aria-label="Next questionnaire" onclick={() => start(set + 1)}>▶</button>
-				{/if}
+				<button type="button" class="action play" aria-label="Next questionnaire" onclick={() => start(nextSet)}>▶</button>
+				<button type="button" class="action" aria-label="Try again" onclick={() => start(set)}>↻</button>
 				{#if level + 1 < LEVELS.length && isUnlocked(progress.best, level + 1)}
 					<button type="button" class="action next-level" aria-label="Next level" onclick={() => openLevel(level + 1)}>{level + 2}</button>
 				{/if}
