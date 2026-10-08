@@ -60,16 +60,11 @@
 			</li>
 		</ul>
 		<h3>Words (Spell Pick)</h3>
-		<ul>
-			<li>
-				<strong>Sounds right</strong> — <em>kat</em> for <em>cat</em>. Writing a word the way it sounds is a normal
-				stage of learning to spell, and a good sign for reading.
-			</li>
-			<li>
-				<strong>Not almost:</strong> a different first sound — <em>mouse</em> for <em>house</em>. That's a
-				different word, so it isn't counted as almost.
-			</li>
-		</ul>
+		<p>
+			The child hears a word and picks it from three different real words — <em>book</em>, <em>car</em>,
+			<em>cat</em>. A different word is a different meaning, so there is no “almost” here: <em>mouse</em> is not
+			<em>house</em>. A wrong pick simply gets a soft sound and another try.
+		</p>
 
 		<h2>Why</h2>
 		<ul>
