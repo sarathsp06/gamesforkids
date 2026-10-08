@@ -13,6 +13,9 @@
 		<a class="game spelling" href={resolve('/spell')} aria-label="Spell Pick">
 			<span class="caps" aria-hidden="true"><i>🔊</i><b class="g">C</b></span>
 		</a>
+		<a class="game shapes" href={resolve('/shapes')} aria-label="Shape Sense">
+			<span class="caps" aria-hidden="true"><b class="r">▲</b><b class="l">●</b></span>
+		</a>
 	</nav>
 	<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
 </main>
@@ -68,7 +71,8 @@
 	.numbers {
 		background: var(--sun);
 	}
-	.spelling {
+	.spelling,
+	.shapes {
 		background: var(--paper);
 	}
 	b.g {

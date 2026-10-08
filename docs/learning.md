@@ -31,6 +31,7 @@ children under ~11 learn poorly from negative feedback (van Duijvenvoorde).
 | Spell Pick | `similarity()` in `spell.ts`: edit distance with phonetic costs | sound-alike letters (K/C, EI/IJ) cheap; vowel-for-vowel cheap; double-letter drops cheap; first-sound change costs double (MOUSE ≠ HOUSE) |
 | Number Dash | `numberSimilarity()`: exact, except two named slips — from level 6 only | off by one (7 or 9 for 8: counting slip), last two digits swapped (47 for 74: Dutch inversion). 6 for 8 or 67 for 57 is far. |
 | Letter Leap | `keySimilarity()` per press | neighbour keys (motor slip), mirror letters (B/D, P/Q), sound-alikes (C/K, S/Z) |
+| Shape Sense | fixed per option in `question()` (`shapes.ts`) | level 3: the asked shape with a gap or a curved side (looks right, fails "straight sides, closed"); level 5: right shape, wrong colour (half the pattern). Shape levels follow Clements & Sarama's learning trajectory: prototypes → turned/stretched → defining attributes → classification → patterns. |
 
 **Spell Pick levels** (`choices()` in `spell.ts`): 1 clearly different real words (CAT / BOOK /
 BUS); 2 the closest real words (CAT / CAR / CANDY); 3 a sound-alike spelling + a far word

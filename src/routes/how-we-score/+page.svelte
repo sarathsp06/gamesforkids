@@ -85,6 +85,27 @@
 			normal stage of learning to spell and a good sign for reading — but a different first sound
 			(<em>mouse</em> for <em>house</em>) is a different word, so it never counts as almost.
 		</p>
+		<h3>Shapes (Shape Sense)</h3>
+		<p>
+			Everything is spoken and tapped, so no reading is needed. Five levels, each building on the one before:
+		</p>
+		<ol>
+			<li><strong>Find the shape</strong> — circle, triangle, square, rectangle, standing upright.</li>
+			<li>
+				<strong>Turned and stretched</strong> — a thin, tilted triangle is still a triangle. Young children often
+				only accept the “standard” upright one; this is the main shape lesson at this age.
+			</li>
+			<li>
+				<strong>Is it really one?</strong> — next to the real triangle sits one with a gap or a curved side. Picking
+				it is almost: it looks right, but a triangle needs straight sides, all joined up.
+			</li>
+			<li><strong>Odd one out</strong> — three of one shape in different sizes and turns, and one that's different.</li>
+			<li>
+				<strong>What comes next?</strong> — ● ▲ ● ▲ ● ?. The right shape in the wrong colour is almost: the child saw
+				half the pattern.
+			</li>
+		</ol>
+		<p>After every right answer the game says what makes the shape: “A triangle has three sides.”</p>
 
 		<h2>Why</h2>
 		<ul>

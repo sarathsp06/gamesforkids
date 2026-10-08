@@ -76,3 +76,8 @@ export const saveMath = (p: MathProgress) => write(MATH, p);
 const SPELL = 'spellLevel';
 export const loadSpellLevel = (): number => Math.max(1, Math.min(4, Number(read<number>(SPELL, 1)) || 1));
 export const saveSpellLevel = (l: number) => write(SPELL, String(l));
+
+/** Shape Sense: current level 1–5. */
+const SHAPES = 'shapeLevel';
+export const loadShapeLevel = (): number => Math.max(1, Math.min(5, Number(read<number>(SHAPES, 1)) || 1));
+export const saveShapeLevel = (l: number) => write(SHAPES, String(l));
