@@ -9,6 +9,9 @@
 		isUnlocked, passedSets, questionnaire, type Question
 	} from '#lib/math.ts';
 
+	/** 0-based: levels 1–5 are exact-only; from level 6 a counting slip or swapped digits counts as "almost". */
+	const NEAR_FROM_LEVEL = 5;
+
 	type Screen = 'levels' | 'sets' | 'play' | 'done';
 
 	let screen = $state<Screen>('levels');
@@ -82,7 +85,8 @@
 			input = '';
 			if (++index === questions.length) finish();
 		} else {
-			const sim = numberSimilarity(Number(input), questions[index].answer);
+			// Levels 1–5 are plain right/wrong; "almost" (counting slip, swapped digits) starts at level 6.
+			const sim = level >= NEAR_FROM_LEVEL ? numberSimilarity(Number(input), questions[index].answer) : 0;
 			wrongSims.push(sim);
 			nearMiss = sim >= NEAR;
 			if (nearMiss) sfx.tok();

@@ -62,25 +62,20 @@ export const editSimilarity = (a: string, b: string, c: EditCosts): number =>
 /* Numbers: magnitude sense + digit-shape errors.                      */
 /* ------------------------------------------------------------------ */
 
-const DIGIT_COSTS: EditCosts = {
-	// A digit off by one is a counting slip, not a wild guess.
-	sub: (x, y) => (x === y ? 0 : Math.abs(+x - +y) === 1 ? 0.5 : 1),
-	indel: () => 1,
-	// Transposed digits (47 for 74): place-value confusion, classic and meaningful.
-	swap: 0.5
-};
-
 /**
- * How close a numeric answer is: the better of magnitude closeness
- * (56 for 57 shows real number sense) and digit-shape closeness
- * (47 for 74 is a place-value slip, not ignorance).
+ * Arithmetic has one right answer: 5 + 3 is 8, and 6 is simply wrong. Only two
+ * slips show the child knew how to get there:
+ * - off by one (7 or 9 for 8): a counting slip, the method was right;
+ * - last two digits swapped (47 for 74): the Dutch "vier-en-zeventig" order.
+ * Everything else is far.
  */
 export function numberSimilarity(guess: number, answer: number): number {
 	if (!Number.isFinite(guess)) return 0;
 	if (guess === answer) return 1;
-	const magnitude = 1 - Math.abs(guess - answer) / Math.max(Math.abs(answer), 10);
-	const digits = editSimilarity(String(guess), String(answer), DIGIT_COSTS);
-	return Math.max(0, magnitude, digits);
+	if (Math.abs(guess - answer) === 1) return 0.9;
+	const a = String(answer);
+	if (a.length >= 2 && String(guess) === a.slice(0, -2) + a.at(-1) + a.at(-2)) return 0.75;
+	return 0;
 }
 
 /* ------------------------------------------------------------------ */

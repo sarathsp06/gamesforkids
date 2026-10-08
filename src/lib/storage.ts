@@ -71,3 +71,8 @@ export const loadMath = (): MathProgress => {
 	return p?.v === 1 && p.best && typeof p.best === 'object' ? { v: 1, best: p.best } : { v: 1, best: {} };
 };
 export const saveMath = (p: MathProgress) => write(MATH, p);
+
+/** Spell Pick: current level 1–4. */
+const SPELL = 'spellLevel';
+export const loadSpellLevel = (): number => Math.max(1, Math.min(4, Number(read<number>(SPELL, 1)) || 1));
+export const saveSpellLevel = (l: number) => write(SPELL, String(l));

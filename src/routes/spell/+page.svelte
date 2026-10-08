@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
-	import { choices, pickSpellWord, similarity } from '#lib/spell.ts';
+	import { SPELL_LEVELS, choices, pickSpellWord, similarity } from '#lib/spell.ts';
 	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
 	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
-	import { loadLanguage, saveLanguage } from '#lib/storage.ts';
+	import { loadLanguage, loadSpellLevel, saveLanguage, saveSpellLevel } from '#lib/storage.ts';
 
 	const ROUND_WORDS = 5;
 	const SLOW = 0.45; // extra slow: the child has to catch every sound
@@ -20,6 +20,7 @@
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
+	let level = $state(1);
 	let word = $state('');
 	let options = $state<string[]>([]);
 	/** Wrong picks this word: greyed out, near misses in amber. */
@@ -34,6 +35,7 @@
 
 	onMount(() => {
 		language = loadLanguage();
+		level = loadSpellLevel();
 		return () => {
 			clearTimeout(timer);
 			clearTimeout(speakTimer);
@@ -44,8 +46,8 @@
 	let speakTimer = 0;
 
 	function nextWord() {
-		word = pickSpellWord(language);
-		options = choices(word, language);
+		word = pickSpellWord(language, level);
+		options = choices(word, language, level);
 		crossed = [];
 		nearPicks = [];
 		wrongSims = [];
@@ -73,7 +75,7 @@
 			speak(`${word.toLowerCase()}. ${random(PRAISE[language])}`, language, undefined, SLOW);
 			clearTimeout(timer);
 			timer = window.setTimeout(() => {
-				if (wordsDone >= ROUND_WORDS) phase = 'reward';
+				if (wordsDone >= ROUND_WORDS) finishRound();
 				else nextWord();
 			}, 1800);
 		} else {
@@ -89,6 +91,15 @@
 				sfx.bloop();
 				speak(word.toLowerCase(), language, undefined, SLOW);
 			}
+		}
+	}
+
+	/** Four or more first-try words: the next round is one level harder. */
+	function finishRound() {
+		phase = 'reward';
+		if (grades.filter((g) => g === 'gold').length >= 4 && level < SPELL_LEVELS) {
+			level++;
+			saveSpellLevel(level);
 		}
 	}
 </script>
@@ -117,6 +128,20 @@
 							saveLanguage(l.id);
 							speak(l.name, l.id);
 						}}>{l.flag}</button
+					>
+				{/each}
+			</div>
+			<div class="levels" role="group" aria-label="Level">
+				{#each Array.from({ length: SPELL_LEVELS }, (_, i) => i + 1) as l (l)}
+					<button
+						type="button"
+						class="lvl"
+						aria-label="Level {l}"
+						aria-pressed={level === l}
+						onclick={() => {
+							level = l;
+							saveSpellLevel(l);
+						}}>{l}</button
 					>
 				{/each}
 			</div>
@@ -155,7 +180,7 @@
 				{/each}
 			</div>
 			<div class="actions">
-				<button type="button" class="big-btn play" aria-label="Play again" onclick={play}>▶</button>
+				<button type="button" class="big-btn play" aria-label="Play level {level}" onclick={play}>▶</button>
 			</div>
 		</section>
 	{/if}
@@ -239,8 +264,24 @@
 		border-radius: 50%;
 		font-size: 2.4rem;
 	}
-	.flag[aria-pressed='true'] {
+	.flag[aria-pressed='true'],
+	.lvl[aria-pressed='true'] {
 		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+	}
+	.levels {
+		display: flex;
+		gap: 1rem;
+	}
+	.lvl {
+		width: 3.6rem;
+		height: 3.6rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 50%;
+		background: var(--paper);
+		box-shadow: 0 var(--line) 0 var(--ink);
+		font: inherit;
+		font-size: 1.7rem;
+		font-weight: 700;
 	}
 
 	.dots {

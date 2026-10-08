@@ -6,9 +6,9 @@ Three games for young children (about 4–8), picked from the home screen.
 
 **Number Dash** (`/math/`) is a timed math game with 10 levels of increasing difficulty: 1-digit +, 2-digit +, 3-digit +, 2-digit ± 1-digit, 2-digit −, 3-digit ± 2-digit, 3-digit −, times tables, 2-digit × 1-digit, and division. Each level has 10 fixed questionnaires of 10 questions, so times can be compared. Every questionnaire keeps its best time. Finishing 3 questionnaires of a level in under 1 minute each unlocks the next level. Unlocked levels stay open for practice.
 
-**Spell Pick** (`/spell/`) is a word-recognition game. After a short pause it says a word out loud in English or Dutch, and the child picks it from three real words (e.g. *book*, *car*, *cat*). Five words earn a trophy.
+**Spell Pick** (`/spell/`) is a word-recognition game. After a short pause it says a word out loud in English or Dutch, and the child picks the right spelling from three. Four levels: 1 clearly different words (*cat*, *book*, *bus*), 2 look-alike real words (*cat*, *car*), 3 a spelling that sounds right (*cat*, *kat*, *bus*), 4 both (*cat*, *kat*, *car*). Four first-try words in a round of five moves up a level. Five words earn a trophy.
 
-All games grade each answer by **how close** it was, not just right/wrong — typing R for T (neighbour key) is a near slip, answering 56 for 57 is a counting slip (warm amber, "Almost!"). Stars are gold (first try), silver (one near miss) or bronze. The research behind this is in [docs/learning.md](docs/learning.md).
+All games grade each answer by **how close** it was, not just right/wrong — typing R for T (neighbour key) is a near slip, picking *kat* for *cat* sounds right (warm amber, "Almost!"). Number Dash stays exact on levels 1–5; from level 6 only a counting slip (7 or 9 for 8) or swapped digits (47 for 74) counts as almost. Stars are gold (first try), silver (one near miss) or bronze. Parents can read this on the in-app **How we score** page (`/how-we-score/`); the research is in [docs/learning.md](docs/learning.md).
 
 Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech uses the browser's `speechSynthesis`.
 
@@ -38,7 +38,7 @@ src/routes/letter-leap/       Letter Leap screens: start, play, reward, sticker 
 src/routes/spell/             Spell Pick screens: start, play, reward
 src/routes/math/              Number Dash screens: levels, questionnaires, play, result
 src/lib/math.ts               Number Dash levels, seeded questionnaires, unlock rule
-src/lib/spell.ts              Spell Pick misspelling generator and phonetic similarity
+src/lib/spell.ts              Spell Pick levels, sound-alike spellings and phonetic similarity
 src/lib/score.ts              graded closeness scoring shared by all games
 src/lib/game.svelte.ts        game state machine and timings
 src/lib/words.ts              word lists, difficulty tiers, stickers, praise

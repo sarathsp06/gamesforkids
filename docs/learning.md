@@ -29,8 +29,19 @@ children under ~11 learn poorly from negative feedback (van Duijvenvoorde).
 | Game | Metric | Near misses it recognizes |
 | --- | --- | --- |
 | Spell Pick | `similarity()` in `spell.ts`: edit distance with phonetic costs | sound-alike letters (K/C, EI/IJ) cheap; vowel-for-vowel cheap; double-letter drops cheap; first-sound change costs double (MOUSE ≠ HOUSE) |
-| Number Dash | `numberSimilarity()`: max of magnitude ratio and digit edit | off-by-one (counting slip), transposed digits (place value / Dutch inversion) |
+| Number Dash | `numberSimilarity()`: exact, except two named slips — from level 6 only | off by one (7 or 9 for 8: counting slip), last two digits swapped (47 for 74: Dutch inversion). 6 for 8 or 67 for 57 is far. |
 | Letter Leap | `keySimilarity()` per press | neighbour keys (motor slip), mirror letters (B/D, P/Q), sound-alikes (C/K, S/Z) |
+
+**Spell Pick levels** (`choices()` in `spell.ts`): 1 clearly different real words (CAT / BOOK /
+BUS); 2 the closest real words (CAT / CAR / CANDY); 3 a sound-alike spelling + a far word
+(CAT / KAT / BUS — CAT gold, KAT silver, BUS bronze); 4 a sound-alike spelling + a close word
+(CAT / KAT / CAR). `soundAlikes()` builds spellings from same-sound pairs only (C/K, S/Z, PH/F,
+AI/AY; Dutch EI/IJ, AU/OU, CH/G, final D→T, halved double consonants) and drops swaps that change
+the sound (soft C, Z before a consonant). Four first-try words in a round moves up a level.
+
+**Number Dash stays exact on levels 1–5**: 5 + 3 is 8, and there is no honest "almost" for small
+sums. From level 6 (multi-digit work) the two slips above earn silver, because they show the
+method was right.
 
 Feedback follows the research: near misses get warm amber + "Almost!" and a repeat of the
 word (positive-first framing, immediate, spoken — pre-readers can't read error text);
@@ -50,12 +61,11 @@ performance information (safe) rather than contracted prizes (overjustification 
 ## Recorded for later (not yet built)
 
 - **Adaptive difficulty at the 85% rule** (Wilson 2019): target 75–90% success on a rolling
-  window; Letter Leap's tier auto-move is a crude version, Spell Pick has none yet.
+  window; Letter Leap's tier auto-move and Spell Pick's level-up (4 of 5 first-try) are crude versions.
 - **Re-queue missed items** 2–3 items later with scaffold, then once more unscaffolded
   (successive relearning, Rawson & Dunlosky).
-- **Accept phonetic spellings outright at young levels**: KAT scored as "sounds right!" with
-  the conventional form shown as a bonus — Gentry says conventional accuracy is *not* the
-  norm at 4–6. Needs level/age setting.
+- **Show the conventional form as a bonus** when a child picks a sound-alike spelling (KAT →
+  "sounds right! we write it C-A-T"); Gentry says conventional accuracy is *not* the norm at 4–6.
 - **Dutch-specific drills**: vowel doubling (man/maan), ei/ij, d/t finals are transitional-stage
   conventions; Dutch kids can ramp word length faster (Seymour: transparent orthography).
 - **Dutch inversion message** in Number Dash: "bijna — de cijfers staan omgedraaid".

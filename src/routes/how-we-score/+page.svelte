@@ -51,19 +51,39 @@
 			<li><strong>Same sound</strong> — c/k, s/z, f/v, g/j. The child heard the sound correctly.</li>
 		</ul>
 		<h3>Numbers (Number Dash)</h3>
+		<p>
+			Sums have one right answer: 5 + 3 is 8, and 6 is simply wrong. So <strong>levels 1–5 are plain right or
+			wrong</strong>. From <strong>level 6</strong>, when the sums get long, two slips count as almost — because they
+			show the child knew how to get there:
+		</p>
 		<ul>
-			<li><strong>Off by one</strong> — 8 for 7. A counting slip; the method was right.</li>
-			<li><strong>Close in size</strong> — 56 for 57. The child knows roughly how big the answer is.</li>
+			<li><strong>Off by one</strong> — 7 or 9 for 8. A counting slip; the method was right.</li>
 			<li>
 				<strong>Swapped digits</strong> — 47 for 74. Very common for Dutch speakers, because Dutch says the
 				ones first: <em>vier-en-zeventig</em>.
 			</li>
 		</ul>
+		<p>Anything else — 6 for 8, 67 for 57 — is “not yet”.</p>
 		<h3>Words (Spell Pick)</h3>
 		<p>
-			The child hears a word and picks it from three different real words — <em>book</em>, <em>car</em>,
-			<em>cat</em>. A different word is a different meaning, so there is no “almost” here: <em>mouse</em> is not
-			<em>house</em>. A wrong pick simply gets a soft sound and another try.
+			The child hears a word and picks the right spelling. In English and Dutch the same sound can be written in
+			different ways (<em>c</em> and <em>k</em>, <em>s</em> and <em>z</em>, Dutch <em>ei</em> and <em>ij</em>), so
+			the game grows in four levels:
+		</p>
+		<ol>
+			<li><strong>Clearly different words</strong> — <em>cat</em>, <em>book</em>, <em>bus</em>.</li>
+			<li><strong>Real words that look alike</strong> — <em>cat</em>, <em>car</em>, <em>candy</em>.</li>
+			<li>
+				<strong>A spelling that sounds right</strong> — <em>cat</em>, <em>kat</em>, <em>bus</em>.
+				<em>cat</em> is correct (gold), <em>kat</em> is almost: it sounds exactly right, just spelled differently
+				(silver). <em>bus</em> is a different word: not yet.
+			</li>
+			<li><strong>Both together</strong> — <em>cat</em>, <em>kat</em>, <em>car</em>.</li>
+		</ol>
+		<p>
+			Four first-try words in a round of five moves the child up a level. Writing a word the way it sounds is a
+			normal stage of learning to spell and a good sign for reading — but a different first sound
+			(<em>mouse</em> for <em>house</em>) is a different word, so it never counts as almost.
 		</p>
 
 		<h2>Why</h2>
