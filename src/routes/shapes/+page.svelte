@@ -29,9 +29,21 @@
 			rectangle: 'Een rechthoek heeft twee lange en twee korte kanten.'
 		}
 	};
-	const ALMOST: Record<Language, Record<'find' | 'next', string>> = {
-		en: { find: 'Almost! Look closely: straight sides, all joined up.', next: 'Almost! Look at the colour.' },
-		nl: { find: 'Bijna! Kijk goed: rechte kanten, helemaal dicht.', next: 'Bijna! Kijk naar de kleur.' }
+	const ALMOST: Record<Language, Record<'find' | 'next' | 'count', string>> = {
+		en: {
+			find: 'Almost! Look closely: straight sides, all joined up.',
+			next: 'Almost! Look at the colour.',
+			count: 'Almost! Count again, one by one.'
+		},
+		nl: {
+			find: 'Bijna! Kijk goed: rechte kanten, helemaal dicht.',
+			next: 'Bijna! Kijk naar de kleur.',
+			count: 'Bijna! Tel nog eens, één voor één.'
+		}
+	};
+	const HOW_MANY: Record<Language, Record<'circle' | 'triangle', string>> = {
+		en: { circle: 'How many circles?', triangle: 'How many triangles?' },
+		nl: { circle: 'Hoeveel cirkels?', triangle: 'Hoeveel driehoeken?' }
 	};
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
@@ -60,9 +72,11 @@
 	const prompt = () =>
 		q!.ask === 'find'
 			? `${language === 'en' ? 'Find' : 'Zoek'} ${THE[language][q!.kind]}`
-			: q!.ask === 'odd'
-				? language === 'en' ? 'Which one is different?' : 'Welke is anders?'
-				: language === 'en' ? 'What comes next?' : 'Wat komt hierna?';
+			: q!.ask === 'count'
+				? HOW_MANY[language][q!.kind as 'circle' | 'triangle']
+				: q!.ask === 'odd'
+					? language === 'en' ? 'Which one is different?' : 'Welke is anders?'
+					: language === 'en' ? 'What comes next?' : 'Wat komt hierna?';
 
 	function next() {
 		q = question(level);
@@ -97,7 +111,8 @@
 				clearTimeout(timer);
 				timer = window.setTimeout(() => (done >= ROUND ? finish() : next()), 700);
 			};
-			speak(`${random(PRAISE[language])} ${q!.ask === 'find' ? FACT[language][q!.kind] : ''}`, language, go);
+			const fact = q!.ask === 'find' ? FACT[language][q!.kind] : q!.ask === 'count' ? `${o.n}!` : '';
+			speak(`${random(PRAISE[language])} ${fact}`, language, go);
 			clearTimeout(timer);
 			timer = window.setTimeout(go, 12000);
 		} else {
@@ -106,7 +121,7 @@
 			if (o.sim >= NEAR) {
 				nearPicks = [...nearPicks, o.id];
 				sfx.tok();
-				speak(ALMOST[language][q!.ask === 'next' ? 'next' : 'find'], language);
+				speak(ALMOST[language][q!.ask === 'next' || q!.ask === 'count' ? q!.ask : 'find'], language);
 			} else {
 				sfx.bloop();
 				speak(prompt(), language);
@@ -193,6 +208,21 @@
 					<span class="cell slot">?</span>
 				</div>
 			{/if}
+			{#if q.picture.length}
+				<svg class="picture" viewBox="0 0 100 100" aria-label="Picture">
+					{#each q.picture as p (p.shape.id)}
+						<path
+							d={p.shape.d}
+							transform="translate({p.x - 50} {p.y - 50})"
+							fill={p.shape.color}
+							fill-opacity="0.8"
+							stroke="var(--ink)"
+							stroke-width="2.5"
+							stroke-linejoin="round"
+						/>
+					{/each}
+				</svg>
+			{/if}
 			<div class="options" class:four={q.options.length === 4} role="group" aria-label="Pick a shape">
 				{#each q.options as o (o.id)}
 					<button
@@ -202,8 +232,8 @@
 						class:near={nearPicks.includes(o.id)}
 						class:wrong={crossed.includes(o.id)}
 						disabled={solved || crossed.includes(o.id)}
-						aria-label={o.kind}
-						onclick={() => pick(o)}>{@render pic(o)}</button
+						aria-label={o.n !== undefined ? String(o.n) : o.kind}
+						onclick={() => pick(o)}>{#if o.n !== undefined}<span class="num">{o.n}</span>{:else}{@render pic(o)}{/if}</button
 					>
 				{/each}
 			</div>
@@ -353,6 +383,22 @@
 		background: #e0a172;
 	}
 
+	.picture {
+		width: min(22rem, 80vw, 42vh);
+		height: auto;
+		border: var(--line) solid var(--ink);
+		border-radius: 20px;
+		background: var(--paper);
+	}
+	.option:has(.num) {
+		aspect-ratio: auto;
+		padding: clamp(0.6rem, 2vh, 1rem) 0;
+	}
+	.num {
+		font-size: clamp(2.6rem, 10vw, 4rem);
+		font-weight: 700;
+		line-height: 1;
+	}
 	.row {
 		display: flex;
 		gap: clamp(0.3rem, 1.5vw, 0.8rem);

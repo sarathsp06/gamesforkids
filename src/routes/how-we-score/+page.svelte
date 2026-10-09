@@ -87,7 +87,7 @@
 		</p>
 		<h3>Shapes (Shape Sense)</h3>
 		<p>
-			Everything is spoken and tapped, so no reading is needed. Five levels, each building on the one before:
+			Everything is spoken and tapped, so no reading is needed. Seven levels, each building on the one before:
 		</p>
 		<ol>
 			<li><strong>Find the shape</strong> — circle, triangle, square, rectangle, standing upright.</li>
@@ -104,8 +104,19 @@
 				<strong>What comes next?</strong> — ● ▲ ● ▲ ● ?. The right shape in the wrong colour is almost: the child saw
 				half the pattern.
 			</li>
+			<li>
+				<strong>How many circles?</strong> — circles in a chain, each partly behind the next. One off is almost:
+				the child skipped a half-hidden one or counted one twice.
+			</li>
+			<li>
+				<strong>How many triangles?</strong> — triangles mixed with circles and squares; only triangles count. One
+				off is almost.
+			</li>
 		</ol>
-		<p>After every right answer the game says what makes the shape: “A triangle has three sides.”</p>
+		<p>
+			After a right answer the game says what makes the shape (“A triangle has three sides.”) or repeats the count,
+			and waits until it has finished speaking before the next question.
+		</p>
 
 		<h2>Why</h2>
 		<ul>

@@ -19,6 +19,22 @@ for (let i = 0; i < 200; i++) {
 		assert.equal(new Set(q.options.map((o) => o.id)).size, q.options.length, 'unique ids');
 		assert.ok(q.options.every((o) => inBox(o.d)) || level === 3, `level ${level}: shapes fit the box`);
 		if (level <= 2) assert.ok(q.options.every((o) => (o.kind === q.kind) === (o.sim === 1)), 'only the answer is the asked shape');
+		if (level >= 6) {
+			const want = level === 6 ? 'circle' : 'triangle';
+			const counted = q.picture.filter((p) => p.shape.kind === want).length;
+			assert.equal(right[0].n, counted, `level ${level}: right number = shapes in the picture`);
+			assert.equal(Math.abs(near[0].n! - counted), 1, 'almost = off by one');
+			assert.ok(q.options.every((o) => o.n! >= 1), 'no zero or negative counts');
+			if (level === 6) {
+				// Every circle overlaps its neighbour: a real chain, not loose dots.
+				const ps = q.picture;
+				for (let j = 1; j < ps.length; j++) {
+					const r = (+ps[j].shape.d.split(' A')[1].split(' ')[0]);
+					assert.ok(Math.hypot(ps[j].x - ps[j - 1].x, ps[j].y - ps[j - 1].y) < 2 * r, 'neighbours overlap');
+					assert.ok(ps.every((p) => p.x - r >= 0 && p.x + r <= 100), 'chain fits the frame');
+				}
+			}
+		}
 		if (level === 3) {
 			assert.equal(near.length, 1, 'level 3: one look-alike');
 			assert.equal(near[0].kind, q.kind, 'the look-alike is a broken version of the asked shape');

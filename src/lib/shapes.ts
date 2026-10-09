@@ -2,9 +2,10 @@
  * Shape Sense: geometry and logic for pre-readers. Shapes are generated SVG paths in a
  * 100×100 box, so every question is fresh. Levels:
  * 1 find the shape (upright), 2 find it turned and stretched, 3 a look-alike that isn't one
- * (gap or curved side), 4 odd one out, 5 what comes next.
+ * (gap or curved side), 4 odd one out, 5 what comes next, 6 count overlapping circles,
+ * 7 count the triangles among other shapes.
  */
-export const SHAPE_LEVELS = 5;
+export const SHAPE_LEVELS = 7;
 
 export type Kind = 'circle' | 'triangle' | 'square' | 'rectangle';
 export const KINDS: Kind[] = ['circle', 'triangle', 'square', 'rectangle'];
@@ -21,11 +22,20 @@ export interface Shape {
 }
 export interface Option extends Shape {
 	sim: number;
+	/** Count questions: the number on the button. */
+	n?: number;
+}
+/** A shape placed in a counting picture, centred at x, y. */
+export interface Placed {
+	shape: Shape;
+	x: number;
+	y: number;
 }
 export interface Question {
-	ask: 'find' | 'odd' | 'next';
+	ask: 'find' | 'odd' | 'next' | 'count';
 	kind: Kind;
 	row: Shape[];
+	picture: Placed[];
 	options: Option[];
 }
 
@@ -90,7 +100,7 @@ export function question(level: number): Question {
 		const others = shuffle(KINDS.filter((k) => k !== kind)).slice(0, level === 3 ? 1 : 2);
 		const options = [as(shape(kind, color, upright), 1), ...others.map((k) => as(shape(k, color, upright), 0))];
 		if (level === 3) options.push(as(shape(kind, color, false, pick(['gap', 'curve'] as const)), ALMOST));
-		return { ask: 'find', kind, row: [], options: shuffle(options) };
+		return { ask: 'find', kind, row: [], picture: [], options: shuffle(options) };
 	}
 	if (level === 4) {
 		// Square vs rectangle is too subtle when sizes and turns vary.
@@ -101,8 +111,9 @@ export function question(level: number): Question {
 			...[0, 1, 2].map(() => as(shape(same, color, false, undefined, rand(50, 85)), 0)),
 			as(shape(odd, color, false, undefined, rand(50, 85)), 1)
 		];
-		return { ask: 'odd', kind: odd, row: [], options: shuffle(options) };
+		return { ask: 'odd', kind: odd, row: [], picture: [], options: shuffle(options) };
 	}
+	if (level >= 6) return count(level === 6 ? 'circle' : 'triangle');
 	// What comes next: ABABA? or ABCAB?
 	const n = pick([2, 3]);
 	const colors = shuffle(COLORS);
@@ -114,6 +125,7 @@ export function question(level: number): Question {
 		ask: 'next',
 		kind: answer.kind,
 		row: Array.from({ length: 5 }, (_, i) => unit[i % n]),
+		picture: [],
 		options: shuffle([
 			as({ ...answer, id: String(ids++) }, 1),
 			// Right shape, wrong colour: the child saw half the pattern.
@@ -121,4 +133,42 @@ export function question(level: number): Question {
 			as({ ...other, id: String(ids++) }, 0)
 		])
 	};
+}
+
+/** Number buttons: the count, one off (a counting slip: almost), and one clearly off. */
+function numbers(n: number): Option[] {
+	const blank = (k: number, sim: number): Option => ({ id: String(ids++), kind: 'circle', color: '', d: '', closed: true, sim, n: k });
+	const slip = n > 1 && Math.random() < 0.5 ? n - 1 : n + 1;
+	const far = n > 3 && Math.random() < 0.5 ? n - 3 : n + 3;
+	return shuffle([blank(n, 1), blank(slip, ALMOST), blank(far, 0)]);
+}
+
+/**
+ * Level 6: 2–6 circles in an overlapping zigzag chain, so the child must count each one, even the
+ * half-hidden ones. Level 7: 2–5 triangles scattered among other shapes; only triangles count.
+ */
+function count(kind: 'circle' | 'triangle'): Question {
+	const colors = shuffle(COLORS);
+	if (kind === 'circle') {
+		const n = Math.floor(rand(2, 7));
+		const step = Math.min(36, 56 / (n - 1));
+		// Overlap: step and zigzag stay under 2r. Fit: the outer circles stay inside the frame.
+		const r = Math.min(24, step * 0.85, 46 - ((n - 1) * step) / 2);
+		const picture = Array.from({ length: n }, (_, i) => ({
+			shape: shape('circle', colors[i % colors.length], true, undefined, 2 * r),
+			x: 50 + (i - (n - 1) / 2) * step,
+			y: 50 + (i % 2 ? 1 : -1) * rand(3, 7)
+		}));
+		return { ask: 'count', kind, row: [], picture, options: numbers(n) };
+	}
+	const n = Math.floor(rand(2, 6));
+	const others = Math.floor(rand(2, 4));
+	// 3×3 grid with jitter; triangles and distractors share it, so nothing overlaps much.
+	const cells = shuffle(Array.from({ length: 9 }, (_, i) => i)).slice(0, n + others);
+	const picture = cells.map((c, i) => ({
+		shape: shape(i < n ? 'triangle' : pick<Kind>(['circle', 'square']), pick(COLORS), false, undefined, 26),
+		x: 20 + (c % 3) * 30 + rand(-4, 4),
+		y: 20 + Math.floor(c / 3) * 30 + rand(-4, 4)
+	}));
+	return { ask: 'count', kind, row: [], picture, options: numbers(n) };
 }
