@@ -10,6 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { game, ROUND_WORDS } from '#lib/game.svelte.ts';
 	import { speak } from '#lib/audio.ts';
+	import { animal, t } from '#lib/i18n.ts';
 	import { KEY_ROWS, LANGUAGES, STICKERS, hand } from '#lib/words.ts';
 	import Keycap from '#lib/Keycap.svelte';
 	import ParentDialog from '#lib/ParentDialog.svelte';
@@ -108,7 +109,7 @@
 						aria-pressed={game.language === l.id}
 						onclick={() => {
 							game.setLanguage(l.id);
-							speak(l.name, l.id);
+							speak(t(l.id, 'lang.name'), l.id);
 						}}>{l.flag}</button
 					>
 				{/each}
@@ -214,7 +215,7 @@
 							class:owned
 							aria-label={owned ? names[game.language] : 'Not collected yet'}
 							disabled={!owned}
-							onclick={() => speak(names[game.language], game.language)}>{emoji}</button
+							onclick={() => speak(animal(game.language, emoji), game.language)}>{emoji}</button
 						>
 					</li>
 				{/each}

@@ -140,7 +140,7 @@
 		</ol>
 		<p>
 			The fewest moves is gold. One extra move is almost: the child found a way, just not the shortest. The game
-			says so (“5 moves. You can do it in 4!”). After two wasted moves the next good square glows, so a stuck child
+			says so (“You can do it in four moves!”). After two wasted moves the next good square glows, so a stuck child
 			gets a nudge instead of tapping at random.
 		</p>
 

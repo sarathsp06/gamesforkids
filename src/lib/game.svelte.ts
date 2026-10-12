@@ -3,7 +3,8 @@ import {
 	loadLanguage, loadProgress, loadSessions, saveLanguage, saveProgress, saveSessions,
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
-import { MAX_TIER, PRAISE, STICKERS, pickWord, type Language } from './words';
+import { MAX_TIER, STICKERS, pickWord, type Language } from './words';
+import { animal, letter as letterLine, t, word } from './i18n';
 import { gradeAttempts, keySimilarity, type Grade } from './score';
 
 export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward' | 'stickers';
@@ -98,13 +99,13 @@ class Game {
 			this.phase = 'typing';
 			this.#armIdle();
 		};
-		this.#later(() => speak(this.word.toLowerCase(), this.language, reveal), BREATHE_MS);
+		this.#later(() => speak(word(this.word), this.language, reveal), BREATHE_MS);
 		this.#later(reveal, BREATHE_MS + REVEAL_FALLBACK_MS); // Chrome sometimes never fires onend
 	}
 
 	replay() {
 		if (this.phase !== 'typing') return;
-		speak(this.word.toLowerCase(), this.language);
+		speak(word(this.word), this.language);
 		this.#armIdle();
 	}
 
@@ -114,7 +115,7 @@ class Game {
 		this.#later(() => {
 			this.#idleReplays++;
 			this.hint = true;
-			speak(this.word.toLowerCase(), this.language);
+			speak(word(this.word), this.language);
 			this.#armIdle();
 		}, IDLE_MS);
 	}
@@ -145,7 +146,7 @@ class Game {
 			this.hint = true;
 			this.lastPress = { ok: false, n: this.lastPress.n + 1 };
 			sfx.bloop();
-			if (this.#missesOnLetter === 2) speak(target, this.language); // a single capital is read as the letter name
+			if (this.#missesOnLetter === 2) speak(letterLine(this.language, target), this.language);
 			this.#armIdle();
 		}
 	}
@@ -165,7 +166,7 @@ class Game {
 			else this.#nextWord();
 		};
 		// One utterance: a second speak() would cancel the first.
-		speak(`${this.word.toLowerCase()}. ${random(PRAISE[this.language])}`, this.language, () =>
+		speak([word(this.word), t(this.language, 'praise')], this.language, () =>
 			this.#later(next, NEXT_AFTER_PRAISE_MS)
 		);
 		this.#later(next, NEXT_FALLBACK_MS);
@@ -184,7 +185,7 @@ class Game {
 		this.#session.stickers++;
 		this.phase = 'reward';
 		sfx.chime();
-		speak(`${random(PRAISE[this.language])} ${STICKERS[this.newSticker][this.language]}!`, this.language);
+		speak([t(this.language, 'praise'), animal(this.language, this.newSticker)], this.language);
 	}
 
 	home() {

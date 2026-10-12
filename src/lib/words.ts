@@ -67,11 +67,6 @@ export function pickWord(language: Language, tier: number): string {
 	return last;
 }
 
-export const PRAISE: Record<Language, string[]> = {
-	en: ['Great job!', 'Yes!', 'Well done!', 'Super!'],
-	nl: ['Goed zo!', 'Ja!', 'Knap!', 'Super!', 'Top!']
-};
-
 export const STICKERS: Record<string, Record<Language, string>> = {
 	'🐱': { en: 'cat', nl: 'kat' }, '🐶': { en: 'dog', nl: 'hond' }, '🐟': { en: 'fish', nl: 'vis' },
 	'🦆': { en: 'duck', nl: 'eend' }, '🐮': { en: 'cow', nl: 'koe' }, '🐴': { en: 'horse', nl: 'paard' },

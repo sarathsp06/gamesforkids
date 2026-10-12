@@ -4,48 +4,12 @@
 	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
 	import { SHAPE_LEVELS, question, type Kind, type Option, type Question, type Shape } from '#lib/shapes.ts';
 	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
-	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
+	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import { t, type Line } from '#lib/i18n.ts';
 	import { loadLanguage, loadShapeLevel, saveLanguage, saveShapeLevel } from '#lib/storage.ts';
 
 	const ROUND = 5;
 	const BREATHE_MS = 900; // small pause before the prompt, on start and between questions
-	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
-	const THE: Record<Language, Record<Kind, string>> = {
-		en: { circle: 'the circle', triangle: 'the triangle', square: 'the square', rectangle: 'the rectangle' },
-		nl: { circle: 'de cirkel', triangle: 'de driehoek', square: 'het vierkant', rectangle: 'de rechthoek' }
-	};
-	/** Said after a right "find" answer: the property that makes the shape what it is. */
-	const FACT: Record<Language, Record<Kind, string>> = {
-		en: {
-			circle: 'A circle is round.',
-			triangle: 'A triangle has three sides.',
-			square: 'A square has four sides, all the same.',
-			rectangle: 'A rectangle has two long sides and two short sides.'
-		},
-		nl: {
-			circle: 'Een cirkel is rond.',
-			triangle: 'Een driehoek heeft drie kanten.',
-			square: 'Een vierkant heeft vier kanten, allemaal even lang.',
-			rectangle: 'Een rechthoek heeft twee lange en twee korte kanten.'
-		}
-	};
-	const ALMOST: Record<Language, Record<'find' | 'next' | 'count', string>> = {
-		en: {
-			find: 'Almost! Look closely: straight sides, all joined up.',
-			next: 'Almost! Look at the colour.',
-			count: 'Almost! Count again, one by one.'
-		},
-		nl: {
-			find: 'Bijna! Kijk goed: rechte kanten, helemaal dicht.',
-			next: 'Bijna! Kijk naar de kleur.',
-			count: 'Bijna! Tel nog eens, één voor één.'
-		}
-	};
-	const HOW_MANY: Record<Language, Record<'circle' | 'triangle', string>> = {
-		en: { circle: 'How many circles?', triangle: 'How many triangles?' },
-		nl: { circle: 'Hoeveel cirkels?', triangle: 'Hoeveel driehoeken?' }
-	};
-
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
 	let level = $state(1);
@@ -69,14 +33,12 @@
 		};
 	});
 
-	const prompt = () =>
+	const prompt = (): Line =>
 		q!.ask === 'find'
-			? `${language === 'en' ? 'Find' : 'Zoek'} ${THE[language][q!.kind]}`
+			? t(language, `shapes.find.${q!.kind}`)
 			: q!.ask === 'count'
-				? HOW_MANY[language][q!.kind as 'circle' | 'triangle']
-				: q!.ask === 'odd'
-					? language === 'en' ? 'Which one is different?' : 'Welke is anders?'
-					: language === 'en' ? 'What comes next?' : 'Wat komt hierna?';
+				? t(language, `shapes.howMany.${q!.kind as 'circle' | 'triangle'}`)
+				: t(language, q!.ask === 'odd' ? 'shapes.odd' : 'shapes.next');
 
 	function next() {
 		q = question(level);
@@ -111,8 +73,9 @@
 				clearTimeout(timer);
 				timer = window.setTimeout(() => (done >= ROUND ? finish() : next()), 700);
 			};
-			const fact = q!.ask === 'find' ? FACT[language][q!.kind] : q!.ask === 'count' ? `${o.n}!` : '';
-			speak(`${random(PRAISE[language])} ${fact}`, language, go);
+			const praise = t(language, 'praise');
+			const fact = q!.ask === 'find' ? [t(language, `shapes.fact.${q!.kind}`)] : q!.ask === 'count' ? [t(language, 'count', o.n!)] : [];
+			speak([praise, ...fact], language, go);
 			clearTimeout(timer);
 			timer = window.setTimeout(go, 12000);
 		} else {
@@ -121,7 +84,7 @@
 			if (o.sim >= NEAR) {
 				nearPicks = [...nearPicks, o.id];
 				sfx.tok();
-				speak(ALMOST[language][q!.ask === 'next' || q!.ask === 'count' ? q!.ask : 'find'], language);
+				speak(t(language, `shapes.almost.${q!.ask === 'next' || q!.ask === 'count' ? q!.ask : 'find'}`), language);
 			} else {
 				sfx.bloop();
 				speak(prompt(), language);
@@ -174,7 +137,7 @@
 						onclick={() => {
 							language = l.id;
 							saveLanguage(l.id);
-							speak(l.name, l.id);
+							speak(t(l.id, 'lang.name'), l.id);
 						}}>{l.flag}</button
 					>
 				{/each}

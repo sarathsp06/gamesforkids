@@ -8,53 +8,16 @@
 		type Hex, type HexMove, type Piece, type Puzzle
 	} from '#lib/chess.ts';
 	import { gradeAttempts, type Grade } from '#lib/score.ts';
-	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
+	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import { t, type Line } from '#lib/i18n.ts';
 	import { loadChessLevel, loadLanguage, saveChessLevel, saveLanguage } from '#lib/storage.ts';
 
 	const BREATHE_MS = 900; // small pause before the prompt, on start and between puzzles
 	const COMPUTER_MS = 800; // the computer "thinks" this long, so the child sees each move
 	/** One wasted move is almost; from two on, the next best square glows. */
 	const ALMOST = 0.75;
-	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
 	// Text presentation: without U+FE0E some phones draw ♟ as a colour emoji.
 	const GLYPH: Record<Piece | 'pawn', string> = { rook: '♜︎', bishop: '♝︎', knight: '♞︎', pawn: '♟︎' };
-
-	const RULE: Record<Language, Record<Piece | 'pawn', string>> = {
-		en: {
-			rook: 'The rook goes in straight lines.',
-			bishop: 'The bishop goes on slanted lines.',
-			knight: 'The horse jumps: two steps, then one to the side.',
-			pawn: 'Pawns go one step straight ahead, and take one step slanted.'
-		},
-		nl: {
-			rook: 'De toren gaat in rechte lijnen.',
-			bishop: 'De loper gaat schuin.',
-			knight: 'Het paard springt: twee stappen, dan één opzij.',
-			pawn: 'Pionnen gaan één stap rechtdoor, en slaan één stap schuin.'
-		}
-	};
-	const SAY = {
-		en: {
-			star: 'Get the star!',
-			stars: 'Get all the stars!',
-			guard: "Watch out for the red guard! Don't stop where it can catch you.",
-			caught: 'Oops! The guard can catch you there.',
-			fewest: 'The fewest moves!',
-			took: (m: number, par: number) => `${m} moves. You can do it in ${par}!`,
-			hex: 'Get a pawn to the other side!',
-			lost: 'The computer won. Try again!'
-		},
-		nl: {
-			star: 'Pak de ster!',
-			stars: 'Pak alle sterren!',
-			guard: 'Pas op voor de rode wachter! Stop niet waar hij je kan pakken.',
-			caught: 'Oei! Daar kan de wachter je pakken.',
-			fewest: 'Zo kort mogelijk!',
-			took: (m: number, par: number) => `${m} zetten. Het kan in ${par}!`,
-			hex: 'Breng een pion naar de overkant!',
-			lost: 'De computer wint. Nog een keer!'
-		}
-	};
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
@@ -106,11 +69,11 @@
 	};
 
 	const n = $derived(hexMode ? 3 : (pz?.n ?? 4));
-	const prompt = () => {
-		if (hexMode) return `${SAY[language].hex} ${RULE[language].pawn}`;
+	const prompt = (): Line[] => {
+		if (hexMode) return [t(language, 'chess.hex'), t(language, 'chess.rule.pawn')];
 		const p = pz!;
-		const goal = p.stars.length > 1 ? SAY[language].stars : SAY[language].star;
-		return `${RULE[language][p.piece]} ${goal}${p.guard ? ' ' + SAY[language].guard : ''}`;
+		const goal = t(language, p.stars.length > 1 ? 'chess.stars' : 'chess.star');
+		return [t(language, `chess.rule.${p.piece}`), goal, ...(p.guard ? [t(language, 'chess.guard')] : [])];
 	};
 	const sayPrompt = () => {
 		clearTimeout(speakTimer);
@@ -140,7 +103,7 @@
 	}
 
 	/** Shared by both modes: grade, praise, then the next puzzle once the speech is done. */
-	function win(extra = '') {
+	function win(extra: Line[] = []) {
 		solved = true;
 		done++;
 		grades = [...grades, gradeAttempts(wrongSims)];
@@ -150,7 +113,7 @@
 			if (phase !== 'play' || done !== current || !solved) return;
 			later(() => (done >= round ? finish() : next()), 700);
 		};
-		speak(`${random(PRAISE[language])} ${extra}`, language, go);
+		speak([t(language, 'praise'), ...extra], language, go);
 		later(go, 12000); // TTS sometimes never reports the end
 	}
 
@@ -165,14 +128,14 @@
 		if (!legal(p, at, left).includes(sq)) {
 			refuse(sq);
 			showDots = true;
-			speak(RULE[language][p.piece], language);
+			speak(t(language, `chess.rule.${p.piece}`), language);
 			return;
 		}
 		if (p.danger.includes(sq)) {
 			refuse(sq);
 			showDanger = true;
 			wrongSims.push(0);
-			speak(SAY[language].caught, language);
+			speak(t(language, 'chess.caught'), language);
 			return;
 		}
 		clearTimeout(speakTimer);
@@ -187,7 +150,7 @@
 			if (extra === 1) wrongSims.push(ALMOST);
 			else if (extra > 1) wrongSims.push(0);
 			hint = null;
-			return win(extra === 0 ? SAY[language].fewest : SAY[language].took(made, p.par));
+			return win([extra === 0 ? t(language, 'chess.fewest') : t(language, 'chess.canDoIn', p.par)]);
 		}
 		// Staged help: after two wasted moves, light up the next square of a shortest way.
 		const rest = solve(p, at, left);
@@ -216,7 +179,7 @@
 			wrongSims.push(0);
 			later(() => {
 				sfx.bloop();
-				speak(SAY[language].lost, language, () => later(() => newHexGame(false), 300));
+				speak(t(language, 'chess.lost'), language, () => later(() => newHexGame(false), 300));
 				later(() => newHexGame(false), 6000);
 			}, 600);
 			return;
@@ -235,7 +198,7 @@
 		const m = options.length === 1 ? options[0] : null;
 		if (!m) {
 			refuse(sq);
-			speak(RULE[language].pawn, language);
+			speak(t(language, 'chess.rule.pawn'), language);
 			return;
 		}
 		clearTimeout(speakTimer);
@@ -293,7 +256,7 @@
 						onclick={() => {
 							language = l.id;
 							saveLanguage(l.id);
-							speak(l.name, l.id);
+							speak(t(l.id, 'lang.name'), l.id);
 						}}>{l.flag}</button
 					>
 				{/each}

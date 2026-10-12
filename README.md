@@ -14,7 +14,7 @@ Five games for young children (about 4–10), picked from the home screen.
 
 All games grade each answer by **how close** it was, not just right/wrong — typing R for T (neighbour key) is a near slip, picking *kat* for *cat* sounds right (warm amber, "Almost!"). Number Dash stays exact on levels 1–5; from level 6 only a counting slip (7 or 9 for 8) or swapped digits (47 for 74) counts as almost. Stars are gold (first try), silver (one near miss) or bronze. Parents can read this on the in-app **How we score** page (`/how-we-score/`); the research is in [docs/learning.md](docs/learning.md).
 
-Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech uses the browser's `speechSynthesis`.
+Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech plays recorded clips (Chatterbox Multilingual, rendered locally; see [scripts/voice.md](scripts/voice.md)) and falls back to the browser's `speechSynthesis` for any line without a current clip.
 
 ## Develop
 
@@ -50,13 +50,19 @@ src/lib/chess.ts              Chess Path piece moves, puzzle generator and solve
 src/lib/score.ts              graded closeness scoring shared by all games
 src/lib/game.svelte.ts        game state machine and timings
 src/lib/words.ts              word lists, difficulty tiers, stickers, praise
-src/lib/audio.ts              speech and sound effects
+src/lib/audio.ts              speech (recorded clips, browser voice fallback) and sound effects
+src/lib/i18n.ts               every spoken line, keyed, in English and Dutch
+src/lib/voice-manifest.json   which clips exist, and the text hash each was made from
+static/voice/                 recorded clips, static/voice/<lang>/<key>.mp3
+scripts/voice-lines.ts        lists every line for the clip renderer
+scripts/voice_render.py       renders and Whisper-checks clips (see scripts/voice.md)
 src/lib/storage.ts            localStorage keys
 src/lib/Keycap.svelte         keyboard key
 src/lib/ParentDialog.svelte   parent settings
 docs/redesign.md              design spec
 docs/learning.md              research notes: how children learn, mapped to the scoring engine
 tests/score.test.ts           scoring assertions (npx tsx tests/score.test.ts)
+tests/i18n.test.ts            voice catalog: unique ids, same keys in both languages
 tests/chess.test.ts           Chess Path: move rules, solvable puzzles, Hexapawn is a second-player win
 okf/                          knowledge bundle describing the previous Next.js version
 ```

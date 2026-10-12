@@ -4,18 +4,13 @@
 	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
 	import { SPELL_LEVELS, choices, pickSpellWord, similarity } from '#lib/spell.ts';
 	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
-	import { LANGUAGES, PRAISE, type Language } from '#lib/words.ts';
+	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import { t, word as said } from '#lib/i18n.ts';
 	import { loadLanguage, loadSpellLevel, saveLanguage, saveSpellLevel } from '#lib/storage.ts';
 
 	const ROUND_WORDS = 5;
 	const SLOW = 0.45; // extra slow: the child has to catch every sound
 	const BREATHE_MS = 900; // small pause before the word is spoken, on start and between words
-	const random = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
-	/** Positive-first framing: a near miss is "almost", never "wrong". */
-	const ALMOST: Record<Language, string[]> = {
-		en: ['Almost!', 'So close!'],
-		nl: ['Bijna!', 'Heel dichtbij!']
-	};
 	const MEDAL: Record<Grade, string> = { gold: '★', silver: '★', bronze: '★' };
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
@@ -53,7 +48,7 @@
 		wrongSims = [];
 		solved = false;
 		clearTimeout(speakTimer);
-		speakTimer = window.setTimeout(() => speak(word.toLowerCase(), language, undefined, SLOW), BREATHE_MS);
+		speakTimer = window.setTimeout(() => speak(said(word), language, undefined, SLOW), BREATHE_MS);
 	}
 
 	function play() {
@@ -72,7 +67,7 @@
 			wordsDone++;
 			grades = [...grades, gradeAttempts(wrongSims)];
 			sfx.chime();
-			speak(`${word.toLowerCase()}. ${random(PRAISE[language])}`, language, undefined, SLOW);
+			speak([said(word), t(language, 'praise')], language, undefined, SLOW);
 			clearTimeout(timer);
 			timer = window.setTimeout(() => {
 				if (wordsDone >= ROUND_WORDS) finishRound();
@@ -86,10 +81,10 @@
 				// Sounds right, spelled differently: encourage, then repeat the word.
 				nearPicks = [...nearPicks, option];
 				sfx.tok();
-				speak(`${random(ALMOST[language])} ${word.toLowerCase()}`, language, undefined, SLOW);
+				speak([t(language, 'almost'), said(word)], language, undefined, SLOW);
 			} else {
 				sfx.bloop();
-				speak(word.toLowerCase(), language, undefined, SLOW);
+				speak(said(word), language, undefined, SLOW);
 			}
 		}
 	}
@@ -126,7 +121,7 @@
 						onclick={() => {
 							language = l.id;
 							saveLanguage(l.id);
-							speak(l.name, l.id);
+							speak(t(l.id, 'lang.name'), l.id);
 						}}>{l.flag}</button
 					>
 				{/each}
@@ -153,7 +148,7 @@
 			{/each}
 		</ol>
 		<section class="stage">
-			<button type="button" class="big-btn ear" aria-label="Hear the word again" onclick={() => speak(word.toLowerCase(), language, undefined, SLOW)}>🔊</button>
+			<button type="button" class="big-btn ear" aria-label="Hear the word again" onclick={() => speak(said(word), language, undefined, SLOW)}>🔊</button>
 			<div class="options" role="group" aria-label="Pick the right spelling">
 				{#key word}
 					{#each options as option (option)}
