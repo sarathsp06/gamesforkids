@@ -6,9 +6,10 @@
 Only lines whose clip is missing or whose text changed are rendered. Each clip is trimmed, loudness
 normalised and written to static/voice/<lang>/<id>.mp3. Every clip is checked by transcribing it with
 Whisper (mlx-whisper, local): the model sometimes babbles after very short inputs, so a clip that
-doesn't say its text, or runs far too long, is rendered again (up to --tries times). Lines that never
-pass keep their best take and are listed in --report for a human to listen to; a take scoring under 0.6 isn't used at all (browser voice). The manifest and src/lib/voice-manifest.json records the
-hash of the text it was made from (written after every clip, so a stopped run resumes). Clips for ids
+doesn't say its text, or runs far too long, is rendered again (up to --tries times). Lines that
+never pass are listed in --report. A take below 0.8 (0.85 for a single word) isn't used at all: the
+browser voice says that line. src/lib/voice-manifest.json records, per clip, the hash of the text it
+was made from (written after every clip, so a stopped run resumes). Clips for ids
 that no longer exist are deleted. See scripts/voice.md for setup.
 """
 import argparse, difflib, json, re, subprocess, sys, tempfile, time
@@ -168,8 +169,10 @@ for i, l in enumerate(todo, 1):
                 best = (score, heard, take)
             if score >= 0.85:
                 break
-        # A clearly wrong take is worse than the browser voice; a borderline one is kept and reported.
-        if best[2] and best[0] >= 0.6:
+        # A wrong take is worse than the browser voice. A single word must be heard exactly: in a spelling
+        # game a near miss teaches the wrong word (and Dutch "kat" once came out close to a rude word).
+        keep = 0.85 if len(l["text"].split()) == 1 else 0.8
+        if best[2] and best[0] >= keep:
             best[2].replace(out)
         else:
             best = (best[0], best[1], None)

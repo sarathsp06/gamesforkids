@@ -28,7 +28,7 @@ npx tsx scripts/voice-lines.ts > /tmp/lines.json
 Only missing or changed lines are rendered (about 7 s each); clips for removed lines are deleted. Each clip
 is transcribed with Whisper: if it doesn't say its line or runs far too long (the model sometimes babbles
 after one-word inputs), it is rendered again with another seed, up to 4 times. Lines that never pass are
-listed in `/tmp/voice-report.json`: listen to those. `--tempo` (default 0.85) slows clips without changing
+listed in `/tmp/voice-report.json`; takes below 0.8 (0.85 for a single word, where a near miss would teach the wrong word) are not used, and the browser voice says those lines. `--tempo` (default 0.85) slows clips without changing
 pitch; `--force` re-renders everything.
 
 ## Adding a line
