@@ -1,4 +1,6 @@
 import type { Language } from './words';
+import { SHAPE_LEVELS } from './shapes';
+import { CHESS_LEVELS } from './chess';
 
 // Keys shared with the old Next.js app: existing players keep their history and language.
 const SESSIONS = 'letterLeapSessions';
@@ -77,7 +79,12 @@ const SPELL = 'spellLevel';
 export const loadSpellLevel = (): number => Math.max(1, Math.min(4, Number(read<number>(SPELL, 1)) || 1));
 export const saveSpellLevel = (l: number) => write(SPELL, String(l));
 
-/** Shape Sense: current level 1–5. */
+/** Shape Sense: current level 1–SHAPE_LEVELS. */
 const SHAPES = 'shapeLevel';
-export const loadShapeLevel = (): number => Math.max(1, Math.min(5, Number(read<number>(SHAPES, 1)) || 1));
+export const loadShapeLevel = (): number => Math.max(1, Math.min(SHAPE_LEVELS, Number(read<number>(SHAPES, 1)) || 1));
 export const saveShapeLevel = (l: number) => write(SHAPES, String(l));
+
+/** Chess Path: current level 1–CHESS_LEVELS. */
+const CHESS = 'chessLevel';
+export const loadChessLevel = (): number => Math.max(1, Math.min(CHESS_LEVELS, Number(read<number>(CHESS, 1)) || 1));
+export const saveChessLevel = (l: number) => write(CHESS, String(l));

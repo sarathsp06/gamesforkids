@@ -16,6 +16,9 @@
 		<a class="game shapes" href={resolve('/shapes')} aria-label="Shape Sense">
 			<span class="caps" aria-hidden="true"><b class="r">▲</b><b class="l">●</b></span>
 		</a>
+		<a class="game chess" href={resolve('/chess')} aria-label="Chess Path">
+			<span class="caps" aria-hidden="true"><b class="r">♞&#xFE0E;</b><i>⭐</i></span>
+		</a>
 	</nav>
 	<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
 </main>
@@ -68,7 +71,8 @@
 	.letters {
 		background: var(--paper);
 	}
-	.numbers {
+	.numbers,
+	.chess {
 		background: var(--sun);
 	}
 	.spelling,

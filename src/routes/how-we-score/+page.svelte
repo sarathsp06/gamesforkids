@@ -118,6 +118,32 @@
 			and waits until it has finished speaking before the next question.
 		</p>
 
+		<h3>Chess thinking (Chess Path)</h3>
+		<p>
+			Each puzzle has a known shortest way, so we can tell how close a solution was, not just whether it worked:
+		</p>
+		<ol>
+			<li><strong>Rook</strong> — straight lines, one star on a small board.</li>
+			<li><strong>Rook with rocks</strong> — two stars; rocks block the way, and a star stops the rook until it's taken.</li>
+			<li><strong>Bishop</strong> — slanted lines.</li>
+			<li><strong>Knight</strong> — the horse jumps two steps, then one to the side.</li>
+			<li><strong>Knight, two stars</strong> — the move dots now appear only after a wrong tap.</li>
+			<li>
+				<strong>The guard</strong> — a red rook or bishop watches some squares. Stopping there is caught, and the
+				watched squares turn red. The safe way is always longer, so the child has to look before moving.
+			</li>
+			<li><strong>Hexapawn, easy</strong> — three pawns each on a 3×3 board, against a computer that plays any move.</li>
+			<li>
+				<strong>Hexapawn, smart</strong> — the computer plays its best. Whoever moves second can always win, and the
+				computer moves first, so every game is winnable with good moves.
+			</li>
+		</ol>
+		<p>
+			The fewest moves is gold. One extra move is almost: the child found a way, just not the shortest. The game
+			says so (“5 moves. You can do it in 4!”). After two wasted moves the next good square glows, so a stuck child
+			gets a nudge instead of tapping at random.
+		</p>
+
 		<h2>Why</h2>
 		<ul>
 			<li>Children under about 11 learn much less from “wrong!” than from “right!” — so near misses are rewarded.</li>
