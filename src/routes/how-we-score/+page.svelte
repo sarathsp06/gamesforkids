@@ -158,8 +158,9 @@
 		<p>
 			A sentence with every word green is gold; with no word said for the child, silver; otherwise bronze. The
 			browser asks once for the microphone. Speech is recognised on the device where the browser can, otherwise in the
-			browser's speech service (Apple on iPad, Google in Chrome). The app itself keeps no audio. Where the browser can't
-			listen, the game reads each sentence aloud and lights the words as it goes, with no stars.
+			browser's speech service (Apple on iPad, Google in Chrome). The app itself keeps no audio. The game only works when it
+			can hear the child: if the browser can't listen, the microphone is blocked or missing, or no words come
+			through, it stops and says what's wrong and how to fix it.
 		</p>
 
 		<h2>Why</h2>

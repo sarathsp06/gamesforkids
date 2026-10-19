@@ -70,9 +70,13 @@ const en = {
 	'chess.lost': 'The computer won. Try again!',
 
 	'read.go': 'Read it out loud!',
-	'read.listen': 'Listen, and read along.',
 	'read.end': 'The end!',
-	'read.noMic': 'This browser cannot listen. I will read the stories to you.'
+	'read.needs': 'Read Along has to hear you read, or it can\'t work.',
+	'read.problem.unsupported': "This browser can't listen. Please open the game in Chrome, Edge or Safari.",
+	'read.problem.denied': 'The microphone is not allowed. Ask a grown-up to allow the microphone for this site.',
+	'read.problem.nomic': "I can't find a microphone. Please connect one and try again.",
+	'read.problem.network': 'Listening needs the internet right now. Please check the connection and try again.',
+	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again."
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -115,9 +119,13 @@ const nl: Record<Key, Entry> = {
 	'chess.lost': 'De computer wint. Nog een keer!',
 
 	'read.go': 'Lees maar hardop!',
-	'read.listen': 'Luister, en lees mee.',
 	'read.end': 'Einde!',
-	'read.noMic': 'Deze browser kan niet luisteren. Ik lees de verhalen aan je voor.'
+	'read.needs': 'Voorlezen werkt alleen als ik je kan horen lezen.',
+	'read.problem.unsupported': 'Deze browser kan niet luisteren. Open het spel in Chrome, Edge of Safari.',
+	'read.problem.denied': 'De microfoon mag niet gebruikt worden. Vraag een volwassene om de microfoon voor deze site toe te staan.',
+	'read.problem.nomic': 'Ik kan geen microfoon vinden. Sluit er een aan en probeer het opnieuw.',
+	'read.problem.network': 'Luisteren heeft nu internet nodig. Controleer de verbinding en probeer het opnieuw.',
+	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.'
 };
 
 const CATALOG: Record<Language, Record<Key, Entry>> = { en, nl };

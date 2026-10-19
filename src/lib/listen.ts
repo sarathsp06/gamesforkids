@@ -5,10 +5,21 @@
  * service does it (Apple on iPad, Google in Chrome). The app itself keeps no audio. Recognition keeps
  * running across sentences and is restarted when the browser stops it after a silence; if a restart
  * outside a tap is refused (iOS), the state becomes 'paused' and the page shows a 🎤 button to resume.
+ * When listening can't work at all, the state names why, so the page can say so plainly.
  */
 import { LANGUAGES, type Language } from './words';
 
-export type ListenState = 'off' | 'starting' | 'listening' | 'paused' | 'denied' | 'unsupported';
+export type ListenState = 'off' | 'starting' | 'listening' | 'paused' | Problem;
+/** Why listening can't work: no recognition in this browser, microphone refused, none found, or no connection. */
+export type Problem = 'unsupported' | 'denied' | 'nomic' | 'network';
+export const isProblem = (s: ListenState): s is Problem => ['unsupported', 'denied', 'nomic', 'network'].includes(s);
+const PROBLEM: Record<string, Problem> = {
+	'not-allowed': 'denied',
+	'service-not-allowed': 'denied',
+	'audio-capture': 'nomic',
+	network: 'network',
+	'language-not-supported': 'unsupported'
+};
 
 // The Web Speech API is not in TypeScript's DOM types; this is the part we use.
 interface Recognition extends EventTarget {
@@ -81,15 +92,17 @@ export class Listener {
 			this.onHeard(this.transcript);
 		};
 		rec.onerror = (e) => {
-			if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+			// 'no-speech' and 'aborted' are normal (silence, our own stop); the rest mean it can't work.
+			const problem = PROBLEM[e.error];
+			if (problem) {
 				this.#wanted = false;
-				this.#set('denied');
+				this.#set(problem);
 			}
 		};
 		rec.onend = () => {
 			this.#done = this.transcript;
 			this.#now = '';
-			if (!this.#wanted) return this.state === 'denied' || this.#set('off');
+			if (!this.#wanted) return isProblem(this.state) || this.#set('off');
 			try {
 				rec.start(); // the browser stops after a silence: carry on
 			} catch {

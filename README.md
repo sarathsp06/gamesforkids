@@ -30,8 +30,9 @@ site, everything stays on the device.
   nudge a stuck child to the next good square. Hexapawn is a proven win for whoever moves second, so the computer
   always starts: the child can always win, but only by playing well.
 - **Reading with a helper.** Read Along listens as the child reads and matches what it hears against the known
-  sentence, leniently and in order. A stuck word glows, then is read aloud, then the story moves on. Where the
-  browser can't listen (Firefox), it reads the story aloud with each word lit up instead.
+  sentence, leniently and in order. A stuck word glows, then is read aloud, then the story moves on. Listening is
+  the game: if the browser can't listen, the microphone is blocked or missing, or no words come through, it stops
+  and says plainly what's wrong and how to fix it.
 
 ## 🧑‍💻 Develop
 

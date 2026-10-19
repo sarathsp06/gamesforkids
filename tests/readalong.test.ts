@@ -1,6 +1,6 @@
 // npx tsx tests/readalong.test.ts
 import { strict as assert } from 'node:assert';
-import { align, heardKeys, sameWord, sentenceGrade, wordStarts, words } from '../src/lib/readalong';
+import { align, heardKeys, sameWord, sentenceGrade, words } from '../src/lib/readalong';
 import { STORIES, READ_LEVELS } from '../src/lib/stories';
 
 const s = words('"Let me go," says the mouse.');
@@ -30,10 +30,6 @@ assert.equal(at('de leeuw slaap', 0, words('De leeuw slaapt.'), 'nl'), 3, 'Dutch
 assert.equal(sentenceGrade(['read', 'read']), 'gold');
 assert.equal(sentenceGrade(['read', 'glowed']), 'silver');
 assert.equal(sentenceGrade(['read', 'said']), 'bronze');
-
-const starts = wordStarts(s, 3);
-assert.equal(starts[0], 0);
-assert.ok(starts.every((t, i) => i === 0 || t > starts[i - 1]) && starts.at(-1)! < 3, 'word starts increase within the sentence');
 
 // Stories: both languages, every level has one, sentences fit the level, no digits.
 const MAX_WORDS = [0, 5, 7, 10, 16]; // the design: 1 three to five words, 2 up to seven, 3 up to ten, 4 longer

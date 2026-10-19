@@ -73,16 +73,3 @@ export function sentenceGrade(states: WordState[]): Grade {
 	if (states.every((s) => s === 'read')) return 'gold';
 	return states.includes('said') ? 'bronze' : 'silver';
 }
-
-/** For read-to-me mode: when each word starts, in seconds, for a sentence that takes `total` seconds. */
-export function wordStarts(sentence: Word[], total: number): number[] {
-	// Longer words take longer; every word also has a small fixed cost.
-	const weight = sentence.map((w) => w.key.length + 2);
-	const sum = weight.reduce((a, b) => a + b, 0);
-	let t = 0;
-	return weight.map((w) => {
-		const start = t;
-		t += (w / sum) * total;
-		return start;
-	});
-}

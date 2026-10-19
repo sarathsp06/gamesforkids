@@ -3,9 +3,9 @@
 	import { resolve } from '$app/paths';
 	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
 	import { storySentence, storyTitle, storyWord, t, type Line } from '#lib/i18n.ts';
-	import { Listener, canListen, type ListenState } from '#lib/listen.ts';
+	import { Listener, canListen, isProblem, type ListenState, type Problem } from '#lib/listen.ts';
 	import {
-		WORD_GRADE, align, heardKeys, sentenceGrade, wordStarts, words, type Word, type WordState
+		WORD_GRADE, align, heardKeys, sentenceGrade, words, type Word, type WordState
 	} from '#lib/readalong.ts';
 	import type { Grade } from '#lib/score.ts';
 	import { READ_LEVELS, STORIES, type Story } from '#lib/stories.ts';
@@ -17,8 +17,12 @@
 	const MOVE_ON_MS = 5000; // ...and this long after saying it, the game moves on
 	const NEXT_SENTENCE_MS = 350; // short: a child often reads straight on
 	const HEARD_FLASH_MS = 500;
+	/** Words moved on by the help with nothing heard at all: then the microphone isn't getting through. */
+	const SILENT_MOVES = 2;
 
-	let phase = $state<'start' | 'play' | 'reward'>('start');
+	let phase = $state<'start' | 'play' | 'reward' | 'problem'>('start');
+	/** Why the game can't listen; 'silent' is a microphone that is on but hears nothing. */
+	let problem = $state<Problem | 'silent'>('unsupported');
 	let language = $state<Language>('en');
 	let progress = $state<ReadProgress>({ v: 1, level: 1, next: {} });
 	let listenState = $state<ListenState>('off');
@@ -30,10 +34,8 @@
 	let states = $state<(WordState | null)[]>([]);
 	let at = $state(0); // words read (or helped) so far in this sentence
 	let glow = $state(-1);
-	let lit = $state(-1); // read-to-me: the word being said
 	let grades = $state<Grade[]>([]);
 	let sentenceDone = $state(false);
-	let readToMe = $state(false);
 	/** The recogniser just heard something (matched or not): the 🎤 bounces, so the child knows it listens. */
 	let hearing = $state(false);
 	let hearingTimer = 0;
@@ -44,6 +46,8 @@
 	let baseline = 0; // heard words before this point belong to an earlier sentence or the app's own voice
 	let basePtr = 0;
 	let timers: number[] = [];
+	let heardAny = false;
+	let silentMoves = 0;
 
 	const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(fn, ms));
 	const clearTimers = () => {
@@ -57,11 +61,7 @@
 		supported = canListen();
 		listener = new Listener(onHeard, (s) => {
 			listenState = s;
-			// Refused or not available mid-story: read the rest to the child.
-			if (s === 'denied' && phase === 'play' && !readToMe) {
-				readToMe = true;
-				say(t(language, 'read.noMic'), () => !sentenceDone && readSentenceToMe());
-			}
+			if (isProblem(s) && phase === 'play') showProblem(s);
 		});
 		return stopAll;
 	});
@@ -100,20 +100,29 @@
 	}
 
 	const storiesAt = (level: number) => STORIES.filter((s) => s.level === level);
-	// Always listening; reading aloud to the child only where the browser can't listen or it was refused.
-	const useMic = () => supported && listenState !== 'denied';
+
+	/** Listening is the game: when it can't work, stop and say so plainly, and what would fix it. */
+	function showProblem(p: Problem | 'silent') {
+		stopAll();
+		problem = p;
+		phase = 'problem';
+		say(problemLines());
+	}
+	const problemLines = () => [t(language, `read.problem.${problem}`), t(language, 'read.needs')];
 
 	function play() {
-		grades = [];
-		readToMe = !useMic();
 		unlockSpeech();
-		if (!readToMe) listener!.start(language); // inside the tap: iOS only starts recognition in a gesture
+		if (!supported) return showProblem('unsupported');
+		grades = [];
+		heardAny = false;
+		silentMoves = 0;
+		listener!.start(language); // inside the tap: iOS only starts recognition in a gesture
 		const list = storiesAt(progress.level);
 		story = list[(progress.next[progress.level] ?? 0) % list.length];
 		phase = 'play';
 		si = -1;
 		sentence = [];
-		say([storyTitle(language, story), t(language, readToMe ? 'read.listen' : 'read.go')], () => later(() => next(), 400));
+		say([storyTitle(language, story), t(language, 'read.go')], () => later(() => next(), 400));
 	}
 
 	/** `carry`: where in the heard words the previous sentence ended, so words read straight on still count. */
@@ -125,20 +134,19 @@
 		states = sentence.map(() => null);
 		at = 0;
 		glow = -1;
-		lit = -1;
 		sentenceDone = false;
 		if (carry === undefined) rebase();
 		else {
 			baseline = carry;
 			basePtr = 0;
 		}
-		if (readToMe) return readSentenceToMe();
 		armStuck();
 		if (carry !== undefined && listener) onHeard(listener.transcript);
 	}
 
 	function onHeard(transcript: string) {
-		if (phase !== 'play' || appSpeaking || readToMe || si < 0) return;
+		if (phase !== 'play' || appSpeaking || si < 0) return;
+		if (transcript) heardAny = true;
 		hearing = true;
 		clearTimeout(hearingTimer);
 		hearingTimer = window.setTimeout(() => (hearing = false), HEARD_FLASH_MS);
@@ -167,6 +175,7 @@
 				() =>
 					later(() => {
 						if (at !== word || sentenceDone) return;
+						if (!heardAny && ++silentMoves >= SILENT_MOVES) return showProblem('silent');
 						at = word + 1;
 						glow = -1;
 						rebase();
@@ -180,9 +189,9 @@
 
 	function tapWord(i: number) {
 		if (phase !== 'play' || sentenceDone) return;
-		if (!readToMe && i >= at && !states[i]) states[i] = 'said';
+		if (i >= at && !states[i]) states[i] = 'said';
 		// A tap can cut the stuck-word help short: start its timers again after the word.
-		say(storyWord(sentence[i].key), () => !readToMe && !sentenceDone && armStuck(), true);
+		say(storyWord(sentence[i].key), () => !sentenceDone && armStuck(), true);
 	}
 
 	function done(carry?: number) {
@@ -194,28 +203,14 @@
 		later(() => next(carry), NEXT_SENTENCE_MS);
 	}
 
-	/** Without a microphone: say the sentence and light each word as it goes; the child taps ▶. */
-	function readSentenceToMe() {
-		clearTimers();
-		const text = story!.sentences[language][si].text;
-		// Clips are made at a calm pace (about 11 characters a second); the sweep follows that estimate.
-		const starts = wordStarts(sentence, text.length / 11 + 0.3);
-		starts.forEach((s, i) => later(() => (lit = i), s * 1000));
-		say(storySentence(language, story!, si), () => {
-			clearTimers();
-			lit = sentence.length;
-			sentenceDone = true;
-		});
-	}
-
 	function finish() {
 		clearTimers();
 		listener?.stop();
 		phase = 'reward';
 		const golds = grades.filter((g) => g === 'gold').length;
 		const p = { ...progress, next: { ...progress.next, [progress.level]: (progress.next[progress.level] ?? 0) + 1 } };
-		// Every sentence but one read alone: the next story is one level up. Read-to-me has no stars.
-		if (!readToMe && golds >= grades.length - 1 && p.level < READ_LEVELS) p.level++;
+		// Every sentence but one read alone: the next story is one level up.
+		if (golds >= grades.length - 1 && p.level < READ_LEVELS) p.level++;
 		progress = p;
 		saveRead(p);
 		sfx.chime();
@@ -228,10 +223,17 @@
 	}
 
 	const wordClass = (i: number) =>
-		readToMe
-			? i < lit || (i === lit && sentenceDone) ? 'lit' : i === lit ? 'now' : ''
-			: states[i] && i < at ? WORD_GRADE[states[i]!] : glow === i ? 'glow' : i === at && !sentenceDone ? 'next' : '';
+		states[i] && i < at ? WORD_GRADE[states[i]!] : glow === i ? 'glow' : i === at && !sentenceDone ? 'next' : '';
 </script>
+
+{#snippet notice(p: Problem | 'silent')}
+	<div class="notice" role="alert">
+		<div class="nomic" aria-hidden="true">🎤<span>🚫</span></div>
+		<p class="why">{t(language, `read.problem.${p}`).text}</p>
+		<p class="needs">{t(language, 'read.needs').text}</p>
+		<button type="button" class="round" aria-label="Hear it" onclick={() => speak([t(language, `read.problem.${p}`), t(language, 'read.needs')], language)}>🔊</button>
+	</div>
+{/snippet}
 
 <main>
 	<div class="corner left">
@@ -244,7 +246,11 @@
 
 	{#if phase === 'start'}
 		<section class="stage">
-			<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+			{#if supported}
+				<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+			{:else}
+				{@render notice('unsupported')}
+			{/if}
 			<div class="flags" role="group" aria-label="Language">
 				{#each LANGUAGES as l (l.id)}
 					<button
@@ -296,21 +302,25 @@
 				{/key}
 				<div class="controls">
 					<button type="button" class="round" aria-label="Hear the sentence" onclick={() => say(storySentence(language, story!, si))}>🔊</button>
-					{#if !readToMe && listenState === 'paused'}
+					{#if listenState === 'paused'}
 						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}>🎤</button>
-					{:else if !readToMe}
+					{:else}
 						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening">🎤</span>
 					{/if}
-					{#if readToMe && sentenceDone}
-						<button type="button" class="round next" aria-label="Next" onclick={() => next()}>▶</button>
-					{/if}
 				</div>
+			{/if}
+		</section>
+	{:else if phase === 'problem'}
+		<section class="stage">
+			{@render notice(problem)}
+			{#if problem !== 'unsupported'}
+				<button type="button" class="big-btn play retry" aria-label="Try again" onclick={play}>↻</button>
 			{/if}
 		</section>
 	{:else if phase === 'reward' && story}
 		{@const golds = grades.filter((g) => g === 'gold').length}
 		<section class="stage">
-			<div class="trophy" aria-label="Story done">{readToMe ? '📖' : golds === grades.length ? '🏆' : golds >= grades.length - 2 ? '🥇' : '🥈'}</div>
+			<div class="trophy" aria-label="Story done">{golds === grades.length ? '🏆' : golds >= grades.length - 2 ? '🥇' : '🥈'}</div>
 			<div class="stars" aria-hidden="true">
 				{#each grades as g, i (i)}
 					<span class={g} style="--d: {i * 120}ms">★</span>
@@ -479,8 +489,7 @@
 		padding: 0.05em 0.2em;
 		transition: background 200ms;
 	}
-	.word.gold,
-	.word.lit {
+	.word.gold {
 		background: #b8e6b0;
 	}
 	.word.silver {
@@ -488,9 +497,6 @@
 	}
 	.word.bronze {
 		background: #f2c9a8;
-	}
-	.word.now {
-		background: var(--sun);
 	}
 	/* Where to read next: a thick underline, so the child keeps their place. */
 	.word.next {
@@ -520,9 +526,37 @@
 		display: grid;
 		place-items: center;
 	}
-	.round.next {
-		background: var(--sun);
-		padding-left: 0.2em;
+	/* Can't listen: say so plainly, big enough for a parent to read from across the room. */
+	.notice {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		max-width: min(36rem, 92vw);
+		text-align: center;
+	}
+	.nomic {
+		position: relative;
+		font-size: clamp(4rem, 14vw, 6rem);
+		line-height: 1;
+	}
+	.nomic span {
+		position: absolute;
+		right: -0.35em;
+		bottom: -0.1em;
+		font-size: 0.6em;
+	}
+	.why {
+		margin: 0;
+		font-size: clamp(1.4rem, 4.5vw, 2rem);
+		font-weight: 700;
+	}
+	.needs {
+		margin: 0;
+		font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+	}
+	.retry {
+		padding-left: 0;
 	}
 	.pulse {
 		animation: glow 0.8s ease-in-out infinite alternate;

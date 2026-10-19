@@ -57,11 +57,11 @@ part is listening to the child. This adds a sixth game, Read Along (`/read/`), i
   - All but one sentence gold moves up a level, as in the other games
 - The game always listens: there is no microphone switch (changed after review: one mode, as the reviewer asked)
   - The browser asks for the microphone once; nothing is recorded or sent by the app itself
-- Where the browser can't listen, the story is read to the child
-  - When recognition is missing (Firefox) or refused, the game reads each sentence aloud
-    - Words light up one by one as they are spoken; the child taps ▶ for the next sentence
-  - Word timing comes from the browser voice's word-boundary events where they fire, otherwise from an estimate
-    by word length; no stars in this mode, since nothing is measured
+- When the game can't listen, it stops and says so plainly (changed after review: no read-to-me mode)
+  - Each cause has its own spoken and written message with the fix: no recognition in this browser (open it in
+    Chrome, Edge or Safari), microphone refused, no microphone, no connection
+  - A microphone that is on but hears nothing: after the help has moved past two words with not one word heard
+  - Every message ends with: Read Along has to hear you read, or it can't work; then ↻ to try again
 - Story text joins the voice catalog, so it gets recorded clips like every other line
   - Every title, sentence and story word becomes a catalog line (`story.<id>.<n>`, `sword.<word>`); the existing
     renderer makes and checks the clips, and anything without a clip uses the browser voice
@@ -74,7 +74,7 @@ part is listening to the child. This adds a sixth game, Read Along (`/read/`), i
 - Vosk in the browser (on-device, can be limited to the story's words, which suits children's speech): the browser
   library has not been updated in two years. Worth revisiting if the Web Speech API proves too poor for children.
 - A recorded voice reading the full story aloud with timings (karaoke only, no listening): simpler, but the child
-  doesn't read. Kept as the no-microphone mode, not the main game.
+  doesn't read. Briefly the no-microphone mode; dropped, since without listening the exercise doesn't work.
 
 ## Behaviour
 
