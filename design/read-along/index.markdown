@@ -31,7 +31,7 @@ part is listening to the child. This adds a sixth game, Read Along (`/read/`), i
 - One sentence at a time: the child reads it aloud and each word turns green as it is heard
   - The browser's speech recognition (Web Speech API) listens in the story's language, with live interim results
   - It runs on the device when the browser can (Chrome's `processLocally`); otherwise the browser's own service
-    does it (Apple on iPad, Google in Chrome), which is what the parent agrees to
+    does it (Apple on iPad, Google in Chrome)
   - Recognition starts in the Play tap and keeps running across sentences, restarted when the browser stops it
     - Where a restart outside a tap is refused (iOS), a 🎤 button appears to tap and carry on
   - Can go wrong: children's speech is recognised badly. Handled by the next step, not by trusting the transcript
@@ -55,12 +55,10 @@ part is listening to the child. This adds a sixth game, Read Along (`/read/`), i
   - Per sentence: all words gold is gold, no bronze word is silver, else bronze; a story is a round, with one dot
     per sentence
   - All but one sentence gold moves up a level, as in the other games
-- A parent turns the microphone on, once
-  - The start screen shows a 🎤 switch that must be held for 3 seconds (the same hold-gate as the Letter Leap
-    settings gear), with one spoken and written line: speech is processed by the browser's speech service
-  - The choice is stored in localStorage; nothing is recorded or sent by the app itself
-- Without a microphone, the story is read to the child
-  - When recognition is missing (Firefox), refused or switched off, the game reads each sentence aloud
+- The game always listens: there is no microphone switch (changed after review: one mode, as the reviewer asked)
+  - The browser asks for the microphone once; nothing is recorded or sent by the app itself
+- Where the browser can't listen, the story is read to the child
+  - When recognition is missing (Firefox) or refused, the game reads each sentence aloud
     - Words light up one by one as they are spoken; the child taps ▶ for the next sentence
   - Word timing comes from the browser voice's word-boundary events where they fire, otherwise from an estimate
     by word length; no stars in this mode, since nothing is measured
@@ -94,8 +92,6 @@ part is listening to the child. This adds a sixth game, Read Along (`/read/`), i
 - Pictures: start with emoji scenes, or have real illustrations from the start? Drawn ones could be simple SVG
   pictures made per fable (more work, one consistent look), or images generated once on this Mac with an open
   image model and stored like the voice clips.
-- Should the microphone switch sit behind the 3-second hold (a parent decision, since audio may leave the device),
-  or be a plain tap?
 - Read Along has a helper character (Diya). Do you want one here (for example a friendly owl that speaks the help),
   or keep the plain glowing word?
 - Ten fables per language, four levels: is that the right amount for a first version, or start with fewer?

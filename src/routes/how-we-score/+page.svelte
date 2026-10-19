@@ -156,10 +156,10 @@
 			<li><strong>Bronze</strong>: the game said it (after 8 seconds, or when the child tapped it).</li>
 		</ul>
 		<p>
-			A sentence with every word green is gold; with no word said for the child, silver; otherwise bronze. Speech
-			recognition is switched on by a parent (hold the 🎤 for 3 seconds); it runs on the device where the browser can,
-			otherwise in the browser's speech service (Apple on iPad, Google in Chrome). The app itself keeps no audio.
-			Without it, the game reads each sentence aloud and lights the words as it goes, with no stars.
+			A sentence with every word green is gold; with no word said for the child, silver; otherwise bronze. The
+			browser asks once for the microphone. Speech is recognised on the device where the browser can, otherwise in the
+			browser's speech service (Apple on iPad, Google in Chrome). The app itself keeps no audio. Where the browser can't
+			listen, the game reads each sentence aloud and lights the words as it goes, with no stars.
 		</p>
 
 		<h2>Why</h2>

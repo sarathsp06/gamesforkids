@@ -29,9 +29,9 @@ site, everything stays on the device.
 - **Thinking, not tapping.** Chess Path puzzles are solved by the game first, so it knows the shortest way and can
   nudge a stuck child to the next good square. Hexapawn is a proven win for whoever moves second, so the computer
   always starts: the child can always win, but only by playing well.
-- **Reading with a helper.** Read Along matches what it hears against the known sentence, leniently and in order. A
-  stuck word glows, then is read aloud, then the story moves on. The microphone is a parent's choice (hold 🎤 for
-  3 seconds); without it the story is read aloud with each word lit up.
+- **Reading with a helper.** Read Along listens as the child reads and matches what it hears against the known
+  sentence, leniently and in order. A stuck word glows, then is read aloud, then the story moves on. Where the
+  browser can't listen (Firefox), it reads the story aloud with each word lit up instead.
 
 ## 🧑‍💻 Develop
 
@@ -60,9 +60,9 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
 
 - **Letter Leap settings:** hold the ⚙️ on its start screen for 3 seconds: language, word level, sound, stickers,
   play history.
-- **Read Along microphone:** hold 🎤 on its start screen for 3 seconds. Speech is recognised on the device where the
-  browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app keeps no
-  audio.
+- **Read Along microphone:** the browser asks once for microphone access. Speech is recognised on the device where
+  the browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app
+  keeps no audio.
 
 ## 📜 Credits
 

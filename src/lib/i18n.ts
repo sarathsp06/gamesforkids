@@ -72,8 +72,6 @@ const en = {
 	'read.go': 'Read it out loud!',
 	'read.listen': 'Listen, and read along.',
 	'read.end': 'The end!',
-	'read.micOn': "The microphone is on. Your browser's speech service listens to the reading.",
-	'read.micOff': 'The microphone is off. I will read the stories to you.',
 	'read.noMic': 'This browser cannot listen. I will read the stories to you.'
 } satisfies Record<string, Entry>;
 
@@ -119,8 +117,6 @@ const nl: Record<Key, Entry> = {
 	'read.go': 'Lees maar hardop!',
 	'read.listen': 'Luister, en lees mee.',
 	'read.end': 'Einde!',
-	'read.micOn': 'De microfoon staat aan. De spraakdienst van je browser luistert naar het voorlezen.',
-	'read.micOff': 'De microfoon staat uit. Ik lees de verhalen aan je voor.',
 	'read.noMic': 'Deze browser kan niet luisteren. Ik lees de verhalen aan je voor.'
 };
 

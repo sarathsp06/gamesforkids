@@ -90,17 +90,16 @@ const CHESS = 'chessLevel';
 export const loadChessLevel = (): number => Math.max(1, Math.min(CHESS_LEVELS, Number(read<number>(CHESS, 1)) || 1));
 export const saveChessLevel = (l: number) => write(CHESS, String(l));
 
-/** Read Along: level 1–READ_LEVELS, the microphone choice a parent made, and the next story per level. */
+/** Read Along: level 1–READ_LEVELS and the next story per level. */
 const READ = 'readAlong';
 export interface ReadProgress {
 	v: 1;
 	level: number;
-	mic: boolean;
 	next: Record<number, number>;
 }
 export const loadRead = (): ReadProgress => {
 	const p = read<Partial<ReadProgress> | null>(READ, null);
-	if (p?.v !== 1) return { v: 1, level: 1, mic: false, next: {} };
-	return { v: 1, level: Math.max(1, Math.min(READ_LEVELS, Number(p.level) || 1)), mic: !!p.mic, next: p.next ?? {} };
+	if (p?.v !== 1) return { v: 1, level: 1, next: {} };
+	return { v: 1, level: Math.max(1, Math.min(READ_LEVELS, Number(p.level) || 1)), next: p.next ?? {} };
 };
 export const saveRead = (p: ReadProgress) => write(READ, p);

@@ -17,11 +17,10 @@
 	const MOVE_ON_MS = 5000; // ...and this long after saying it, the game moves on
 	const NEXT_SENTENCE_MS = 350; // short: a child often reads straight on
 	const HEARD_FLASH_MS = 500;
-	const HOLD_MS = 3000; // the parent hold on the microphone switch
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
-	let progress = $state<ReadProgress>({ v: 1, level: 1, mic: false, next: {} });
+	let progress = $state<ReadProgress>({ v: 1, level: 1, next: {} });
 	let listenState = $state<ListenState>('off');
 	let supported = $state(true);
 
@@ -45,8 +44,6 @@
 	let baseline = 0; // heard words before this point belong to an earlier sentence or the app's own voice
 	let basePtr = 0;
 	let timers: number[] = [];
-	let holding = $state(false);
-	let holdTimer = 0;
 
 	const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(fn, ms));
 	const clearTimers = () => {
@@ -71,7 +68,6 @@
 
 	function stopAll() {
 		clearTimers();
-		clearTimeout(holdTimer);
 		listener?.stop();
 		stopSpeech();
 	}
@@ -104,7 +100,8 @@
 	}
 
 	const storiesAt = (level: number) => STORIES.filter((s) => s.level === level);
-	const useMic = () => progress.mic && supported && listenState !== 'denied';
+	// Always listening; reading aloud to the child only where the browser can't listen or it was refused.
+	const useMic = () => supported && listenState !== 'denied';
 
 	function play() {
 		grades = [];
@@ -230,23 +227,6 @@
 		phase = 'start';
 	}
 
-	/** The microphone switch is a parent's decision: hold it for three seconds. */
-	function holdStart() {
-		if (!supported) return say(t(language, 'read.noMic'));
-		holding = true;
-		holdTimer = window.setTimeout(() => {
-			holding = false;
-			progress = { ...progress, mic: !progress.mic };
-			saveRead(progress);
-			sfx.chime();
-			say(t(language, progress.mic ? 'read.micOn' : 'read.micOff'));
-		}, HOLD_MS);
-	}
-	function holdEnd() {
-		holding = false;
-		clearTimeout(holdTimer);
-	}
-
 	const wordClass = (i: number) =>
 		readToMe
 			? i < lit || (i === lit && sentenceDone) ? 'lit' : i === lit ? 'now' : ''
@@ -294,20 +274,6 @@
 					>
 				{/each}
 			</div>
-			<button
-				type="button"
-				class="mic"
-				class:on={progress.mic && supported}
-				class:holding
-				aria-label={!supported ? 'This browser cannot listen' : progress.mic ? 'Microphone on: hold 3 seconds to turn off' : 'Microphone off: a parent holds 3 seconds to turn on'}
-				onpointerdown={holdStart}
-				onpointerup={holdEnd}
-				onpointerleave={holdEnd}
-				oncontextmenu={(e) => e.preventDefault()}
-			>
-				<svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" /></svg>
-				<span>{supported && progress.mic ? '🎤' : '🔇'}</span>
-			</button>
 		</section>
 	{:else if phase === 'play' && story}
 		<ol class="dots" aria-label="{grades.length} of {story.sentences[language].length}">
@@ -381,7 +347,6 @@
 	.big-btn,
 	.flag,
 	.lvl,
-	.mic,
 	.round {
 		border: var(--line) solid var(--ink);
 		background: var(--paper);
@@ -447,43 +412,6 @@
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
 		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
-	}
-
-	/* Microphone switch: a ring fills while a parent holds it. */
-	.mic {
-		position: relative;
-		width: 4.2rem;
-		height: 4.2rem;
-		border-radius: 50%;
-		display: grid;
-		place-items: center;
-		font-size: 1.9rem;
-		touch-action: none;
-		user-select: none;
-		-webkit-user-select: none;
-		-webkit-touch-callout: none;
-	}
-	.mic.on {
-		background: var(--leaf);
-	}
-	.mic svg {
-		position: absolute;
-		inset: -10px;
-		width: calc(100% + 20px);
-		height: calc(100% + 20px);
-		transform: rotate(-90deg);
-		pointer-events: none;
-	}
-	.mic circle {
-		fill: none;
-		stroke: var(--sun);
-		stroke-width: 3;
-		stroke-dasharray: 101;
-		stroke-dashoffset: 101;
-	}
-	.mic.holding circle {
-		stroke-dashoffset: 0;
-		transition: stroke-dashoffset 3s linear;
 	}
 
 	.dots {
