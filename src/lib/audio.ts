@@ -56,15 +56,24 @@ function synth(text: string, language: Language, onDone: (() => void) | undefine
 	const lang = LANGUAGES.find((l) => l.id === language)!.speechLang;
 	const u = new SpeechSynthesisUtterance(text);
 	u.lang = lang;
-	// lang alone can fall back to a silent/wrong voice; pick one explicitly.
-	const voices = synth.getVoices();
-	const voice =
-		voices.find((v) => v.lang.replace('_', '-') === lang) ?? voices.find((v) => v.lang.startsWith(lang.slice(0, 2)));
+	// lang alone can fall back to a silent/wrong voice; pick the most natural one explicitly.
+	const voice = bestVoice(synth.getVoices(), lang);
 	if (voice) u.voice = voice;
-	u.rate = rate; // 0.6 default: slow and clear for young children
-	u.pitch = 1.2;
+	// A slowed, raised voice sounds mechanical: speak a little slower than normal, at its own pitch. Callers pass
+	// rates on the clip scale (0.6 = calm); 0.6 maps to 0.9 here, Spell Pick's 0.45 to about 0.68.
+	u.rate = Math.min(1, (rate / BASE_RATE) * 0.9);
+	u.pitch = 1;
 	u.onend = u.onerror = () => onDone?.();
 	synth.speak(u);
+}
+
+/** Names of the natural-sounding voices browsers ship: Edge's neural ones, Chrome's Google ones, Apple's downloads. */
+const NATURAL = /natural|neural|online|premium|enhanced|google|siri/i;
+/** The best voice for a language: a natural one of the exact locale, then any natural one, then the first match. */
+export function bestVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | undefined {
+	const exact = voices.filter((v) => v.lang.replace('_', '-') === lang);
+	const near = voices.filter((v) => v.lang.startsWith(lang.slice(0, 2)));
+	return exact.find((v) => NATURAL.test(v.name)) ?? near.find((v) => NATURAL.test(v.name)) ?? exact[0] ?? near[0];
 }
 
 export const stopSpeech = () => {

@@ -40,19 +40,28 @@ export function sameWord(heard: string, expected: string, lang: Language): boole
 	return similarity(plain(heard), plain(expected), lang) >= MATCH;
 }
 
+/** A word still being spoken: recognisers send "aslee" before "asleep". Long enough to be clear, then it counts. */
+const started = (heard: string, expected: string) =>
+	heard.length >= 3 && heard.length >= expected.length / 2 && expected.startsWith(heard);
+
 /**
- * How many words of the sentence are read, starting from `from` (already read or helped), given the words
- * heard since then. Each heard word either matches the next expected word, or the one after it (the word
- * in between was dropped by the recogniser, usually a short one like "a" or "de"); anything else is ignored.
+ * How far the child has read, given the words heard since `from` words were read (or helped). Each heard word
+ * matches the next expected word, or the one after it (the word in between was dropped by the recogniser,
+ * usually a short one like "a" or "de"), or is the start of the next word still being said; anything else is
+ * ignored. `used` is how many heard words that took, so the next sentence picks up right after them: a child
+ * who reads straight on into the next sentence is not asked to read it again.
  */
-export function align(sentence: Word[], heard: string[], from: number, lang: Language): number {
+export function align(sentence: Word[], heard: string[], from: number, lang: Language): { at: number; used: number } {
 	let at = from;
-	for (const h of heard) {
-		if (at >= sentence.length) break;
-		if (sameWord(h, sentence[at].key, lang)) at++;
+	let used = 0;
+	for (let i = 0; i < heard.length && at < sentence.length; i++) {
+		const h = heard[i];
+		if (sameWord(h, sentence[at].key, lang) || (i === heard.length - 1 && started(h, sentence[at].key))) at++;
 		else if (at + 1 < sentence.length && sameWord(h, sentence[at + 1].key, lang)) at += 2;
+		else continue;
+		used = i + 1;
 	}
-	return at;
+	return { at, used };
 }
 
 /** How a word was read: alone, after it glowed, or the game said it. */

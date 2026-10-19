@@ -32,6 +32,7 @@ ap.add_argument("--cfg", type=float, default=0.4, help="Chatterbox cfg_weight: l
 ap.add_argument("--tries", type=int, default=4)
 ap.add_argument("--skip", nargs="*", default=[], help="report files from earlier runs: lines that failed there aren't retried")
 ap.add_argument("--trim-existing", action="store_true", help="only cut noise tails from the clips already made, then exit")
+ap.add_argument("--first", default="", help="render ids starting with this first (e.g. story.)")
 ap.add_argument("--limit", type=int, default=0, help="render at most N clips, then exit (GPU memory creeps up in long runs)")
 ap.add_argument("--report", default=str(Path(tempfile.gettempdir()) / "voice-report.json"))
 args = ap.parse_args()
@@ -160,6 +161,8 @@ todo = [
 failed = {(r["lang"], r["id"]) for f in args.skip if Path(f).exists() for r in json.loads(Path(f).read_text())}
 todo = [l for l in todo if (l["lang"], l["id"]) not in failed]
 print(f"{len(todo)} of {len(lines)} clips to render", flush=True)
+if args.first:
+    todo.sort(key=lambda l: not l["id"].startswith(args.first))  # stable: keeps the language order otherwise
 if args.limit:
     todo = todo[: args.limit]
 if not todo:

@@ -8,15 +8,24 @@ assert.deepEqual(s.map((w) => w.key), ['let', 'me', 'go', 'says', 'the', 'mouse'
 assert.equal(s[2].shown, 'go,"');
 
 // In order, leniently: a sound-alike counts, a dropped short word is forgiven, noise is ignored.
-assert.equal(align(s, heardKeys('let me go says the mouse'), 0, 'en'), 6);
-assert.equal(align(s, heardKeys('let me go says mouse'), 0, 'en'), 6, '"the" dropped by the recogniser');
-assert.equal(align(s, heardKeys('um let uh me'), 0, 'en'), 2, 'filler words are ignored');
-assert.equal(align(s, heardKeys('mouse the says'), 0, 'en'), 0, 'out of order does not count');
-assert.equal(align(s, heardKeys('go says'), 2, 'en'), 4, 'continues from where it was');
+const at = (h: string, from = 0, sen = s, lang: 'en' | 'nl' = 'en') => align(sen, heardKeys(h), from, lang).at;
+assert.equal(at('let me go says the mouse'), 6);
+assert.equal(at('let me go says mouse'), 6, '"the" dropped by the recogniser');
+assert.equal(at('um let uh me'), 2, 'filler words are ignored');
+assert.equal(at('mouse the says'), 0, 'out of order does not count');
+assert.equal(at('go says', 2), 4, 'continues from where it was');
+// A word still being said counts once it is clearly started, but only as the last word heard.
+const lion = words('The lion is asleep.');
+assert.equal(at('the lion is asl', 0, lion), 4, '"asl…" of asleep, still being said');
+assert.equal(at('the lion is as', 0, lion), 3, 'too little of the word yet');
+// Reading straight on: words past the end are left for the next sentence.
+const r = align(lion, heardKeys('the lion is asleep a mouse'), 0, 'en');
+assert.deepEqual(r, { at: 4, used: 4 });
+assert.equal(align(words('A mouse runs on him.'), heardKeys('the lion is asleep a mouse').slice(r.used), 0, 'en').at, 2);
 assert.ok(sameWord('kat', 'cat', 'en'), 'kat for cat');
 assert.ok(sameWord('een', 'één', 'nl'), 'accents dropped by the recogniser');
 assert.ok(!sameWord('dog', 'cat', 'en'));
-assert.equal(align(words('De leeuw slaapt.'), heardKeys('de leeuw slaap'), 0, 'nl'), 3, 'Dutch, last sound clipped');
+assert.equal(at('de leeuw slaap', 0, words('De leeuw slaapt.'), 'nl'), 3, 'Dutch, last sound clipped');
 
 assert.equal(sentenceGrade(['read', 'read']), 'gold');
 assert.equal(sentenceGrade(['read', 'glowed']), 'silver');

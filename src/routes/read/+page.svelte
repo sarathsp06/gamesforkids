@@ -15,7 +15,8 @@
 	const GLOW_MS = 4000; // no progress this long: the next word glows
 	const SAY_MS = 8000; // ...this long: the game says it
 	const MOVE_ON_MS = 5000; // ...and this long after saying it, the game moves on
-	const NEXT_SENTENCE_MS = 900;
+	const NEXT_SENTENCE_MS = 350; // short: a child often reads straight on
+	const HEARD_FLASH_MS = 500;
 	const HOLD_MS = 3000; // the parent hold on the microphone switch
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
@@ -34,6 +35,9 @@
 	let grades = $state<Grade[]>([]);
 	let sentenceDone = $state(false);
 	let readToMe = $state(false);
+	/** The recogniser just heard something (matched or not): the 🎤 bounces, so the child knows it listens. */
+	let hearing = $state(false);
+	let hearingTimer = 0;
 
 	let listener: Listener | null = null;
 	let appSpeaking = false;
@@ -115,7 +119,8 @@
 		say([storyTitle(language, story), t(language, readToMe ? 'read.listen' : 'read.go')], () => later(() => next(), 400));
 	}
 
-	function next() {
+	/** `carry`: where in the heard words the previous sentence ended, so words read straight on still count. */
+	function next(carry?: number) {
 		clearTimers();
 		si++;
 		if (si >= story!.sentences[language].length) return finish();
@@ -125,21 +130,31 @@
 		glow = -1;
 		lit = -1;
 		sentenceDone = false;
-		rebase();
-		if (readToMe) readSentenceToMe();
-		else armStuck();
+		if (carry === undefined) rebase();
+		else {
+			baseline = carry;
+			basePtr = 0;
+		}
+		if (readToMe) return readSentenceToMe();
+		armStuck();
+		if (carry !== undefined && listener) onHeard(listener.transcript);
 	}
 
 	function onHeard(transcript: string) {
-		if (phase !== 'play' || appSpeaking || sentenceDone || readToMe || si < 0) return;
+		if (phase !== 'play' || appSpeaking || readToMe || si < 0) return;
+		hearing = true;
+		clearTimeout(hearingTimer);
+		hearingTimer = window.setTimeout(() => (hearing = false), HEARD_FLASH_MS);
+		if (sentenceDone) return;
 		const keys = heardKeys(transcript);
 		if (keys.length < baseline) baseline = 0; // listening restarted from a tap: a fresh transcript
-		const n = align(sentence, keys.slice(baseline), basePtr, language);
+		// Always from the sentence's start: the recogniser keeps revising its guess, but words never un-green.
+		const { at: n, used } = align(sentence, keys.slice(baseline), basePtr, language);
 		if (n <= at) return;
 		for (let i = at; i < n; i++) states[i] ??= glow === i ? 'glowed' : 'read';
 		at = n;
 		glow = -1;
-		if (at >= sentence.length) return done();
+		if (at >= sentence.length) return done(baseline + used);
 		armStuck();
 	}
 
@@ -173,13 +188,13 @@
 		say(storyWord(sentence[i].key), () => !readToMe && !sentenceDone && armStuck(), true);
 	}
 
-	function done() {
+	function done(carry?: number) {
 		clearTimers();
 		sentenceDone = true;
 		glow = -1;
 		grades = [...grades, sentenceGrade(states.map((s) => s ?? 'said'))];
 		sfx.tok();
-		later(next, NEXT_SENTENCE_MS);
+		later(() => next(carry), NEXT_SENTENCE_MS);
 	}
 
 	/** Without a microphone: say the sentence and light each word as it goes; the child taps ▶. */
@@ -235,7 +250,7 @@
 	const wordClass = (i: number) =>
 		readToMe
 			? i < lit || (i === lit && sentenceDone) ? 'lit' : i === lit ? 'now' : ''
-			: states[i] && i < at ? WORD_GRADE[states[i]!] : glow === i ? 'glow' : '';
+			: states[i] && i < at ? WORD_GRADE[states[i]!] : glow === i ? 'glow' : i === at && !sentenceDone ? 'next' : '';
 </script>
 
 <main>
@@ -318,10 +333,10 @@
 					{#if !readToMe && listenState === 'paused'}
 						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}>🎤</button>
 					{:else if !readToMe}
-						<span class="listening" class:on={listenState === 'listening'} aria-label="Listening">🎤</span>
+						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening">🎤</span>
 					{/if}
 					{#if readToMe && sentenceDone}
-						<button type="button" class="round next" aria-label="Next" onclick={next}>▶</button>
+						<button type="button" class="round next" aria-label="Next" onclick={() => next()}>▶</button>
 					{/if}
 				</div>
 			{/if}
@@ -549,6 +564,13 @@
 	.word.now {
 		background: var(--sun);
 	}
+	/* Where to read next: a thick underline, so the child keeps their place. */
+	.word.next {
+		text-decoration: underline;
+		text-decoration-thickness: 0.12em;
+		text-underline-offset: 0.18em;
+		text-decoration-color: var(--sun);
+	}
 	.word.glow {
 		animation: glow 0.8s ease-in-out infinite alternate;
 	}
@@ -584,6 +606,14 @@
 	.listening.on {
 		opacity: 1;
 		animation: breathe 1.6s ease-in-out infinite;
+	}
+	.listening.hearing {
+		animation: bounce 250ms ease-out;
+	}
+	@keyframes bounce {
+		50% {
+			transform: scale(1.45) translateY(-4px);
+		}
 	}
 	@keyframes breathe {
 		50% {
