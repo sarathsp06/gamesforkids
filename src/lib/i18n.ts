@@ -8,6 +8,8 @@
  */
 import { STICKERS, WORDS, type Language } from './words';
 import { SPELL_WORDS } from './spell';
+import { STORIES, type Story } from './stories';
+import { wordKey, words } from './readalong';
 
 /** One spoken line: `id` names its clip, `text` is what is said. */
 export interface Line {
@@ -65,7 +67,14 @@ const en = {
 	'chess.fewest': 'The fewest moves!',
 	'chess.canDoIn': { from: 1, to: 9, text: (n: number) => `You can do it in ${NUMBERS.en[n]} ${n === 1 ? 'move' : 'moves'}!` },
 	'chess.hex': 'Get a pawn to the other side!',
-	'chess.lost': 'The computer won. Try again!'
+	'chess.lost': 'The computer won. Try again!',
+
+	'read.go': 'Read it out loud!',
+	'read.listen': 'Listen, and read along.',
+	'read.end': 'The end!',
+	'read.micOn': "The microphone is on. Your browser's speech service listens to the reading.",
+	'read.micOff': 'The microphone is off. I will read the stories to you.',
+	'read.noMic': 'This browser cannot listen. I will read the stories to you.'
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -105,7 +114,14 @@ const nl: Record<Key, Entry> = {
 	'chess.fewest': 'Zo kort mogelijk!',
 	'chess.canDoIn': { from: 1, to: 9, text: (n) => `Het kan in ${NUMBERS.nl[n]} ${n === 1 ? 'zet' : 'zetten'}!` },
 	'chess.hex': 'Breng een pion naar de overkant!',
-	'chess.lost': 'De computer wint. Nog een keer!'
+	'chess.lost': 'De computer wint. Nog een keer!',
+
+	'read.go': 'Lees maar hardop!',
+	'read.listen': 'Luister, en lees mee.',
+	'read.end': 'Einde!',
+	'read.micOn': 'De microfoon staat aan. De spraakdienst van je browser luistert naar het voorlezen.',
+	'read.micOff': 'De microfoon staat uit. Ik lees de verhalen aan je voor.',
+	'read.noMic': 'Deze browser kan niet luisteren. Ik lees de verhalen aan je voor.'
 };
 
 const CATALOG: Record<Language, Record<Key, Entry>> = { en, nl };
@@ -134,6 +150,18 @@ export const animal = (lang: Language, emoji: string): Line => ({
 	text: STICKERS[emoji][lang]
 });
 
+/** Read Along: a story's title, one of its sentences, and a single word of it (said when the child is stuck). */
+export const storyTitle = (lang: Language, st: Story): Line => ({ id: `story.${st.id}.title`, text: st.title[lang] });
+export const storySentence = (lang: Language, st: Story, i: number): Line => ({
+	id: `story.${st.id}.${i}`,
+	text: st.sentences[lang][i].text
+});
+// Ids are file names: plain ASCII, so accents are dropped (één → een) and the word itself is the text.
+export const storyWord = (key: string): Line => ({
+	id: `sword.${key.normalize('NFD').replace(/\p{M}/gu, '')}`,
+	text: key
+});
+
 /** Every line that can be spoken in a language: the generator renders one clip per id. */
 export function allLines(lang: Language): Line[] {
 	const out: Line[] = [];
@@ -145,6 +173,15 @@ export function allLines(lang: Language): Line[] {
 	for (const w of new Set([...WORDS[lang], ...SPELL_WORDS[lang]])) out.push(word(w));
 	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l));
 	for (const emoji of Object.keys(STICKERS)) out.push(animal(lang, emoji));
+	const storyWords = new Set<string>();
+	for (const st of STORIES) {
+		out.push(storyTitle(lang, st));
+		st.sentences[lang].forEach((sen, i) => {
+			out.push(storySentence(lang, st, i));
+			for (const w of words(sen.text)) storyWords.add(wordKey(w.shown));
+		});
+	}
+	for (const w of storyWords) out.push(storyWord(w));
 	return out;
 }
 

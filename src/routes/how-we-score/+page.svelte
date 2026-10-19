@@ -144,6 +144,24 @@
 			gets a nudge instead of tapping at random.
 		</p>
 
+		<h3>Reading aloud (Read Along)</h3>
+		<p>
+			The child reads a fable aloud, one sentence at a time. The game knows the sentence, so it doesn't need a perfect
+			transcript: it checks the words in order, and a word that sounds close (“kat” for “cat”) still counts. Each word
+			gets its own colour:
+		</p>
+		<ul>
+			<li><strong>Green</strong>: read alone.</li>
+			<li><strong>Amber</strong>: read after the word started to glow (after 4 seconds without progress).</li>
+			<li><strong>Bronze</strong>: the game said it (after 8 seconds, or when the child tapped it).</li>
+		</ul>
+		<p>
+			A sentence with every word green is gold; with no word said for the child, silver; otherwise bronze. Speech
+			recognition is switched on by a parent (hold the 🎤 for 3 seconds); it runs on the device where the browser can,
+			otherwise in the browser's speech service (Apple on iPad, Google in Chrome). The app itself keeps no audio.
+			Without it, the game reads each sentence aloud and lights the words as it goes, with no stars.
+		</p>
+
 		<h2>Why</h2>
 		<ul>
 			<li>Children under about 11 learn much less from “wrong!” than from “right!” — so near misses are rewarded.</li>

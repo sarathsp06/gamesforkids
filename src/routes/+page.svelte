@@ -19,8 +19,14 @@
 		<a class="game chess" href={resolve('/chess')} aria-label="Chess Path">
 			<span class="caps" aria-hidden="true"><b class="r">♞&#xFE0E;</b><i>⭐</i></span>
 		</a>
+		<a class="game read" href={resolve('/read')} aria-label="Read Along">
+			<span class="caps" aria-hidden="true"><i>📖</i><b class="g">Aa</b></span>
+		</a>
 	</nav>
-	<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
+	<div class="links">
+		<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
+		<a class="about" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+	</div>
 </main>
 
 <style>
@@ -31,6 +37,12 @@
 		align-content: center;
 		gap: 2.5rem;
 		padding: 2rem 1rem;
+	}
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 1rem;
 	}
 	.about {
 		padding: 0.6rem 1.2rem;
@@ -76,7 +88,8 @@
 		background: var(--sun);
 	}
 	.spelling,
-	.shapes {
+	.shapes,
+	.read {
 		background: var(--paper);
 	}
 	b.g {

@@ -1,68 +1,94 @@
-# Games for Kids
+# 🎈 Games for Kids
 
-Five games for young children (about 4–10), picked from the home screen.
+[![Deploy](https://github.com/sarathsp06/gamesforkids/actions/workflows/deploy.yml/badge.svg)](https://github.com/sarathsp06/gamesforkids/actions/workflows/deploy.yml)
 
-**Letter Leap** (`/letter-leap/`) is a typing game. It says a word out loud in English or Dutch, and the child finds its letters on the keyboard. Left-hand keys are red, right-hand keys are blue, the next key glows yellow, and a hand badge beside the word shows which hand to use. Five words earn a sticker.
+**Six little learning games for ages 4–10, in English and Dutch.** No ads, no accounts, no tracking: it's a static
+site, everything stays on the device.
 
-**Number Dash** (`/math/`) is a timed math game with 10 levels of increasing difficulty: 1-digit +, 2-digit +, 3-digit +, 2-digit ± 1-digit, 2-digit −, 3-digit ± 2-digit, 3-digit −, times tables, 2-digit × 1-digit, and division. Each level has 10 fixed questionnaires of 10 questions, so times can be compared. Every questionnaire keeps its best time. Finishing 3 questionnaires of a level in under 1 minute each unlocks the next level. Unlocked levels stay open for practice.
+▶️ **Play:** <https://sarathsp06.github.io/gamesforkids/>
 
-**Spell Pick** (`/spell/`) is a word-recognition game. After a short pause it says a word out loud in English or Dutch, and the child picks the right spelling from three. Four levels: 1 clearly different words (*cat*, *book*, *bus*), 2 look-alike real words (*cat*, *car*), 3 a spelling that sounds right (*cat*, *kat*, *bus*), 4 both (*cat*, *kat*, *car*). Four first-try words in a round of five moves up a level. Five words earn a trophy.
+| | Game | What the child does | Grows from… → to… |
+|---|---|---|---|
+| 🅰️ | **Letter Leap** | Hears a word, types it on a colour-coded keyboard | home-row words → seven-letter words |
+| ➕ | **Number Dash** | Races through 10 sums against the clock | 1-digit + → division |
+| 🔤 | **Spell Pick** | Hears a word, picks the right spelling of three | *cat · book · bus* → *cat · kat · car* |
+| 🔺 | **Shape Sense** | Finds, compares and counts shapes; every prompt spoken | find the circle → count hidden triangles |
+| ♞ | **Chess Path** | Moves one chess piece to collect stars, then plays Hexapawn | rook on 4×4 → beat a smart computer |
+| 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
 
-**Shape Sense** (`/shapes/`) teaches shapes and logic to pre-readers: every prompt is spoken, every answer is a tap. Seven levels: 1 find the shape, 2 find it turned and stretched, 3 a look-alike with a gap or curved side next to the real one (almost), 4 odd one out, 5 what comes next in a pattern (right shape, wrong colour is almost), 6 count overlapping circles, 7 count the triangles among other shapes (one off is almost). Shapes are generated SVG, so questions never run out. Four first-try answers in a round of five moves up a level.
+## ✨ What makes it different
 
-**Chess Path** (`/chess/`) builds chess thinking one rule at a time, with spoken prompts and taps only. Levels 1–6 are path puzzles: move one piece to take every star in the fewest moves (1 rook on 4×4, 2 rook with rocks and two stars, 3 bishop, 4 knight, 5 knight with two stars, move dots shown only after a wrong tap, 6 a red guard watches some squares and stopping there gets caught). Puzzles are generated and solved by breadth-first search, so each has a known fewest-moves par: par is gold, one extra move is almost (silver), and after two wasted moves the next best square glows. Levels 7–8 are Hexapawn (3×3, three pawns each) against an easy and then a smart computer. The computer moves first, and the second player always wins Hexapawn with best play, so the child can always win, but only by playing well. Rounds are 5 puzzles or 3 games; all but one first-try win moves up a level.
+- **"Almost!" counts.** Answers are graded by *how close* they were, not right/wrong. *kat* for *cat* sounds right, R
+  for T is a neighbour key, 7 for 8 is a counting slip: those earn a warm amber "Almost!" and a silver star. Gold is
+  first try, bronze is still a finish, never a fail. Parents can read the rules on the in-app **How we score** page;
+  the research behind it is in [docs/learning.md](docs/learning.md).
+- **Made for pre-readers.** Prompts are spoken, answers are taps. Levels adapt: four first-try answers out of five
+  moves the child up.
+- **Real voices.** Every line is a recorded neural voice clip, rendered once on a Mac with an open model and checked
+  by speech recognition (see [scripts/voice.md](scripts/voice.md)); the browser voice fills any gap.
+- **Thinking, not tapping.** Chess Path puzzles are solved by the game first, so it knows the shortest way and can
+  nudge a stuck child to the next good square. Hexapawn is a proven win for whoever moves second, so the computer
+  always starts: the child can always win, but only by playing well.
+- **Reading with a helper.** Read Along matches what it hears against the known sentence, leniently and in order. A
+  stuck word glows, then is read aloud, then the story moves on. The microphone is a parent's choice (hold 🎤 for
+  3 seconds); without it the story is read aloud with each word lit up.
 
-All games grade each answer by **how close** it was, not just right/wrong — typing R for T (neighbour key) is a near slip, picking *kat* for *cat* sounds right (warm amber, "Almost!"). Number Dash stays exact on levels 1–5; from level 6 only a counting slip (7 or 9 for 8) or swapped digits (47 for 74) counts as almost. Stars are gold (first try), silver (one near miss) or bronze. Parents can read this on the in-app **How we score** page (`/how-we-score/`); the research is in [docs/learning.md](docs/learning.md).
-
-Built with SvelteKit (Svelte 5) and prerendered to a static site. No backend: progress and history live in `localStorage`, speech plays recorded clips (Chatterbox Multilingual, rendered locally; see [scripts/voice.md](scripts/voice.md)) and falls back to the browser's `speechSynthesis` for any line without a current clip.
-
-## Develop
+## 🧑‍💻 Develop
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 npm run check    # type-check
 npm run build    # static site in build/
-npm run preview
 ```
 
-## Parents
+Tests are plain assertion scripts:
 
-Hold the gear on the start screen for 3 seconds to open settings: language, word level (automatic or fixed), sound effects, sticker reset and play history.
+```bash
+for t in tests/*.test.ts; do npx tsx "$t"; done
+```
 
-## Deploy
+SvelteKit (Svelte 5), TypeScript, prerendered to a static site. No game engine and no runtime dependencies beyond a
+font: boards are DOM and generated SVG, animation is CSS. Progress lives in `localStorage`.
 
-`.github/workflows/deploy.yml` builds on every push to `main` and publishes `build/` to GitHub Pages, with `BASE_PATH=/<repo name>`. One-time setup: in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**.
+## 🚀 Deploy
 
-## Layout
+Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/workflows/deploy.yml), with
+`BASE_PATH=/<repo name>`). One-time setup: **Settings → Pages → Source: GitHub Actions**.
+
+## 👪 Parents
+
+- **Letter Leap settings:** hold the ⚙️ on its start screen for 3 seconds: language, word level, sound, stickers,
+  play history.
+- **Read Along microphone:** hold 🎤 on its start screen for 3 seconds. Speech is recognised on the device where the
+  browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app keeps no
+  audio.
+
+## 🗺️ Where things are
 
 ```
-src/routes/+page.svelte       game hub
-src/routes/letter-leap/       Letter Leap screens: start, play, reward, sticker book
-src/routes/spell/             Spell Pick screens: start, play, reward
-src/routes/shapes/            Shape Sense screens: start, play, reward
-src/routes/chess/             Chess Path screens: start, board, reward
-src/routes/math/              Number Dash screens: levels, questionnaires, play, result
-src/lib/math.ts               Number Dash levels, seeded questionnaires, unlock rule
-src/lib/spell.ts              Spell Pick levels, sound-alike spellings and phonetic similarity
-src/lib/shapes.ts             Shape Sense shape generator and questions per level
-src/lib/chess.ts              Chess Path piece moves, puzzle generator and solver, Hexapawn and its computer player
-src/lib/score.ts              graded closeness scoring shared by all games
-src/lib/game.svelte.ts        game state machine and timings
-src/lib/words.ts              word lists, difficulty tiers, stickers, praise
-src/lib/audio.ts              speech (recorded clips, browser voice fallback) and sound effects
-src/lib/i18n.ts               every spoken line, keyed, in English and Dutch
-src/lib/voice-manifest.json   which clips exist, and the text hash each was made from
-static/voice/                 recorded clips, static/voice/<lang>/<key>.mp3
-scripts/voice-lines.ts        lists every line for the clip renderer
-scripts/voice_render.py       renders and Whisper-checks clips (see scripts/voice.md)
-src/lib/storage.ts            localStorage keys
-src/lib/Keycap.svelte         keyboard key
-src/lib/ParentDialog.svelte   parent settings
-docs/redesign.md              design spec
-docs/learning.md              research notes: how children learn, mapped to the scoring engine
-tests/score.test.ts           scoring assertions (npx tsx tests/score.test.ts)
-tests/i18n.test.ts            voice catalog: unique ids, same keys in both languages
-tests/chess.test.ts           Chess Path: move rules, solvable puzzles, Hexapawn is a second-player win
-okf/                          knowledge bundle describing the previous Next.js version
+src/routes/            one folder per game, plus the hub (+page.svelte) and how-we-score/
+src/lib/
+  score.ts             graded "how close" scoring shared by every game
+  i18n.ts              every spoken line, keyed, in English and Dutch
+  audio.ts             recorded clips with browser-voice fallback, sound effects
+  words.ts · spell.ts  word lists, stickers; Spell Pick levels and phonetic similarity
+  math.ts              Number Dash levels and seeded questionnaires
+  shapes.ts            Shape Sense SVG shape generator
+  chess.ts             Chess Path moves, puzzle generator and solver, Hexapawn computer
+  stories.ts           Read Along fables (EN + NL) by level
+  readalong.ts         word matching against the sentence, grading
+  listen.ts            speech recognition wrapper
+  storage.ts           localStorage keys
+static/voice/          recorded clips: <lang>/<key>.mp3 (manifest in src/lib/voice-manifest.json)
+scripts/               voice clip renderer and its docs
+tests/                 assertion scripts per module
+docs/                  design notes and learning research
+design/                reviewed designs (Read Along)
 ```
+
+## 📜 Credits
+
+Fables are Aesop's (public domain), retold in our own words. Voices: [Chatterbox
+Multilingual](https://github.com/resemble-ai/chatterbox) (MIT). Font: [Andika](https://software.sil.org/andika/), made
+for beginning readers.

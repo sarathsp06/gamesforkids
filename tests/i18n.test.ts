@@ -19,7 +19,7 @@ for (const lang of ['en', 'nl'] as const) {
 	if (lang === 'en') assert.ok(lines.length > 200);
 }
 // Both languages have the same keys (TypeScript checks the catalog; this checks the expansion).
-const keys = (lang: 'en' | 'nl') => new Set(allLines(lang).filter((l) => !/^(word|letter|animal|praise|almost)\./.test(l.id)).map((l) => l.id));
+const keys = (lang: 'en' | 'nl') => new Set(allLines(lang).filter((l) => !/^(word|letter|animal|praise|almost|sword)\./.test(l.id)).map((l) => l.id));
 assert.deepEqual([...keys('en')].sort(), [...keys('nl')].sort(), 'same catalog keys in English and Dutch');
 assert.notEqual(textHash('kat'), textHash('kat.'));
 console.log('i18n.test.ts: all assertions passed');

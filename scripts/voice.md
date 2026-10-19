@@ -25,6 +25,9 @@ npx tsx scripts/voice-lines.ts > /tmp/lines.json
 ~/.venvs/voice/bin/python scripts/voice_render.py /tmp/lines.json
 ```
 
+For a big set, `VENV=~/.venvs/voice scripts/voice-render-all.sh` does the same in batches of 40 clips, each in a
+fresh process (GPU memory creeps up in one long run); the log is in `$TMPDIR/voice-render/render.log`.
+
 Only missing or changed lines are rendered (about 7 s each); clips for removed lines are deleted. Each clip
 is transcribed with Whisper: if it doesn't say its line or runs far too long (the model sometimes babbles
 after one-word inputs), it is rendered again with another seed, up to 4 times. Lines that never pass are
