@@ -64,29 +64,6 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
   browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app keeps no
   audio.
 
-## 🗺️ Where things are
-
-```
-src/routes/            one folder per game, plus the hub (+page.svelte) and how-we-score/
-src/lib/
-  score.ts             graded "how close" scoring shared by every game
-  i18n.ts              every spoken line, keyed, in English and Dutch
-  audio.ts             recorded clips with browser-voice fallback, sound effects
-  words.ts · spell.ts  word lists, stickers; Spell Pick levels and phonetic similarity
-  math.ts              Number Dash levels and seeded questionnaires
-  shapes.ts            Shape Sense SVG shape generator
-  chess.ts             Chess Path moves, puzzle generator and solver, Hexapawn computer
-  stories.ts           Read Along fables (EN + NL) by level
-  readalong.ts         word matching against the sentence, grading
-  listen.ts            speech recognition wrapper
-  storage.ts           localStorage keys
-static/voice/          recorded clips: <lang>/<key>.mp3 (manifest in src/lib/voice-manifest.json)
-scripts/               voice clip renderer and its docs
-tests/                 assertion scripts per module
-docs/                  design notes and learning research
-design/                reviewed designs (Read Along)
-```
-
 ## 📜 Credits
 
 Fables are Aesop's (public domain), retold in our own words. Voices: [Chatterbox
