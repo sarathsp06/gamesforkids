@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Render every missing clip, 40 per fresh process (GPU memory creeps up in one long run), until nothing is left
 # or a batch makes no progress. Lines that failed in an earlier batch of this run aren't retried.
-#   VENV=~/.venvs/voice [FIRST=story.] scripts/voice-render-all.sh [workdir]
+#   VENV=~/.venvs/voice [FIRST=story.] [TRIES=8] scripts/voice-render-all.sh [workdir]
 set -u
 cd "${0:A:h}/.."
 VENV=${VENV:-$HOME/.venvs/voice}
@@ -12,6 +12,7 @@ npx --yes tsx scripts/voice-lines.ts > "$WORK/lines.json"
 : > "$WORK/render.log"
 extra=()
 [[ -n ${FIRST:-} ]] && extra=(--first "$FIRST")
+[[ -n ${TRIES:-} ]] && extra+=(--tries "$TRIES")
 prev=-1
 for b in {1..60}; do
   PYTHONWARNINGS=ignore "$VENV/bin/python" scripts/voice_render.py "$WORK/lines.json" --limit 40 "${extra[@]}" \
