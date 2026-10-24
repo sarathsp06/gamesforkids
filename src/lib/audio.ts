@@ -24,6 +24,7 @@ export function speak(lines: Line | Line[] | string, language: Language, onDone?
 	const ls = typeof lines === 'string' ? [{ id: '', text: lines }] : Array.isArray(lines) ? lines : [lines];
 	const mine = ++run;
 	player?.pause();
+	if (!voiceOn.value) return void setTimeout(() => mine === run && onDone?.(), 0);
 	if (typeof Audio !== 'undefined' && ls.every((l) => hasClip(l, language))) {
 		if (typeof speechSynthesis !== 'undefined' && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
 		player ??= new Audio();
@@ -100,6 +101,8 @@ export function unlockSpeech() {
 
 let ctx: AudioContext | null = null;
 export let soundOn = { value: true };
+/** Pip's voice; off: speak() calls onDone at once and nothing is said. */
+export let voiceOn = { value: true };
 
 function tone(freqs: number[], step: number, length: number, type: OscillatorType = 'sine', gain = 0.15) {
 	if (!soundOn.value || typeof AudioContext === 'undefined') return;

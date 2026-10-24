@@ -10,9 +10,13 @@
 	import { resolve } from '$app/paths';
 	import { game, ROUND_WORDS } from '#lib/game.svelte.ts';
 	import { speak } from '#lib/audio.ts';
-	import { animal, t } from '#lib/i18n.ts';
-	import { KEY_ROWS, LANGUAGES, STICKERS, hand } from '#lib/words.ts';
+	import { t, word } from '#lib/i18n.ts';
+	import { KEY_ROWS, LANGUAGES, hand } from '#lib/words.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 	import Keycap from '#lib/Keycap.svelte';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
 	import ParentDialog from '#lib/ParentDialog.svelte';
 
 	let parent: ParentDialog;
@@ -20,7 +24,12 @@
 	let holdTimer = 0;
 	const HOLD_MS = 3000;
 
-	onMount(() => game.load());
+	onMount(() => {
+		game.load();
+		return trackPlay('letters');
+	});
+
+	const intro = $derived(game.language === 'nl' ? 'Hoor een woord, zoek de letters.' : 'Hear a word, find its letters.');
 
 	const playing = $derived(['listening', 'typing', 'wordDone'].includes(game.phase));
 	const target = $derived(game.phase === 'typing' ? game.word[game.index] : '');
@@ -73,7 +82,7 @@
 <main>
 	{#if game.phase === 'start'}
 		<div class="corner left">
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={30} /></a>
 		</div>
 		<div class="corner right">
 			<button
@@ -93,12 +102,13 @@
 				<svg viewBox="0 0 40 40" aria-hidden="true">
 					<circle class="ring" cx="20" cy="20" r="17" />
 				</svg>
-				<span>⚙</span>
+				<Icon name="gear" size={28} />
 			</button>
 		</div>
 
 		<section class="stage">
-			<button type="button" class="key-btn play" aria-label="Play" onclick={() => game.play()}>▶</button>
+			<Pip language={game.language} line={intro} />
+			<button type="button" class="key-btn play" aria-label="Play" onclick={() => game.play()}><Icon name="play" size="55%" /></button>
 
 			<div class="flags" role="group" aria-label="Language">
 				{#each LANGUAGES as l (l.id)}
@@ -110,23 +120,23 @@
 						onclick={() => {
 							game.setLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
 
-			<button type="button" class="book" aria-label="Sticker book" onclick={() => game.openStickers()}>
-				<span aria-hidden="true">📒</span>
+			<a class="book" href={resolve('/stickers')} aria-label="Sticker book">
+				<Icon name="star" size={36} />
 				{#key game.progress.stickers.length}<b class="count">{game.progress.stickers.length}</b>{/key}
-			</button>
+			</a>
 		</section>
 	{:else if playing}
 		<div class="corner left">
-			<button type="button" class="icon" aria-label="Home" onclick={() => game.home()}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => game.home()}><Icon name="home" size={30} /></button>
 		</div>
 		<ol class="dots" aria-label="{game.roundWords} of {ROUND_WORDS}">
 			{#each Array.from({ length: ROUND_WORDS }, (_, i) => i) as i (i)}
-				<li class={game.grades[i]} class:on={i < game.roundWords}>{i < game.roundWords ? '★' : ''}</li>
+				<li class={game.grades[i]} class:on={i < game.roundWords}>{#if i < game.roundWords}<Icon name="star" size="70%" />{/if}</li>
 			{/each}
 		</ol>
 
@@ -152,14 +162,10 @@
 				{@render handCue('right')}
 			</div>
 
-			<button
-				type="button"
-				class="key-btn replay"
-				class:speaking={game.phase === 'listening'}
-				aria-label="Hear the word again"
-				disabled={game.phase !== 'typing'}
-				onclick={() => game.replay()}>🔊</button
-			>
+			<!-- Pip says the word again when tapped; the bubble is hidden so the word isn't shown twice. -->
+			<div class="pip-replay" class:speaking={game.phase === 'listening'}>
+				<Pip language={game.language} size={92} line={game.phase === 'typing' ? word(game.word) : undefined} />
+			</div>
 
 			<div class="keyboard" role="group" aria-label="Keyboard">
 				{#each KEY_ROWS as row, r (row)}
@@ -182,44 +188,10 @@
 		</section>
 	{:else if game.phase === 'reward'}
 		<div class="corner left">
-			<button type="button" class="icon" aria-label="Home" onclick={() => game.home()}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => game.home()}><Icon name="home" size={30} /></button>
 		</div>
 		<section class="stage">
-			<div class="confetti" aria-hidden="true">
-				{#each Array.from({ length: 28 }, (_, i) => i) as i (i)}
-					<i style="--x: {(i * 37) % 100}%; --d: {(i % 7) * 90}ms; --c: var(--{['red', 'blue', 'sun', 'leaf'][i % 4]})"></i>
-				{/each}
-			</div>
-			<div class="sticker-wrap">
-				{#each Array.from({ length: ROUND_WORDS }, (_, i) => i) as i (i)}
-					<span class="star" style="--from-x: {(i - 2) * 2.9}rem" aria-hidden="true">★</span>
-				{/each}
-				<div class="sticker" aria-label={STICKERS[game.newSticker][game.language]}>{game.newSticker}</div>
-			</div>
-			<div class="actions">
-				<button type="button" class="key-btn play" aria-label="Play again" onclick={() => game.play()}>▶</button>
-				<button type="button" class="key-btn home" aria-label="Home" onclick={() => game.home()}>⌂</button>
-			</div>
-		</section>
-	{:else if game.phase === 'stickers'}
-		<div class="corner left">
-			<button type="button" class="icon" aria-label="Back" onclick={() => game.home()}>⌂</button>
-		</div>
-		<section class="stage">
-			<ul class="stickers">
-				{#each Object.entries(STICKERS) as [emoji, names] (emoji)}
-					{@const owned = game.progress.stickers.includes(emoji)}
-					<li>
-						<button
-							type="button"
-							class:owned
-							aria-label={owned ? names[game.language] : 'Not collected yet'}
-							disabled={!owned}
-							onclick={() => speak(animal(game.language, emoji), game.language)}>{emoji}</button
-						>
-					</li>
-				{/each}
-			</ul>
+			<Reward grades={game.grades} sticker={game.newSticker} language={game.language} onAgain={() => game.play()} />
 		</section>
 	{/if}
 </main>
@@ -257,26 +229,26 @@
 	.key-btn,
 	.flag,
 	.book {
+		/* Keycap: 4 px ink line, 6 px solid shadow that presses down. */
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
+		background: var(--white);
+		color: var(--ink);
+		text-decoration: none;
+		box-shadow: 0 6px 0 var(--ink);
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.icon:active,
 	.key-btn:active,
 	.flag:active,
 	.book:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		color: inherit;
-		text-decoration: none;
 		position: relative;
-		width: 3.5rem;
-		height: 3.5rem;
+		width: var(--tap);
+		height: var(--tap);
 		border-radius: 50%;
-		font-size: 1.9rem;
 		line-height: 1;
 		display: grid;
 		place-items: center;
@@ -319,8 +291,7 @@
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
+		padding-left: 0.6rem;
 		animation: bob 4s ease-in-out infinite;
 	}
 	@keyframes bob {
@@ -333,21 +304,17 @@
 			transform: translateY(-10px);
 		}
 	}
-	.home {
-		width: clamp(6rem, 18vw, 8rem);
-		height: clamp(6rem, 18vw, 8rem);
-		font-size: 3.5rem;
-	}
 
 	.flags {
 		display: flex;
 		gap: 2rem;
 	}
 	.flag {
-		width: 5.5rem;
-		height: 5.5rem;
+		width: max(5.5rem, var(--tap));
+		height: max(5.5rem, var(--tap));
 		border-radius: 50%;
-		font-size: 3rem;
+		display: grid;
+		place-items: center;
 		line-height: 1;
 		opacity: 0.55;
 	}
@@ -361,9 +328,11 @@
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
+		min-height: var(--tap);
+		min-width: var(--tap);
 		border-radius: 18px;
 		padding: 0.5rem 1.2rem;
-		font-size: 2.4rem;
+		background: var(--sun);
 	}
 	.count {
 		font-size: 2rem;
@@ -402,10 +371,10 @@
 	}
 	/* Word grades: silver = one near slip (neighbour key…), bronze = kept trying. */
 	.dots li.silver {
-		background: #c9ced6;
+		background: var(--silver);
 	}
 	.dots li.bronze {
-		background: #e0a172;
+		background: var(--bronze);
 	}
 
 	.word-row {
@@ -463,22 +432,22 @@
 		gap: var(--gap);
 		min-width: 0;
 	}
-	.replay {
-		width: 5.5rem;
-		height: 5.5rem;
+	.pip-replay {
 		border-radius: 50%;
-		font-size: 2.6rem;
 	}
-	.replay:disabled {
+	.pip-replay :global(.bubble) {
+		display: none;
+	}
+	.pip-replay :global(button:disabled) {
 		cursor: default;
 	}
-	.replay.speaking {
-		background: var(--sun);
+	/* While the word is being said, Pip glows. */
+	.pip-replay.speaking {
 		animation: speak 600ms ease-in-out infinite;
 	}
 	@keyframes speak {
 		50% {
-			box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 12px rgb(246 194 26 / 0.35);
+			box-shadow: 0 0 0 12px rgb(246 194 26 / 0.35);
 		}
 	}
 
@@ -506,106 +475,4 @@
 		}
 	}
 
-	.sticker {
-		font-size: clamp(8rem, 30vw, 14rem);
-		line-height: 1;
-		width: 1.25em;
-		height: 1.25em;
-		display: grid;
-		place-items: center;
-		border: var(--line) solid var(--ink);
-		border-radius: 28px;
-		background: var(--sun);
-		box-shadow: 0 8px 0 var(--ink);
-		animation: flip 800ms cubic-bezier(0.3, 1.4, 0.6, 1) 550ms both;
-	}
-	.sticker-wrap {
-		position: relative;
-		display: grid;
-		place-items: center;
-	}
-	/* The round's five stars fly from the progress dots into the sticker. */
-	.star {
-		position: absolute;
-		z-index: 1;
-		font-size: 2.6rem;
-		line-height: 1;
-		color: var(--sun);
-		-webkit-text-stroke: 2px var(--ink);
-		animation: converge 600ms ease-in both;
-	}
-	@keyframes converge {
-		from {
-			transform: translate(var(--from-x), -40vh);
-		}
-		85% {
-			opacity: 1;
-		}
-		to {
-			transform: scale(0.4);
-			opacity: 0;
-		}
-	}
-	@keyframes flip {
-		from {
-			transform: perspective(600px) rotateY(180deg) scale(0.4);
-		}
-	}
-	.actions {
-		display: flex;
-		gap: 2rem;
-		align-items: center;
-	}
-	.confetti {
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-	}
-	.confetti i {
-		position: absolute;
-		top: -2rem;
-		left: var(--x);
-		width: 0.9rem;
-		height: 1.4rem;
-		background: var(--c);
-		border: 2px solid var(--ink);
-		animation: fall 1500ms ease-in var(--d) both;
-	}
-	@keyframes fall {
-		to {
-			transform: translateY(110dvh) rotate(540deg);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.confetti {
-			display: none;
-		}
-	}
-
-	.stickers {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-		gap: 1rem;
-		width: min(48rem, 100%);
-	}
-	.stickers button {
-		width: 100%;
-		aspect-ratio: 1;
-		border: 3px dashed #b5b5b5;
-		border-radius: 18px;
-		background: var(--paper);
-		font-size: 3rem;
-		line-height: 1;
-		filter: grayscale(1);
-		opacity: 0.25;
-	}
-	.stickers button.owned {
-		border: var(--line) solid var(--ink);
-		background: var(--sun);
-		filter: none;
-		opacity: 1;
-	}
 </style>

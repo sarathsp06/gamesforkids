@@ -3,7 +3,13 @@
 	import { resolve } from '$app/paths';
 	import { sfx } from '#lib/audio.ts';
 	import { NEAR, gradeAttempts, numberSimilarity, type Grade } from '#lib/score.ts';
-	import { loadMath, saveMath, type MathProgress } from '#lib/storage.ts';
+	import { loadLanguage, loadMath, loadSettings, saveMath, type MathProgress } from '#lib/storage.ts';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
+	import type { Language } from '#lib/words.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
 	import {
 		LEVELS, PASS_MS, PASS_SETS, QUESTIONS_PER_SET, SETS_PER_LEVEL,
 		isUnlocked, passedSets, questionnaire, type Question
@@ -33,11 +39,23 @@
 	let finishMs = $state(0);
 	let previousBest = $state<number | undefined>(undefined);
 	let tick = 0;
+	let language = $state<Language>('en');
+	/** Clocks are for grown-up-approved racing only: hidden unless timers are switched on in settings. */
+	let timers = $state(false);
+	let newSticker = $state('');
 
 	onMount(() => {
 		progress = loadMath();
-		return () => clearInterval(tick);
+		language = loadLanguage();
+		timers = loadSettings().timers;
+		const stop = trackPlay('math');
+		return () => {
+			clearInterval(tick);
+			stop();
+		};
 	});
+
+	const intro = $derived(language === 'nl' ? 'Tien sommen. Klaar?' : 'Ten sums. Ready?');
 
 	const elapsed = $derived(screen === 'done' ? finishMs : Math.max(0, now - startedAt));
 	const seconds = (ms: number) => (ms / 1000).toFixed(1);
@@ -72,7 +90,7 @@
 			progress = { v: 1, best: { ...progress.best, [`${level}-${set}`]: finishMs } };
 			saveMath(progress);
 		}
-		sfx.chime();
+		newSticker = awardSticker(); // the Reward screen plays the chime
 		screen = 'done';
 	}
 
@@ -120,7 +138,7 @@
 <main>
 	<div class="corner">
 		{#if screen === 'levels'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={30} /></a>
 		{:else}
 			<button
 				type="button"
@@ -135,6 +153,8 @@
 	</div>
 
 	{#if screen === 'levels'}
+		<section class="stage">
+		<Pip {language} line={intro} />
 		<ol class="levels" aria-label="Levels">
 			{#each LEVELS as l, i (i)}
 				{@const open = isUnlocked(progress.best, i)}
@@ -142,7 +162,7 @@
 				<li>
 					<button type="button" class="level" class:open disabled={!open} onclick={() => openLevel(i)} aria-label="Level {i + 1}{open ? '' : ', locked'}">
 						<span class="num">{i + 1}</span>
-						<span class="example">{open ? l.example : '🔒'}</span>
+						<span class="example">{#if open}{l.example}{:else}<Icon name="lock" size={30} />{/if}</span>
 						{#if open}
 							<span class="pips" aria-label="{Math.min(passed, PASS_SETS)} of {PASS_SETS} passed">
 								{#each Array.from({ length: PASS_SETS }, (_, p) => p) as p (p)}
@@ -154,6 +174,7 @@
 				</li>
 			{/each}
 		</ol>
+		</section>
 	{:else if screen === 'sets'}
 		<section class="stage">
 			<h1 class="title"><span class="num">{level + 1}</span> {LEVELS[level].example}</h1>
@@ -163,7 +184,7 @@
 					<li>
 						<button type="button" class="set" class:passed={ms !== undefined && ms <= PASS_MS} onclick={() => start(s)}>
 							<span class="set-num">{s + 1}</span>
-							<span class="time">{ms === undefined ? '▶' : `⏱ ${seconds(ms)}`}</span>
+							<span class="time">{#if timers && ms !== undefined}{seconds(ms)}{:else}<Icon name="play" size={22} />{/if}</span>
 						</button>
 					</li>
 				{/each}
@@ -171,10 +192,12 @@
 		</section>
 	{:else if screen === 'play'}
 		<section class="stage">
-			<div class="clock" class:late={elapsed > PASS_MS} role="timer" aria-label="{Math.floor(elapsed / 1000)} seconds">
-				<span class="bar" style="--p: {Math.min(1, elapsed / PASS_MS)}"></span>
-				<span class="secs">⏱ {Math.floor(elapsed / 1000)}</span>
-			</div>
+			{#if timers}
+				<div class="clock" class:late={elapsed > PASS_MS} role="timer" aria-label="{Math.floor(elapsed / 1000)} seconds">
+					<span class="bar" style="--p: {Math.min(1, elapsed / PASS_MS)}"></span>
+					<span class="secs">{Math.floor(elapsed / 1000)}</span>
+				</div>
+			{/if}
 
 			<ol class="dots" aria-label="{index} of {QUESTIONS_PER_SET}">
 				{#each questions as _, i (i)}
@@ -197,7 +220,8 @@
 						class:ok={key === '✓'}
 						class:del={key === '⌫'}
 						aria-label={key === '⌫' ? 'Delete' : key === '✓' ? 'Check' : key}
-						onclick={() => press(key)}>{key}</button
+						onclick={() => press(key)}
+						>{#if key === '⌫'}<Icon name="undo" size={34} />{:else if key === '✓'}<Icon name="check" size={38} />{:else}{key}{/if}</button
 					>
 				{/each}
 			</div>
@@ -207,28 +231,17 @@
 		{@const record = previousBest === undefined || finishMs < previousBest}
 		{@const nextSet = Array.from({ length: SETS_PER_LEVEL }, (_, k) => (set + 1 + k) % SETS_PER_LEVEL).find((s) => best(level, s) === undefined) ?? (set + 1) % SETS_PER_LEVEL}
 		<section class="stage">
-			<div class="result" class:passed>
-				<span class="badge" aria-hidden="true">{passed ? '⭐' : '⏱'}</span>
-				<span class="big-time">{seconds(finishMs)}</span>
-			</div>
-			<p class="facts">
-				{#if record && previousBest !== undefined}<span class="pill sun">🏆 −{seconds(previousBest - finishMs)}</span>{/if}
-				{#if !record}<span class="pill">🏆 {seconds(previousBest!)}</span>{/if}
-				<span class="pill">✗ {mistakes}</span>
-			</p>
-			<span class="grade-stars" aria-label="Stars per question">
-				{#each grades as g, i (i)}
-					<i class={g}>★</i>
-				{/each}
-			</span>
-			<span class="pips big" aria-label="{Math.min(passedSets(progress.best, level), PASS_SETS)} of {PASS_SETS} passed">
-				{#each Array.from({ length: PASS_SETS }, (_, p) => p) as p (p)}
-					<i class:on={p < passedSets(progress.best, level)}></i>
-				{/each}
-			</span>
+			{#if timers}
+				<div class="result" class:passed>
+					<span class="badge" aria-hidden="true"><Icon name={passed ? 'star' : 'retry'} size="1em" /></span>
+					<span class="big-time">{seconds(finishMs)}</span>
+					{#if record && previousBest !== undefined}<span class="pill sun">−{seconds(previousBest - finishMs)}</span>{/if}
+					{#if !record}<span class="pill">{seconds(previousBest!)}</span>{/if}
+				</div>
+			{/if}
+			<Reward {grades} sticker={newSticker} {language} onAgain={() => start(set)} />
 			<div class="actions">
-				<button type="button" class="action play" aria-label="Next questionnaire" onclick={() => start(nextSet)}>▶</button>
-				<button type="button" class="action" aria-label="Try again" onclick={() => start(set)}>↻</button>
+				<button type="button" class="action" aria-label="Next questionnaire" onclick={() => start(nextSet)}><span class="set-num">{nextSet + 1}</span></button>
 				{#if level + 1 < LEVELS.length && isUnlocked(progress.best, level + 1)}
 					<button type="button" class="action next-level" aria-label="Next level" onclick={() => openLevel(level + 1)}>{level + 2}</button>
 				{/if}
@@ -244,6 +257,7 @@
 		display: grid;
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
+		background: var(--sky);
 	}
 	.stage {
 		display: flex;
@@ -262,10 +276,13 @@
 	.set,
 	.pad-key,
 	.action {
+		/* Keycap: 4 px ink line, 6 px solid shadow that presses down; never smaller than a thumb. */
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
-		color: inherit;
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
+		color: var(--ink);
 		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
 	}
@@ -274,12 +291,12 @@
 	.set:active,
 	.pad-key:active,
 	.action:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
+		width: var(--tap);
+		height: var(--tap);
 		border-radius: 50%;
 		font-size: 1.9rem;
 		line-height: 1;
@@ -345,27 +362,6 @@
 	.pips i.on {
 		background: var(--sun);
 	}
-	.pips.big i {
-		width: 1.6rem;
-		height: 1.6rem;
-	}
-	/* One star per question on the done screen, colored by grade. */
-	.grade-stars {
-		display: flex;
-		gap: 0.3rem;
-		font-size: 1.5rem;
-		-webkit-text-stroke: 1.5px var(--ink);
-	}
-	.grade-stars i {
-		font-style: normal;
-		color: #e0a172;
-	}
-	.grade-stars i.gold {
-		color: var(--sun);
-	}
-	.grade-stars i.silver {
-		color: #c9ced6;
-	}
 
 	.title {
 		margin: 0;
@@ -410,6 +406,9 @@
 		line-height: 1;
 	}
 	.time {
+		display: grid;
+		place-items: center;
+		min-height: 1.5rem;
 		font-size: 1.05rem;
 		font-variant-numeric: tabular-nums;
 	}
@@ -460,10 +459,10 @@
 	}
 	/* Question grades: silver = one near miss, bronze = kept trying. */
 	.dots li.silver {
-		background: #c9ced6;
+		background: var(--silver);
 	}
 	.dots li.bronze {
-		background: #e0a172;
+		background: var(--bronze);
 	}
 
 	.question {
@@ -519,11 +518,13 @@
 
 	.pad {
 		display: grid;
-		grid-template-columns: repeat(3, clamp(4rem, 15vw, 5.5rem));
+		grid-template-columns: repeat(3, max(var(--tap), clamp(4rem, 15vw, 5.5rem)));
 		gap: 0.7rem;
 	}
 	.pad-key {
-		height: clamp(4rem, 13vw, 5rem);
+		display: grid;
+		place-items: center;
+		height: max(var(--tap), clamp(4rem, 13vw, 5rem));
 		border-radius: 16px;
 		font-size: 2.2rem;
 		font-weight: 700;
@@ -534,7 +535,7 @@
 		color: var(--paper);
 	}
 	.pad-key.del {
-		background: #eee;
+		background: var(--blush);
 	}
 
 	.result {
@@ -544,18 +545,20 @@
 		padding: 1rem 2rem;
 		border: var(--line) solid var(--ink);
 		border-radius: 28px;
-		box-shadow: 0 8px 0 var(--ink);
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
 		animation: pop 300ms cubic-bezier(0.3, 1.6, 0.6, 1);
 	}
 	.result.passed {
 		background: var(--sun);
 	}
 	.badge {
-		font-size: clamp(3rem, 10vw, 5rem);
+		display: grid;
+		font-size: clamp(2.5rem, 8vw, 4rem);
 		line-height: 1;
 	}
 	.big-time {
-		font-size: clamp(4rem, 15vw, 8rem);
+		font-size: clamp(3rem, 11vw, 5.5rem);
 		font-weight: 700;
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
@@ -564,11 +567,6 @@
 		from {
 			transform: scale(0.6);
 		}
-	}
-	.facts {
-		display: flex;
-		gap: 0.8rem;
-		margin: 0;
 	}
 	.pill {
 		padding: 0.3rem 0.9rem;
@@ -586,15 +584,12 @@
 		gap: 1.5rem;
 	}
 	.action {
-		width: clamp(5.5rem, 18vw, 7rem);
-		height: clamp(5.5rem, 18vw, 7rem);
+		width: max(var(--tap), clamp(4.5rem, 14vw, 5.5rem));
+		height: max(var(--tap), clamp(4.5rem, 14vw, 5.5rem));
 		border-radius: 22px;
-		font-size: 3rem;
+		font-size: 2.4rem;
 		font-weight: 700;
 		line-height: 1;
-	}
-	.action.play {
-		background: var(--sun);
 	}
 	.action.next-level {
 		background: var(--ink);

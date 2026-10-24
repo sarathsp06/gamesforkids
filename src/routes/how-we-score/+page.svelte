@@ -5,7 +5,7 @@
 <svelte:head><title>How we score — for parents</title></svelte:head>
 
 <main>
-	<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+	<a class="icon" href={resolve('/grownups')} aria-label="Back">‹</a>
 
 	<article>
 		<h1>How we score</h1>

@@ -8,6 +8,11 @@
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { chapterName, colour, painted, t } from '#lib/i18n.ts';
 	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const SIZE = 800; // canvas bitmap; CSS scales it to the screen
 	const SCALE = SIZE / 100; // picture paths are drawn on a 100×100 grid
@@ -31,6 +36,9 @@
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
 	let viewing = $state('');
+	let newSticker = $state('');
+	/** Fallback that shows the reward if the finished-picture speech never reports its end. */
+	let doneTimer: ReturnType<typeof setTimeout> | undefined;
 
 	let paper = $state<HTMLCanvasElement>();
 	let lines = $state<HTMLCanvasElement>();
@@ -41,7 +49,10 @@
 		language = loadLanguage();
 		gallery = loadGallery();
 		done = loadPainted();
+		const stop = trackPlay('paint');
 		return () => {
+			stop();
+			clearTimeout(doneTimer);
 			pad?.destroy();
 			stopSpeech();
 		};
@@ -145,9 +156,18 @@
 		pad?.destroy();
 		pad = null;
 		undo = [];
-		phase = 'done';
-		sfx.chime();
-		speak(painted(language, picture), language);
+		newSticker = awardSticker();
+		// The reward says its own praise once mounted: let the picture's line finish first.
+		let shown = false;
+		const show = () => {
+			if (shown) return;
+			shown = true;
+			clearTimeout(doneTimer);
+			phase = 'done';
+		};
+		clearTimeout(doneTimer);
+		doneTimer = setTimeout(show, 4000);
+		speak(painted(language, picture), language, show);
 	}
 
 	function openChapter(c: Chapter) {
@@ -160,6 +180,7 @@
 		pad = null;
 		undo = [];
 		stopSpeech();
+		clearTimeout(doneTimer);
 		viewing = '';
 		phase = 'start';
 	}
@@ -172,15 +193,17 @@
 {/snippet}
 
 <main>
-	<div class="corner left">
+	<header class="corner">
 		{#if phase === 'start' && !chapter}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
-		{:else if phase === 'start'}
-			<button type="button" class="icon" aria-label="All stories" onclick={() => (chapter = null)}>⌂</button>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={32} /></a>
+			<Pip {language} line={t(language, 'paint.go')} size={64} />
+		{:else if phase === 'start' && chapter}
+			<button type="button" class="icon" aria-label="All stories" onclick={() => (chapter = null)}><Icon name="home" size={32} /></button>
+			<Pip {language} line={chapterName(language, chapter)} size={64} />
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={home}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={home}><Icon name="home" size={32} /></button>
 		{/if}
-	</div>
+	</header>
 
 	{#if phase === 'start'}
 		<section class="stage">
@@ -189,7 +212,7 @@
 					{#each chapter.pictures as p (p.id)}
 						<button type="button" class="card" aria-label={p.id} onclick={() => choose(p)}>
 							{@render pic(p)}
-							{#if done.includes(p.id)}<span class="star" aria-label="Painted">★</span>{/if}
+							{#if done.includes(p.id)}<span class="star" aria-label="Painted"><Icon name="star" size={20} /></span>{/if}
 						</button>
 					{/each}
 				</div>
@@ -219,20 +242,20 @@
 								language = l.id;
 								saveLanguage(l.id);
 								speak(t(l.id, 'lang.name'), l.id);
-							}}>{l.flag}</button
+							}}><Icon name={l.id} size={34} /></button
 						>
 					{/each}
 				</div>
-				<button type="button" class="flag" aria-label="My pictures" onclick={() => (phase = 'gallery')}>🖼️</button>
+				<button type="button" class="flag" aria-label="My pictures" onclick={() => (phase = 'gallery')}><Icon name="book" size={34} /></button>
 			</div>
 		</section>
 	{:else if phase === 'paint'}
 		<section class="studio">
 			<div class="tools" role="group" aria-label="Tools">
-				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back}>↶</button>
-				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}>🖌️</button>
-				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}>🪣</button>
-				<button type="button" class="tool ok" aria-label="Finished" onclick={finish}>✓</button>
+				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back} ><Icon name="undo" size={32} /></button>
+				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}><Icon name="brush" size={32} /></button>
+				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}><Icon name="bucket" size={32} /></button>
+				<button type="button" class="tool ok" aria-label="Finished" onclick={finish}><Icon name="check" size={32} /></button>
 			</div>
 			<div class="board" class:fill={tool === 'bucket'}>
 				<canvas bind:this={paper} width={SIZE} height={SIZE} onpointerdown={bucket}></canvas>
@@ -253,11 +276,8 @@
 		</section>
 	{:else if phase === 'done'}
 		<section class="stage">
-			<img class="framed" src={finished} alt={picture.id} />
-			<div class="row">
-				<button type="button" class="big-btn play" aria-label="Paint another" onclick={() => (phase = 'start')}>▶</button>
-				<button type="button" class="flag" aria-label="My pictures" onclick={() => (phase = 'gallery')}>🖼️</button>
-			</div>
+			<img class="framed small" src={finished} alt={picture.id} />
+			<Reward grades={['gold']} sticker={newSticker} {language} onAgain={() => (phase = 'start')} />
 		</section>
 	{:else}
 		<section class="stage">
@@ -274,7 +294,7 @@
 					{/each}
 				</div>
 			{:else}
-				<div class="empty" aria-label="No pictures yet">🖼️</div>
+				<div class="empty" aria-label="No pictures yet"><Icon name="book" size={96} /></div>
 			{/if}
 		</section>
 	{/if}
@@ -286,8 +306,9 @@
 		min-height: 100dvh;
 		display: grid;
 		place-items: center;
-		padding: 5.5rem 1rem 2rem;
+		padding: calc(var(--tap) + 2.5rem) 1rem 2rem;
 		overflow: hidden;
+		background: var(--butter);
 	}
 	.stage {
 		display: flex;
@@ -300,6 +321,10 @@
 		position: absolute;
 		top: 1rem;
 		left: 1rem;
+		right: 1rem;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
 	}
 	.row {
 		display: flex;
@@ -307,47 +332,33 @@
 		gap: 2rem;
 	}
 
+	/* Keycaps: white, 4 px ink, a 6 px solid shadow that the press sinks into. */
 	.icon,
-	.big-btn,
 	.flag,
 	.card,
 	.tool {
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
 		color: inherit;
 		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.icon:active,
-	.big-btn:active,
 	.flag:active,
 	.card:active,
 	.tool:enabled:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
+		flex: none;
+		width: var(--tap);
+		height: var(--tap);
 		border-radius: 50%;
-		font-size: 1.9rem;
 		line-height: 1;
 		display: grid;
 		place-items: center;
-	}
-	.big-btn {
-		border-radius: 22px;
-		display: grid;
-		place-items: center;
-		line-height: 1;
-	}
-	.play {
-		width: clamp(6rem, 22vw, 9rem);
-		height: clamp(6rem, 22vw, 9rem);
-		background: var(--sun);
-		font-size: clamp(3rem, 9vw, 4.5rem);
-		padding-left: 0.3em;
 	}
 	.flags {
 		display: flex;
@@ -356,12 +367,15 @@
 	.flag {
 		width: 5.5rem;
 		height: 5.5rem;
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border-radius: 50%;
-		font-size: 2.4rem;
+		display: grid;
+		place-items: center;
 	}
 	.flag[aria-pressed='true'],
 	.tool[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 
 	.pictures,
@@ -392,7 +406,6 @@
 		background: var(--sun);
 		display: grid;
 		place-items: center;
-		font-size: 1.3rem;
 		line-height: 1;
 	}
 	.chapters {
@@ -440,7 +453,7 @@
 		height: clamp(0.6rem, 2.6vw, 0.9rem);
 		border: 2px solid var(--ink);
 		border-radius: 50%;
-		background: var(--paper);
+		background: var(--white);
 	}
 	.progress i.on {
 		background: var(--sun);
@@ -462,7 +475,7 @@
 		border-radius: 10px;
 	}
 	.empty {
-		font-size: 6rem;
+		line-height: 0;
 		opacity: 0.35;
 	}
 
@@ -478,10 +491,9 @@
 		gap: 1rem;
 	}
 	.tool {
-		width: 4.2rem;
-		height: 4.2rem;
+		width: max(4.2rem, var(--tap));
+		height: max(4.2rem, var(--tap));
 		border-radius: 18px;
-		font-size: 2rem;
 		line-height: 1;
 		display: grid;
 		place-items: center;
@@ -492,18 +504,17 @@
 	}
 	.tool.ok {
 		background: var(--leaf);
-		color: var(--paper);
-		font-weight: 700;
+		color: var(--white);
 	}
 	/* Square board as big as the screen allows, leaving room for tools and crayons. */
 	.board {
 		position: relative;
-		width: min(94vw, calc(100dvh - 19rem), 42rem);
+		width: min(94vw, calc(100dvh - 2 * var(--tap) - 14rem), 42rem);
 		aspect-ratio: 1;
 		border: var(--line) solid var(--ink);
 		border-radius: 18px;
 		overflow: hidden;
-		background: var(--paper);
+		background: var(--white);
 		cursor: crosshair;
 	}
 	.board.fill {
@@ -527,17 +538,21 @@
 		max-width: 42rem;
 	}
 	.crayon {
-		width: clamp(3.2rem, 10vw, 4rem);
-		height: clamp(3.2rem, 10vw, 4rem);
+		/* Nine in a row: as big as the mode asks, unless the screen is narrower than that. */
+		--crayon: min(var(--tap), 9.5vw);
+		width: var(--crayon);
+		height: var(--crayon);
+		min-width: 3.2rem;
+		min-height: 3.2rem;
 		border: var(--line) solid var(--ink);
 		border-radius: 50%;
 		background: var(--c);
-		box-shadow: 0 var(--line) 0 var(--ink);
+		box-shadow: 0 6px 0 var(--ink);
 		transition: transform 120ms;
 	}
 	.crayon[aria-pressed='true'] {
 		transform: translateY(-6px);
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 5px var(--paper), 0 0 0 9px var(--ink);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 5px var(--white), 0 0 0 9px var(--ink);
 	}
 
 	.framed {
@@ -548,9 +563,21 @@
 		box-shadow: 0 8px 0 var(--ink);
 		display: block;
 	}
+	.framed.small {
+		width: min(40vw, 16rem);
+	}
 	.framed-btn {
 		padding: 0;
 		border: 0;
 		background: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.icon,
+		.flag,
+		.card,
+		.tool,
+		.crayon {
+			transition: none;
+		}
 	}
 </style>

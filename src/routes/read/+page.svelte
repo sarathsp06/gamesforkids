@@ -11,6 +11,11 @@
 	import { READ_LEVELS, STORIES, type Story } from '#lib/stories.ts';
 	import { loadLanguage, loadRead, saveLanguage, saveRead, type ReadProgress } from '#lib/storage.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const GLOW_MS = 4000; // no progress this long: the next word glows
 	const SAY_MS = 8000; // ...this long: the game says it
@@ -39,6 +44,7 @@
 	/** The recogniser just heard something (matched or not): the 🎤 bounces, so the child knows it listens. */
 	let hearing = $state(false);
 	let hearingTimer = 0;
+	let newSticker = $state('');
 
 	let listener: Listener | null = null;
 	let appSpeaking = false;
@@ -63,7 +69,11 @@
 			listenState = s;
 			if (isProblem(s) && phase === 'play') showProblem(s);
 		});
-		return stopAll;
+		const stop = trackPlay('read');
+		return () => {
+			stopAll();
+			stop();
+		};
 	});
 
 	function stopAll() {
@@ -206,6 +216,7 @@
 	function finish() {
 		clearTimers();
 		listener?.stop();
+		newSticker = awardSticker();
 		phase = 'reward';
 		const golds = grades.filter((g) => g === 'gold').length;
 		const p = { ...progress, next: { ...progress.next, [progress.level]: (progress.next[progress.level] ?? 0) + 1 } };
@@ -213,8 +224,7 @@
 		if (golds >= grades.length - 1 && p.level < READ_LEVELS) p.level++;
 		progress = p;
 		saveRead(p);
-		sfx.chime();
-		say([t(language, 'praise'), t(language, 'read.end')]);
+		// The reward screen plays the chime and says the praise itself.
 	}
 
 	function home() {
@@ -228,26 +238,27 @@
 
 {#snippet notice(p: Problem | 'silent')}
 	<div class="notice" role="alert">
-		<div class="nomic" aria-hidden="true">🎤<span>🚫</span></div>
+		<div class="nomic" aria-hidden="true"><Icon name="mic" size={88} /><span><Icon name="close" size={40} /></span></div>
 		<p class="why">{t(language, `read.problem.${p}`).text}</p>
 		<p class="needs">{t(language, 'read.needs').text}</p>
-		<button type="button" class="round" aria-label="Hear it" onclick={() => speak([t(language, `read.problem.${p}`), t(language, 'read.needs')], language)}>🔊</button>
+		<button type="button" class="round" aria-label="Hear it" onclick={() => speak([t(language, `read.problem.${p}`), t(language, 'read.needs')], language)}><Icon name="speaker" size={36} /></button>
 	</div>
 {/snippet}
 
 <main>
 	<div class="corner left">
 		{#if phase === 'start'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={36} /></a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={home}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={home}><Icon name="home" size={36} /></button>
 		{/if}
 	</div>
 
 	{#if phase === 'start'}
 		<section class="stage">
 			{#if supported}
-				<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+				<Pip {language} line={t(language, 'read.go')} />
+				<button type="button" class="big-btn play" aria-label="Play" onclick={play}><Icon name="play" size={72} /></button>
 			{:else}
 				{@render notice('unsupported')}
 			{/if}
@@ -262,7 +273,7 @@
 							language = l.id;
 							saveLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
@@ -301,32 +312,38 @@
 					</p>
 				{/key}
 				<div class="controls">
-					<button type="button" class="round" aria-label="Hear the sentence" onclick={() => say(storySentence(language, story!, si))}>🔊</button>
+					<!-- Pip shows the sentence; the tap goes through say() so matching stays muted while the app reads it. -->
+					<div
+						class="pip-say"
+						role="presentation"
+						onclickcapture={(e) => {
+							e.stopPropagation();
+							say(storySentence(language, story!, si));
+						}}
+					>
+						<Pip {language} size={92} line={storySentence(language, story, si)} />
+					</div>
 					{#if listenState === 'paused'}
-						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}>🎤</button>
+						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}><Icon name="mic" size={36} /></button>
 					{:else}
-						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening">🎤</span>
+						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening"><Icon name="mic" size={40} /></span>
 					{/if}
 				</div>
 			{/if}
 		</section>
 	{:else if phase === 'problem'}
 		<section class="stage">
-			{@render notice(problem)}
+			<div class="notice" role="alert">
+				<Pip {language} line={t(language, `read.problem.${problem}`)} size={96} />
+				<p class="needs">{t(language, 'read.needs').text}</p>
+			</div>
 			{#if problem !== 'unsupported'}
-				<button type="button" class="big-btn play retry" aria-label="Try again" onclick={play}>↻</button>
+				<button type="button" class="big-btn play retry" aria-label="Try again" onclick={play}><Icon name="retry" size={64} /></button>
 			{/if}
 		</section>
-	{:else if phase === 'reward' && story}
-		{@const golds = grades.filter((g) => g === 'gold').length}
+	{:else if phase === 'reward'}
 		<section class="stage">
-			<div class="trophy" aria-label="Story done">{golds === grades.length ? '🏆' : golds >= grades.length - 2 ? '🥇' : '🥈'}</div>
-			<div class="stars" aria-hidden="true">
-				{#each grades as g, i (i)}
-					<span class={g} style="--d: {i * 120}ms">★</span>
-				{/each}
-			</div>
-			<button type="button" class="big-btn play" aria-label="Next story" onclick={play}>▶</button>
+			<Reward {grades} sticker={newSticker} {language} onAgain={play} sayFirst={[t(language, 'read.end')]} />
 		</section>
 	{/if}
 </main>
@@ -339,6 +356,7 @@
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
 		overflow: hidden;
+		background: var(--mint);
 	}
 	.stage {
 		display: flex;
@@ -353,16 +371,22 @@
 		left: 1rem;
 	}
 
+	/* Keycaps: white (or sun) with a solid ink shadow that presses down. */
 	.icon,
 	.big-btn,
 	.flag,
 	.lvl,
 	.round {
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
-		color: inherit;
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
+		color: var(--ink);
 		text-decoration: none;
+		display: grid;
+		place-items: center;
+		line-height: 1;
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.icon:active,
@@ -370,30 +394,20 @@
 	.flag:active,
 	.lvl:active,
 	.round:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
 		border-radius: 50%;
-		font-size: 1.9rem;
-		line-height: 1;
-		display: grid;
-		place-items: center;
 	}
 	.big-btn {
 		border-radius: 22px;
-		display: grid;
-		place-items: center;
-		line-height: 1;
 	}
 	.play {
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
+		padding-left: 0.4rem;
 	}
 	.flags,
 	.levels {
@@ -409,19 +423,17 @@
 		width: 5.5rem;
 		height: 5.5rem;
 		border-radius: 50%;
-		font-size: 2.4rem;
 	}
 	.lvl {
-		width: 3.6rem;
-		height: 3.6rem;
 		border-radius: 50%;
-		font: inherit;
+		font-family: var(--title);
 		font-size: 1.7rem;
 		font-weight: 700;
 	}
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		background: var(--sun);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 
 	.dots {
@@ -445,17 +457,14 @@
 		font-size: clamp(0.8rem, 3vw, 1.3rem);
 		line-height: 1;
 	}
-	.dots li.gold,
-	.stars span.gold {
+	.dots li.gold {
 		background: var(--sun);
 	}
-	.dots li.silver,
-	.stars span.silver {
-		background: #c9ced6;
+	.dots li.silver {
+		background: var(--silver);
 	}
-	.dots li.bronze,
-	.stars span.bronze {
-		background: #e0a172;
+	.dots li.bronze {
+		background: var(--bronze);
 	}
 
 	.scene {
@@ -519,12 +528,7 @@
 		gap: 1.2rem;
 	}
 	.round {
-		width: 4.2rem;
-		height: 4.2rem;
 		border-radius: 50%;
-		font-size: 1.9rem;
-		display: grid;
-		place-items: center;
 	}
 	/* Can't listen: say so plainly, big enough for a parent to read from across the room. */
 	.notice {
@@ -537,14 +541,13 @@
 	}
 	.nomic {
 		position: relative;
-		font-size: clamp(4rem, 14vw, 6rem);
-		line-height: 1;
+		line-height: 0;
 	}
 	.nomic span {
 		position: absolute;
-		right: -0.35em;
-		bottom: -0.1em;
-		font-size: 0.6em;
+		right: -1rem;
+		bottom: -0.4rem;
+		color: var(--red);
 	}
 	.why {
 		margin: 0;
@@ -562,7 +565,7 @@
 		animation: glow 0.8s ease-in-out infinite alternate;
 	}
 	.listening {
-		font-size: 2rem;
+		display: grid;
 		opacity: 0.3;
 	}
 	.listening.on {
@@ -589,41 +592,11 @@
 			transform: translateY(-0.8rem) scale(0.9);
 		}
 	}
-	@keyframes cheer {
-		30% {
-			transform: scale(1.08);
-		}
-	}
-	.trophy {
-		font-size: clamp(6rem, 24vw, 10rem);
-		line-height: 1;
-		animation: cheer 500ms ease-in-out;
-	}
-	.stars {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 0.6rem;
-	}
-	.stars span {
-		display: grid;
-		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
-		border: 3px solid var(--ink);
-		border-radius: 50%;
-		font-size: 1.6rem;
-		line-height: 1;
-		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;
-		animation-delay: var(--d);
-	}
 	@media (prefers-reduced-motion: reduce) {
 		.scene,
 		.word.glow,
 		.pulse,
-		.listening.on,
-		.stars span,
-		.trophy {
+		.listening.on {
 			animation: none;
 		}
 	}

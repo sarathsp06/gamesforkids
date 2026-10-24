@@ -17,6 +17,16 @@ site, everything stays on the device.
 | 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
 | 🖌️ | **Paint Pot** | Colours in pictures from fairy tales and fables with brush and bucket; hears each colour's name | sun and house → the Three Little Pigs, Red Riding Hood |
 
+## 🦉 How it's put together
+
+- **Who is playing?** A player is a drawn face, a name and an age, kept on the device. Age picks the mode:
+  **Little (3–5)** shows five tap games with no words on the tiles; **Big (6–9)** shows all seven with labels and
+  level dots. A grown-up can pin the mode.
+- **Pip the owl** is the one voice: every prompt is spoken, and tapping Pip says it again.
+- **One sticker book** for every game: a finished round earns a sticker, with the same reward moment everywhere.
+- **Grown-ups** sit behind a three-second hold on the gear: players, voice and sound, speaking pace, the Number
+  Dash clock (off by default), and a week view of minutes played.
+
 ## ✨ What makes it different
 
 - **"Almost!" counts.** Answers are graded by *how close* they were, not right/wrong. *kat* for *cat* sounds right, R

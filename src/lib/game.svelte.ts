@@ -4,10 +4,10 @@ import {
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
 import { MAX_TIER, STICKERS, pickWord, type Language } from './words';
-import { animal, letter as letterLine, t, word } from './i18n';
+import { letter as letterLine, t, word } from './i18n';
 import { gradeAttempts, keySimilarity, type Grade } from './score';
 
-export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward' | 'stickers';
+export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward';
 
 export const ROUND_WORDS = 5;
 const REVEAL_FALLBACK_MS = 4000;
@@ -183,20 +183,14 @@ class Game {
 		}
 		this.updateProgress({ tier, stickers: [...this.progress.stickers, this.newSticker] });
 		this.#session.stickers++;
-		this.phase = 'reward';
-		sfx.chime();
-		speak([t(this.language, 'praise'), animal(this.language, this.newSticker)], this.language);
+		this.phase = 'reward'; // the shared Reward screen plays the chime and says the praise
 	}
 
 	home() {
 		this.#clearTimers();
 		stopSpeech();
-		if (this.phase !== 'start' && this.phase !== 'stickers') this.#saveSession();
+		if (this.phase !== 'start') this.#saveSession();
 		this.phase = 'start';
-	}
-
-	openStickers() {
-		this.phase = 'stickers';
 	}
 
 	#saveSession() {

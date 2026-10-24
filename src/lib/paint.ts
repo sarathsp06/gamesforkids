@@ -331,3 +331,12 @@ export const CHAPTERS: Chapter[] = [
 ];
 
 export const PICTURES: Picture[] = CHAPTERS.flatMap((c) => c.pictures);
+
+/**
+ * Words from the word games that have a colouring picture: lower-case word to picture id. Only words that
+ * occur in SPELL_WORDS or WORDS for that language.
+ */
+export const WORD_PICTURES: Record<Language, Record<string, string>> = {
+	en: { cat: 'cat', sun: 'sun', house: 'house', fish: 'fish', car: 'car', tree: 'tree', flower: 'flower', pig: 'pig', turtle: 'tortoise' },
+	nl: { kat: 'cat', zon: 'sun', huis: 'house', vis: 'fish', auto: 'car', boom: 'tree', bloem: 'flower', vlinder: 'butterfly', varken: 'pig', schildpad: 'tortoise' }
+};

@@ -11,6 +11,11 @@
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { t, type Line } from '#lib/i18n.ts';
 	import { loadChessLevel, loadLanguage, saveChessLevel, saveLanguage } from '#lib/storage.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const BREATHE_MS = 900; // small pause before the prompt, on start and between puzzles
 	const COMPUTER_MS = 800; // the computer "thinks" this long, so the child sees each move
@@ -26,6 +31,7 @@
 	let done = $state(0);
 	let wrongSims: number[] = [];
 	let solved = $state(false);
+	let newSticker = $state('');
 	let timer = 0;
 	let speakTimer = 0;
 	const hexMode = $derived(level >= HEX_LEVEL);
@@ -55,7 +61,11 @@
 	onMount(() => {
 		language = loadLanguage();
 		level = loadChessLevel();
-		return stop;
+		const stopTracking = trackPlay('chess');
+		return () => {
+			stop();
+			stopTracking();
+		};
 	});
 
 	function stop() {
@@ -75,6 +85,7 @@
 		const goal = t(language, p.stars.length > 1 ? 'chess.stars' : 'chess.star');
 		return [t(language, `chess.rule.${p.piece}`), goal, ...(p.guard ? [t(language, 'chess.guard')] : [])];
 	};
+	const START_LINE: Record<Language, string> = { en: 'Move the piece to the stars.', nl: 'Breng het stuk naar de sterren.' };
 	const sayPrompt = () => {
 		clearTimeout(speakTimer);
 		speakTimer = window.setTimeout(() => speak(prompt(), language), BREATHE_MS);
@@ -224,6 +235,7 @@
 
 	/** Four first-try wins out of five (two of three in Hexapawn): the next round is one level harder. */
 	function finish() {
+		newSticker = awardSticker();
 		phase = 'reward';
 		if (grades.filter((g) => g === 'gold').length >= round - 1 && level < CHESS_LEVELS) {
 			level++;
@@ -237,15 +249,16 @@
 <main>
 	<div class="corner left">
 		{#if phase === 'start'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={36} /></a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={() => { stop(); phase = 'start'; }}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => { stop(); phase = 'start'; }}><Icon name="home" size={36} /></button>
 		{/if}
 	</div>
 
 	{#if phase === 'start'}
 		<section class="stage">
-			<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+			<Pip {language} line={START_LINE[language]} />
+			<button type="button" class="big-btn play" aria-label="Play" onclick={play}><Icon name="play" size={72} /></button>
 			<div class="flags" role="group" aria-label="Language">
 				{#each LANGUAGES as l (l.id)}
 					<button
@@ -257,7 +270,7 @@
 							language = l.id;
 							saveLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
@@ -283,8 +296,18 @@
 			{/each}
 		</ol>
 		<section class="stage">
-			<button type="button" class="big-btn ear" aria-label="Hear it again" onclick={() => speak(prompt(), language)}>🔊</button>
 			{#if hexMode || pz}
+				<!-- Pip shows the rule; a tap replays the whole prompt, as the old hear-again key did. -->
+				<div
+					class="pip-say"
+					role="presentation"
+					onclickcapture={(e) => {
+						e.stopPropagation();
+						speak(prompt(), language);
+					}}
+				>
+					<Pip {language} size={92} line={prompt()[0]} />
+				</div>
 				{@const key = hexMode ? 'hex' : pz}
 				{#key key}
 					<div class="board" style="--n: {n}" role="grid" aria-label="Board">
@@ -323,15 +346,8 @@
 			{/if}
 		</section>
 	{:else}
-		{@const golds = grades.filter((g) => g === 'gold').length}
 		<section class="stage">
-			<div class="trophy" aria-label="Round done">{golds === round ? '🏆' : golds >= round - 2 ? '🥇' : '🥈'}</div>
-			<div class="stars" aria-hidden="true">
-				{#each grades as g, i (i)}
-					<span class={g} style="--d: {i * 120}ms">★</span>
-				{/each}
-			</div>
-			<button type="button" class="big-btn play" aria-label="Play level {level}" onclick={play}>▶</button>
+			<Reward {grades} sticker={newSticker} {language} onAgain={play} />
 		</section>
 	{/if}
 </main>
@@ -344,6 +360,7 @@
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
 		overflow: hidden;
+		background: var(--butter);
 	}
 	.stage {
 		display: flex;
@@ -358,51 +375,41 @@
 		left: 1rem;
 	}
 
+	/* Keycaps: white (or sun) with a solid ink shadow that presses down. */
 	.icon,
 	.big-btn,
 	.flag,
 	.lvl {
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
-		color: inherit;
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
+		color: var(--ink);
 		text-decoration: none;
+		display: grid;
+		place-items: center;
+		line-height: 1;
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.icon:active,
 	.big-btn:active,
 	.flag:active,
 	.lvl:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
 		border-radius: 50%;
-		font-size: 1.9rem;
-		line-height: 1;
-		display: grid;
-		place-items: center;
 	}
 	.big-btn {
 		border-radius: 22px;
-		display: grid;
-		place-items: center;
-		line-height: 1;
 	}
 	.play {
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
-	}
-	.ear {
-		width: clamp(4rem, 12vw, 5rem);
-		height: clamp(4rem, 12vw, 5rem);
-		border-radius: 50%;
-		font-size: clamp(1.8rem, 5vw, 2.4rem);
+		padding-left: 0.4rem;
 	}
 	.flags,
 	.levels {
@@ -418,19 +425,17 @@
 		width: 5.5rem;
 		height: 5.5rem;
 		border-radius: 50%;
-		font-size: 2.4rem;
 	}
 	.lvl {
-		width: 3.6rem;
-		height: 3.6rem;
 		border-radius: 50%;
-		font: inherit;
+		font-family: var(--title);
 		font-size: 1.7rem;
 		font-weight: 700;
 	}
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		background: var(--sun);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 
 	.dots {
@@ -454,17 +459,14 @@
 		font-size: clamp(1rem, 3.8vw, 1.5rem);
 		line-height: 1;
 	}
-	.dots li.gold,
-	.stars span.gold {
+	.dots li.gold {
 		background: var(--sun);
 	}
-	.dots li.silver,
-	.stars span.silver {
-		background: #c9ced6;
+	.dots li.silver {
+		background: var(--silver);
 	}
-	.dots li.bronze,
-	.stars span.bronze {
-		background: #e0a172;
+	.dots li.bronze {
+		background: var(--bronze);
 	}
 
 	/* The board: a grid of buttons, with pieces floated on top so moves slide. */
@@ -573,34 +575,11 @@
 		}
 	}
 
-	.trophy {
-		font-size: clamp(6rem, 24vw, 10rem);
-		line-height: 1;
-		animation: cheer 500ms ease-in-out;
-	}
-	.stars {
-		display: flex;
-		gap: 0.6rem;
-	}
-	.stars span {
-		display: grid;
-		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
-		border: 3px solid var(--ink);
-		border-radius: 50%;
-		font-size: 1.6rem;
-		line-height: 1;
-		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;
-		animation-delay: var(--d);
-	}
 	@media (prefers-reduced-motion: reduce) {
 		.board,
 		.token,
 		.sq.hint,
-		.sq.bump .shake,
-		.stars span,
-		.trophy {
+		.sq.bump .shake {
 			animation: none;
 			transition: none;
 		}

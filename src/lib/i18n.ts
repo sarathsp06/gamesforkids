@@ -79,7 +79,20 @@ const en = {
 	'read.problem.network': 'Listening needs the internet right now. Please check the connection and try again.',
 	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again.",
 
-	'paint.go': 'Pick a colour and paint!'
+	'paint.go': 'Pick a colour and paint!',
+
+	'home.who': 'Who is playing today?',
+	'home.what': 'What shall we play?',
+	'home.try': 'Shall we try this one?',
+	'home.done': 'You did it!',
+	'home.new': 'A new sticker!',
+	'game.spell': 'Spell Pick',
+	'game.math': 'Number Dash',
+	'game.letters': 'Letter Leap',
+	'game.shapes': 'Shape Sense',
+	'game.chess': 'Chess Path',
+	'game.read': 'Read Along',
+	'game.paint': 'Paint Pot'
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -130,7 +143,20 @@ const nl: Record<Key, Entry> = {
 	'read.problem.network': 'Luisteren heeft nu internet nodig. Controleer de verbinding en probeer het opnieuw.',
 	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.',
 
-	'paint.go': 'Kies een kleur en schilder maar!'
+	'paint.go': 'Kies een kleur en schilder maar!',
+
+	'home.who': 'Wie speelt er vandaag?',
+	'home.what': 'Wat gaan we spelen?',
+	'home.try': 'Zullen we deze proberen?',
+	'home.done': 'Je hebt het gedaan!',
+	'home.new': 'Een nieuwe sticker!',
+	'game.spell': 'Spelling Kiezen',
+	'game.math': 'Rekenrace',
+	'game.letters': 'Letter Sprong',
+	'game.shapes': 'Vormen Zien',
+	'game.chess': 'Schaakpad',
+	'game.read': 'Lees Mee',
+	'game.paint': 'Verfpot'
 };
 
 const CATALOG: Record<Language, Record<Key, Entry>> = { en, nl };
@@ -148,6 +174,9 @@ export function t(lang: Language, key: Key, n?: number): Line {
 	}
 	return { id: `${key}.${n}`, text: e.text(n!) };
 }
+
+/** A game's name, by its home-tile id (spell, math, letters, shapes, chess, read, paint). */
+export const gameName = (lang: Language, id: string): Line => t(lang, `game.${id}` as TextKey);
 
 /** A word from the word lists, said in lower case. */
 export const word = (w: string): Line => ({ id: `word.${w}`, text: w.toLowerCase() });
