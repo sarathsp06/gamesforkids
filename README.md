@@ -15,7 +15,7 @@ site, everything stays on the device.
 | 🔺 | **Shape Sense** | Finds, compares and counts shapes; every prompt spoken | find the circle → count hidden triangles |
 | ♞ | **Chess Path** | Moves one chess piece to collect stars, then plays Hexapawn | rook on 4×4 → beat a smart computer |
 | 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
-| 🖌️ | **Paint Pot** | Colours in a picture with brush and paint bucket; hears each colour's name | free colouring, kept in a gallery |
+| 🖌️ | **Paint Pot** | Colours in pictures from fairy tales and fables with brush and bucket; hears each colour's name | sun and house → the Three Little Pigs, Red Riding Hood |
 
 ## ✨ What makes it different
 
@@ -70,6 +70,7 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
 
 ## 📜 Credits
 
-Fables are Aesop's (public domain), retold in our own words. Voices: [Chatterbox
+Fables are Aesop's (public domain), retold in our own words. Paint Pot's characters come from fairy tales and
+fables (public domain), drawn in our own style. Voices: [Chatterbox
 Multilingual](https://github.com/resemble-ai/chatterbox) (MIT). Font: [Andika](https://software.sil.org/andika/), made
 for beginning readers.

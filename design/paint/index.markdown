@@ -29,7 +29,13 @@ no framework, no network, nothing to set up.
   - Only the paint route imports them, so the other games' pages don't load them
 - One screen: a picture to colour, a row of crayons, two tools
   - The picture is a thick black outline (the app's 4 px ink style, drawn at 8 px for small fingers) on white
-    - About eight pictures to start: sun, house, fish, cat, flower, car, tree, butterfly
+    - Pictures come in chapters, one per story (added after the first version)
+      - My world (sun, house, fish, cat, flower, car, tree, butterfly), The Three Little Pigs, Little Red
+        Riding Hood, The Tortoise and the Hare; four pictures per story
+      - Characters from fairy tales and Aesop's fables (public domain), drawn in our own style; not Disney or
+        other studio characters, which are copyrighted
+      - A chapter card shows two of its pictures and a dot per picture, filled once it is painted; tapping it
+        says the story's name. A finished picture gets a star on its card. Every chapter is open from the start
     - Each is a few SVG paths in a new module `src/lib/paint.ts`, drawn with large closed areas so they are easy
       to fill. No image files
   - Two stacked canvases: the bottom one is painted on, and the outline is drawn on both
@@ -37,7 +43,7 @@ no framework, no network, nothing to set up.
       stroke goes over them, so a scribble never hides the picture
     - Can go wrong: the outline's soft (anti-aliased) edge pixels can let fill leak or leave a pale ring. Thick
       lines plus fill tolerance should cover it; test this first with the real pictures
-  - Eight crayons, big round buttons at least 64 px: red, orange, yellow, green, blue, purple, brown, black.
+  - Nine crayons, big round buttons at least 64 px: red, orange, yellow, green, blue, purple, pink, brown, black.
     Red, blue, yellow (sun) and green (leaf) are the app's own palette colours
     - Tapping a crayon says its name in the chosen language. This is the learning part: the child hears the
       word every time they choose

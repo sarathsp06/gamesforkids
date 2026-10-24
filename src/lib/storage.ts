@@ -125,3 +125,11 @@ export function addToGallery(picture: string): boolean {
 	}
 	return false;
 }
+
+/** Paint Pot: ids of the pictures finished at least once, for a star on their card. */
+const PAINTED = 'paintDone';
+export const loadPainted = (): string[] => {
+	const d = read<unknown>(PAINTED, []);
+	return Array.isArray(d) ? d.filter((x): x is string => typeof x === 'string') : [];
+};
+export const savePainted = (ids: string[]) => write(PAINTED, ids);

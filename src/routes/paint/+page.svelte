@@ -4,10 +4,10 @@
 	import Atrament, { MODE_DISABLED, MODE_DRAW } from 'atrament';
 	import FloodFill from 'q-floodfill';
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
-	import { CRAYONS, PICTURES, type Crayon, type Picture } from '#lib/paint.ts';
+	import { CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from '#lib/paint.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
-	import { colour, painted, t } from '#lib/i18n.ts';
-	import { addToGallery, loadGallery, loadLanguage, saveLanguage } from '#lib/storage.ts';
+	import { chapterName, colour, painted, t } from '#lib/i18n.ts';
+	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
 
 	const SIZE = 800; // canvas bitmap; CSS scales it to the screen
 	const SCALE = SIZE / 100; // picture paths are drawn on a 100×100 grid
@@ -20,6 +20,9 @@
 	const THUMB = 320; // gallery pictures, in pixels
 
 	let phase = $state<'start' | 'paint' | 'done' | 'gallery'>('start');
+	/** The story whose pictures are shown; none: the list of chapters. */
+	let chapter = $state<Chapter | null>(null);
+	let done = $state<string[]>([]);
 	let language = $state<Language>('en');
 	let picture = $state<Picture>(PICTURES[0]);
 	let crayon = $state<Crayon>(CRAYONS[0]);
@@ -37,6 +40,7 @@
 	onMount(() => {
 		language = loadLanguage();
 		gallery = loadGallery();
+		done = loadPainted();
 		return () => {
 			pad?.destroy();
 			stopSpeech();
@@ -134,12 +138,21 @@
 		ctx.drawImage(lines!, 0, 0, THUMB, THUMB);
 		finished = out.toDataURL('image/png');
 		if (addToGallery(finished)) gallery = loadGallery();
+		if (!done.includes(picture.id)) {
+			done = [...done, picture.id];
+			savePainted(done);
+		}
 		pad?.destroy();
 		pad = null;
 		undo = [];
 		phase = 'done';
 		sfx.chime();
 		speak(painted(language, picture), language);
+	}
+
+	function openChapter(c: Chapter) {
+		chapter = c;
+		speak(chapterName(language, c), language);
 	}
 
 	function home() {
@@ -160,8 +173,10 @@
 
 <main>
 	<div class="corner left">
-		{#if phase === 'start'}
+		{#if phase === 'start' && !chapter}
 			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+		{:else if phase === 'start'}
+			<button type="button" class="icon" aria-label="All stories" onclick={() => (chapter = null)}>⌂</button>
 		{:else}
 			<button type="button" class="icon" aria-label="Home" onclick={home}>⌂</button>
 		{/if}
@@ -169,11 +184,29 @@
 
 	{#if phase === 'start'}
 		<section class="stage">
-			<div class="pictures" role="group" aria-label="Pick a picture">
-				{#each PICTURES as p (p.id)}
-					<button type="button" class="card" aria-label={p.id} onclick={() => choose(p)}>{@render pic(p)}</button>
-				{/each}
-			</div>
+			{#if chapter}
+				<div class="pictures" role="group" aria-label="Pick a picture">
+					{#each chapter.pictures as p (p.id)}
+						<button type="button" class="card" aria-label={p.id} onclick={() => choose(p)}>
+							{@render pic(p)}
+							{#if done.includes(p.id)}<span class="star" aria-label="Painted">★</span>{/if}
+						</button>
+					{/each}
+				</div>
+			{:else}
+				<div class="chapters" role="group" aria-label="Pick a story">
+					{#each CHAPTERS as c, i (c.id)}
+						{@const n = c.pictures.filter((p) => done.includes(p.id)).length}
+						<button type="button" class="card chapter c{i % 4}" aria-label={c.name[language]} onclick={() => openChapter(c)}>
+							<span class="cover">{@render pic(c.pictures[0])}{@render pic(c.pictures[1])}</span>
+							<span class="progress" aria-hidden="true">
+								{#each c.pictures as p (p.id)}<i class:on={done.includes(p.id)}></i>{/each}
+							</span>
+							<span class="sr">{n} of {c.pictures.length}</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
 			<div class="row">
 				<div class="flags" role="group" aria-label="Language">
 					{#each LANGUAGES as l (l.id)}
@@ -344,6 +377,80 @@
 		border-radius: 20px;
 		display: grid;
 		place-items: center;
+	}
+	.card {
+		position: relative;
+	}
+	.star {
+		position: absolute;
+		top: -0.7rem;
+		right: -0.7rem;
+		width: 2.2rem;
+		height: 2.2rem;
+		border: 3px solid var(--ink);
+		border-radius: 50%;
+		background: var(--sun);
+		display: grid;
+		place-items: center;
+		font-size: 1.3rem;
+		line-height: 1;
+	}
+	.chapters {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: clamp(1rem, 3vw, 1.8rem);
+		width: min(40rem, 94vw);
+	}
+	.chapter {
+		aspect-ratio: auto;
+		padding: 0.8rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	/* Each story its own paper colour, from the app palette, so a pre-reader can find it again. */
+	.chapter.c1 {
+		background: #ffe9e4;
+	}
+	.chapter.c2 {
+		background: #fff3c4;
+	}
+	.chapter.c3 {
+		background: #e1ecf8;
+	}
+	.cover {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.3rem;
+		width: 100%;
+	}
+	.cover :global(svg) {
+		width: 100%;
+		aspect-ratio: 1;
+		display: block;
+	}
+	.progress {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: clamp(0.2rem, 1vw, 0.35rem);
+	}
+	.progress i {
+		width: clamp(0.6rem, 2.6vw, 0.9rem);
+		height: clamp(0.6rem, 2.6vw, 0.9rem);
+		border: 2px solid var(--ink);
+		border-radius: 50%;
+		background: var(--paper);
+	}
+	.progress i.on {
+		background: var(--sun);
+	}
+	.sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
 	}
 	.card :global(svg),
 	.card img {

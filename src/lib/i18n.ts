@@ -10,7 +10,7 @@ import { STICKERS, WORDS, type Language } from './words';
 import { SPELL_WORDS } from './spell';
 import { STORIES, type Story } from './stories';
 import { wordKey, words } from './readalong';
-import { CRAYONS, PICTURES, type Crayon, type Picture } from './paint';
+import { CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from './paint';
 
 /** One spoken line: `id` names its clip, `text` is what is said. */
 export interface Line {
@@ -174,6 +174,7 @@ export const storyWord = (key: string): Line => ({
 /** Paint Pot: a crayon's colour name, and the praise for a finished picture. */
 export const colour = (lang: Language, c: Crayon): Line => ({ id: `colour.${c.id}`, text: c.name[lang] });
 export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.${p.id}`, text: p.done[lang] });
+export const chapterName = (lang: Language, c: Chapter): Line => ({ id: `paint.chapter.${c.id}`, text: c.name[lang] });
 
 /** Every line that can be spoken in a language: the generator renders one clip per id. */
 export function allLines(lang: Language): Line[] {
@@ -197,6 +198,7 @@ export function allLines(lang: Language): Line[] {
 	for (const w of storyWords) out.push(storyWord(w));
 	for (const c of CRAYONS) out.push(colour(lang, c));
 	for (const p of PICTURES) out.push(painted(lang, p));
+	for (const c of CHAPTERS) out.push(chapterName(lang, c));
 	return out;
 }
 
