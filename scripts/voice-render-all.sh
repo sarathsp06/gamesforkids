@@ -1,10 +1,9 @@
 #!/bin/zsh
-# Render every missing clip, 40 per fresh process (GPU memory creeps up in one long run), until nothing is left
-# or a batch makes no progress. Lines that failed in an earlier batch of this run aren't retried.
-#   VENV=~/.venvs/voice [FIRST=story.] [TRIES=8] scripts/voice-render-all.sh [workdir]
+# Render every missing clip in batches of 40, until nothing is left or a batch makes no progress. Lines that
+# failed in an earlier batch of this run aren't retried. VoiceStudio.app must be open.
+#   [FIRST=story.] [TRIES=8] [FORCE=1] scripts/voice-render-all.sh [workdir]
 set -u
 cd "${0:A:h}/.."
-VENV=${VENV:-$HOME/.venvs/voice}
 WORK=${1:-${TMPDIR:-/tmp}/voice-render}
 mkdir -p "$WORK"
 rm -f "$WORK"/report-*.json(N)
@@ -13,9 +12,11 @@ npx --yes tsx scripts/voice-lines.ts > "$WORK/lines.json"
 extra=()
 [[ -n ${FIRST:-} ]] && extra=(--first "$FIRST")
 [[ -n ${TRIES:-} ]] && extra+=(--tries "$TRIES")
+# --force only on the first batch: after that, the manifest says what is still missing.
+[[ -n ${FORCE:-} ]] && extra+=(--force)
 prev=-1
 for b in {1..60}; do
-  PYTHONWARNINGS=ignore "$VENV/bin/python" scripts/voice_render.py "$WORK/lines.json" --limit 40 "${extra[@]}" \
+  python3 scripts/voice_render.py "$WORK/lines.json" --limit 40 "${extra[@]}" \
     --report "$WORK/report-$b.json" --skip "$WORK"/report-*.json(N) 2>&1 \
     | grep --line-buffered -E "^\[|clips to render|done|Traceback|error" >> "$WORK/render.log"
   left=$(grep "clips to render" "$WORK/render.log" | tail -1 | awk '{print $1}')

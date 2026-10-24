@@ -1,21 +1,22 @@
-"""Render recorded voice clips for every spoken line, with Chatterbox Multilingual (MIT) on this machine.
+"""Render recorded voice clips for every spoken line with VoiceStudio, running on this machine.
 
     npx tsx scripts/voice-lines.ts > /tmp/lines.json
-    <venv>/bin/python scripts/voice_render.py /tmp/lines.json [--tempo 0.85] [--only en] [--force]
+    python3 scripts/voice_render.py /tmp/lines.json [--only en] [--force] [--limit 40]
 
-Only lines whose clip is missing or whose text changed are rendered. Each clip is trimmed, loudness
-normalised and written to static/voice/<lang>/<id>.mp3. Every clip is checked by transcribing it with
-Whisper (mlx-whisper, local): the model sometimes babbles after very short inputs, so a clip that
-doesn't say its text, or runs far too long, is rendered again (up to --tries times). Lines that
-never pass are listed in --report. A take below 0.8 (0.85 for a single word) isn't used at all: the
-browser voice says that line. src/lib/voice-manifest.json records, per clip, the hash of the text it
-was made from (written after every clip, so a stopped run resumes). Clips for ids
-that no longer exist are deleted. See scripts/voice.md for setup.
+VoiceStudio (https://github.com/debpalash/VoiceStudio, MIT) must be open: the script talks to its local
+API on port 3900. Pip's voice is designed, not recorded: one OmniVoice instruct, one speed and one seed,
+so every clip in both languages is the same calm voice (see scripts/voice.md).
+
+Only lines whose clip is missing or whose text changed are rendered. Each take is checked by VoiceStudio's
+transcriber: it must say its text and not run long. A take that fails is rendered again with the next seed
+(up to --tries). A single word is said inside a carrier sentence ("Het woord is: jas.") and cut out at the
+pause before it: alone, the model reads short Dutch words as English. Lines that never pass are listed in --report and the browser voice says them; a take below
+0.8 (0.85 for a single word, where a near miss would teach the wrong word) is never kept. Clips are
+silence-trimmed, loudness-normalised and written to static/voice/<lang>/<id>.mp3.
+src/lib/voice-manifest.json records, per clip, the hash of the text it was made from (written after every
+clip, so a stopped run resumes). Clips for ids that no longer exist are deleted. Needs ffmpeg.
 """
-import argparse, difflib, json, re, subprocess, sys, tempfile, time
-
-import mlx_whisper
-import numpy as np
+import argparse, difflib, json, re, subprocess, sys, tempfile, time, urllib.error, urllib.request, uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,16 +25,16 @@ MANIFEST = ROOT / "src" / "lib" / "voice-manifest.json"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("lines")
-ap.add_argument("--tempo", type=float, default=0.85, help="slow clips down (pitch kept); 1 = model pace")
+ap.add_argument("--url", default="http://127.0.0.1:3900", help="VoiceStudio's local API")
+ap.add_argument("--instruct", default="female, young adult, low pitch", help="OmniVoice voice design (its fixed vocabulary only)")
+ap.add_argument("--speed", type=float, default=0.85, help="pace at render time, 1 = the model's own")
+ap.add_argument("--seed", type=int, default=4242, help="first seed; a retry uses the next one")
 ap.add_argument("--only", choices=["en", "nl"])
 ap.add_argument("--force", action="store_true", help="re-render every clip")
-ap.add_argument("--exaggeration", type=float, default=0.6, help="Chatterbox expressiveness, 0.25–2")
-ap.add_argument("--cfg", type=float, default=0.4, help="Chatterbox cfg_weight: lower is slower and calmer")
 ap.add_argument("--tries", type=int, default=4)
 ap.add_argument("--skip", nargs="*", default=[], help="report files from earlier runs: lines that failed there aren't retried")
-ap.add_argument("--trim-existing", action="store_true", help="only cut noise tails from the clips already made, then exit")
 ap.add_argument("--first", default="", help="render ids starting with this first (e.g. story.)")
-ap.add_argument("--limit", type=int, default=0, help="render at most N clips, then exit (GPU memory creeps up in long runs)")
+ap.add_argument("--limit", type=int, default=0, help="render at most N clips, then exit")
 ap.add_argument("--report", default=str(Path(tempfile.gettempdir()) / "voice-report.json"))
 args = ap.parse_args()
 
@@ -58,8 +59,38 @@ for lang in ("en", "nl"):
             (STATIC / lang / f"{id_}.mp3").unlink(missing_ok=True)
 save_manifest()
 
-WHISPER = "mlx-community/whisper-small-mlx"
-# Whisper writes numbers as digits; the lines spell them out.
+
+def multipart(fields: dict[str, str], file: tuple[str, Path] | None = None) -> tuple[bytes, str]:
+    """A multipart/form-data body, by hand: the script has no dependencies beyond ffmpeg."""
+    boundary = uuid.uuid4().hex
+    body = b""
+    for k, v in fields.items():
+        body += f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
+    if file:
+        name, path = file
+        body += (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"; filename=\"{path.name}\"\r\n"
+                 "Content-Type: audio/wav\r\n\r\n").encode() + path.read_bytes() + b"\r\n"
+    body += f"--{boundary}--\r\n".encode()
+    return body, f"multipart/form-data; boundary={boundary}"
+
+
+def post(path: str, fields: dict[str, str], file: tuple[str, Path] | None = None, timeout=300) -> bytes:
+    body, ctype = multipart(fields, file)
+    req = urllib.request.Request(f"{args.url}{path}", data=body, headers={"Content-Type": ctype}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"{path} {e.code}: {e.read().decode(errors='replace')[:300]}") from None
+
+
+try:
+    health = json.loads(urllib.request.urlopen(f"{args.url}/health", timeout=5).read())
+except Exception as e:
+    sys.exit(f"VoiceStudio isn't answering at {args.url} ({e}). Open VoiceStudio.app and try again.")
+print(f"VoiceStudio {health.get('version')} on {health.get('device')}; voice: {args.instruct!r}, speed {args.speed}, seed {args.seed}", flush=True)
+
+# The transcriber writes numbers as digits; the lines spell them out.
 NUM_WORDS = {
     "en": "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split(),
     "nl": "nul één twee drie vier vijf zes zeven acht negen tien elf twaalf dertien veertien vijftien zestien zeventien achttien negentien twintig".split(),
@@ -71,86 +102,127 @@ def norm(t: str, lang: str) -> list[str]:
     return [NUM_WORDS[lang][int(w)] if w.isdigit() and int(w) <= 20 else w for w in words]
 
 
-FRAME = 0.02  # seconds per loudness frame
-GAP = 0.2  # a pause at least this long ends the line
+# Trim silence at both ends and normalise loudness (EBU R128, -16 LUFS), so clips and sounds sit at one level.
+FILTER = ",".join([
+    "silenceremove=start_periods=1:start_threshold=-45dB",
+    "areverse", "silenceremove=start_periods=1:start_threshold=-45dB", "areverse",
+    "loudnorm=I=-16:TP=-1.5:LRA=11",
+])
 
 
-def speech_span(path: Path, lang: str) -> tuple[float, float] | None:
-    """Where the line ends: the first real pause after its last word.
-
-    The model sometimes adds a breath, click or mumble after a pause; silence trimming keeps it (it is
-    louder than silence) and Whisper ignores it, so it is cut here. Loudness frames find the pause;
-    Whisper's word times say which side of it the words are on.
-    """
-    pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(path), "-f", "s16le", "-ac", "1", "-ar", "16000", "-"],
-                         capture_output=True).stdout
-    a = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
-    n = int(FRAME * 16000)
-    db = np.array([20 * np.log10(np.sqrt(np.mean(a[i:i + n] ** 2)) + 1e-9) for i in range(0, len(a) - n + 1, n)])
-    if not len(db):
-        return None
-    loud = db > db.max() - 30
-    words = [w for s in mlx_whisper.transcribe(str(path), path_or_hf_repo=WHISPER, language=lang, word_timestamps=True)["segments"]
-             for w in s.get("words", [])]
-    if not words:
-        return None
-    last = words[-1]["end"]
-    gap = int(GAP / FRAME)
-
-    def quiet_run(i: int) -> bool:
-        return i + gap < len(loud) and not loud[i:i + gap + 1].any()
-
-    # End: the first frame after the last word that starts a long quiet run.
-    end = len(db)
-    for i in range(int(last / FRAME), len(db)):
-        if quiet_run(i):
-            end = i
-            break
-    # The start is left alone: silence trimming already handled it, and cutting there clips soft first
-    # sounds (the p of "pig", the s of "sun").
-    return 0.0, end * FRAME
+def encode(wav_path: Path, out: Path):
+    subprocess.run(
+        ["ffmpeg", "-loglevel", "error", "-y", "-i", str(wav_path), "-af", FILTER, "-ac", "1", "-ar", "24000", "-b:a", "48k", str(out)],
+        check=True,
+    )
 
 
-def trim(path: Path, lang: str) -> float:
-    """Cut what follows a clip's line, fading out; returns the seconds removed."""
-    span = speech_span(path, lang)
-    dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
-                               capture_output=True, text=True).stdout or 0)
-    if not span:
-        return 0.0
-    start, end = 0.0, min(span[1] + 0.08, dur)
-    if dur - end < 0.1:
-        return 0.0  # nothing worth cutting
-    tmp = path.with_suffix(".trim.mp3")
-    # -t after -i: an input-side -ss drops the first frame of an mp3, and with it a first p or h.
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(path), "-t", f"{end:.3f}",
-                    "-af", f"afade=t=out:st={max(end - start - 0.06, 0):.3f}:d=0.06",
-                    "-ac", "1", "-ar", "24000", "-b:a", "48k", str(tmp)], check=True)
-    tmp.replace(path)
-    return dur - (end - start)
+def duration(path: Path) -> float:
+    return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                                capture_output=True, text=True).stdout or 0)
 
 
-if args.trim_existing:
-    for lang in ("en", "nl"):
-        for id_ in sorted(manifest[lang]):
-            cut = trim(STATIC / lang / f"{id_}.mp3", lang)
-            if cut > 0.15:
-                print(f"{lang} {id_}: cut {cut:.2f}s", flush=True)
-    sys.exit(0)
+def generate(text: str, lang: str, seed: int) -> bytes:
+    return post("/generate", {"text": text, "language": lang, "instruct": args.instruct, "speed": str(args.speed), "seed": str(seed)})
 
 
-def check(path: Path, line) -> tuple[float, str]:
-    """0–1: how well the clip says its line, by its length and by what Whisper hears."""
-    dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
-                               capture_output=True, text=True).stdout or 0)
-    # Calm speech is ~12 characters a second; allow a generous margin plus a floor for short words.
-    if dur > 1.2 + len(line["text"]) / 7 / args.tempo or dur < 0.25:
-        return 0.0, f"duration {dur:.1f}s"
-    heard = mlx_whisper.transcribe(str(path), path_or_hf_repo=WHISPER, language=line["lang"])["text"]
-    want, got = norm(line["text"], line["lang"]), norm(heard, line["lang"])
+def hear(path: Path, lang: str) -> str:
+    """What the transcriber hears, in the clip's language (the plain /transcribe route ignores the language)."""
+    r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "json"}, ("file", path))
+    return json.loads(r)["text"]
+
+
+def hear_words(path: Path, lang: str) -> list[dict]:
+    """The words heard, each with start and end seconds."""
+    r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "verbose_json", "timestamp_granularities[]": "word"}, ("file", path))
+    return json.loads(r).get("words", [])
+
+
+def similarity(heard: str, text: str, lang: str) -> float:
+    want, got = norm(text, lang), norm(heard, lang)
     if len(got) > len(want) + 1:
-        return 0.0, heard  # extra babble after the line
-    return difflib.SequenceMatcher(None, " ".join(want), " ".join(got)).ratio(), heard
+        return 0.0  # extra babble after the line
+    return difflib.SequenceMatcher(None, " ".join(want), " ".join(got)).ratio()
+
+
+def render(line, out: Path, seed: int) -> tuple[float, str]:
+    """A take of the line, encoded to out; returns how well it says its text and what was heard."""
+    text = line["text"]
+    if not text.rstrip().endswith((".", "!", "?")):
+        text += "."
+    with tempfile.NamedTemporaryFile(suffix=".wav") as raw:
+        Path(raw.name).write_bytes(generate(text, line["lang"], seed))
+        encode(Path(raw.name), out)
+    dur = duration(out)
+    # Calm speech is ~12 characters a second; allow a generous margin plus a floor for short words.
+    if dur > 1.2 + len(line["text"]) / 7 / args.speed or dur < 0.25:
+        return 0.0, f"duration {dur:.1f}s"
+    heard = hear(out, line["lang"])
+    return similarity(heard, line["text"], line["lang"]), heard
+
+
+# A bare word is read in the wrong language or rushed ("jas" comes out as "yes"), so a single word is
+# rendered inside a short sentence and cut out at the pause before it.
+CARRIER = {"en": "The word is: {w}.", "nl": "Het woord is: {w}."}
+QUIET = "-45dB"  # soft enough to keep a word's first and last consonant
+PAUSE = 0.06  # seconds of quiet that count as a pause
+
+
+def loud_runs(path: Path) -> list[tuple[float, float]]:
+    """Stretches of sound in a file, from ffmpeg's silence detection."""
+    log = subprocess.run(["ffmpeg", "-i", str(path), "-af", f"silencedetect=n={QUIET}:d={PAUSE}", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    starts = [float(m) for m in re.findall(r"silence_start: ([\d.]+)", log)]
+    ends = [float(m) for m in re.findall(r"silence_end: ([\d.]+)", log)]
+    total = duration(path)
+    edges = sorted([(s, "start") for s in starts] + [(e, "end") for e in ends])
+    runs, at = [], 0.0
+    for t, kind in edges:
+        if kind == "start":
+            if t - at > 0.02:
+                runs.append((at, t))
+        else:
+            at = t
+    if total - at > 0.02:
+        runs.append((at, total))
+    return runs
+
+
+def render_word(line, out: Path, seed: int) -> tuple[float, str]:
+    """A single word: say it in a carrier sentence, check the whole sentence, keep only the word."""
+    w = line["text"].strip().rstrip(".!?")
+    sentence = CARRIER[line["lang"]].format(w=w)
+    with tempfile.TemporaryDirectory() as tmp:
+        raw, full = Path(tmp) / "raw.wav", Path(tmp) / "full.mp3"
+        raw.write_bytes(generate(sentence, line["lang"], seed))
+        encode(raw, full)
+        heard = hear(full, line["lang"])
+        score = similarity(heard, sentence, line["lang"])
+        if score < 0.85:
+            return score, heard
+        runs = [r for r in loud_runs(full) if r[1] - r[0] >= 0.12]
+        if len(runs) >= 2:
+            start, end = runs[-1]
+        else:
+            # A soft first sound (h, s, f) leaves no pause: take the transcriber's word timing instead.
+            words = hear_words(full, line["lang"])
+            if len(words) < 2:
+                return 0.0, f"no pause before the word: {heard}"
+            start, end = words[-1]["start"], duration(full)
+        # A word is at least a fifth of a second; shorter means the cut caught a release, not the word.
+        if not 0.2 <= end - start <= 1.5:
+            return 0.0, f"word run {end - start:.2f}s: {heard}"
+        # A little room on both sides: a soft first consonant and the release of the last one.
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(full), "-ss", f"{max(start - 0.04, 0):.3f}", "-t", f"{end - start + 0.1:.3f}",
+                        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ac", "1", "-ar", "24000", "-b:a", "48k", str(out)], check=True)
+        # The lone word is heard in context above; alone, the transcriber itself gets it wrong, so the
+        # cut piece is only reported for a listen when it is heard as something else.
+        alone = hear(out, line["lang"])
+        if len(norm(alone, line["lang"])) > 1:
+            return 0.0, f"cut kept part of the carrier: {alone}"  # a soft first sound (h, s) left no pause
+        if similarity(alone, w, line["lang"]) < 0.85:
+            heard = f"{heard} (alone: {alone})"
+        return score, heard
 
 
 todo = [
@@ -162,62 +234,9 @@ failed = {(r["lang"], r["id"]) for f in args.skip if Path(f).exists() for r in j
 todo = [l for l in todo if (l["lang"], l["id"]) not in failed]
 print(f"{len(todo)} of {len(lines)} clips to render", flush=True)
 if args.first:
-    todo.sort(key=lambda l: not l["id"].startswith(args.first))  # stable: keeps the language order otherwise
+    todo.sort(key=lambda l: not l["id"].startswith(args.first))
 if args.limit:
     todo = todo[: args.limit]
-if not todo:
-    sys.exit(0)
-
-import torch, torchaudio  # noqa: E402  (slow imports only when there is work)
-from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # noqa: E402
-
-dev = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-_load = torch.load
-torch.load = lambda *a, **k: _load(*a, **{**k, "map_location": torch.device(dev)})  # weights were saved on cuda
-model = ChatterboxMultilingualTTS.from_pretrained(device=dev)
-
-# Trim silence at both ends, slow down without changing pitch, normalise loudness (EBU R128, -16 LUFS).
-FILTER = ",".join([
-    "silenceremove=start_periods=1:start_threshold=-45dB",
-    "areverse", "silenceremove=start_periods=1:start_threshold=-45dB", "areverse",
-    *( [f"atempo={args.tempo}"] if args.tempo != 1 else [] ),
-    "loudnorm=I=-16:TP=-1.5:LRA=11",
-])
-
-
-def encode(wav_path: str, out: Path, extra: list[str] = []):
-    subprocess.run(
-        ["ffmpeg", "-loglevel", "error", "-y", *extra, "-i", wav_path, "-af", FILTER, "-ac", "1", "-ar", "24000", "-b:a", "48k", str(out)],
-        check=True,
-    )
-
-
-def render(line, out: Path, seed: int):
-    torch.manual_seed(seed)
-    text = line["text"]
-    # A lone word reads better as a short sentence; the model rushes bare fragments.
-    if not text.rstrip().endswith((".", "!", "?")):
-        text += "."
-    wav = model.generate(text, language_id=line["lang"], exaggeration=args.exaggeration, cfg_weight=args.cfg)
-    with tempfile.NamedTemporaryFile(suffix=".wav") as raw:
-        torchaudio.save(raw.name, wav, model.sr)
-        encode(raw.name, out)
-
-
-def render_doubled(line, out: Path, seed: int):
-    """For one short word the model can't say alone (it crashes or babbles): say it twice, keep the first."""
-    torch.manual_seed(seed)
-    w = line["text"].rstrip(".!?")
-    wav = model.generate(f"{w}, {w}.", language_id=line["lang"], exaggeration=args.exaggeration, cfg_weight=args.cfg)
-    with tempfile.NamedTemporaryFile(suffix=".wav") as raw:
-        torchaudio.save(raw.name, wav, model.sr)
-        words = [x for seg in mlx_whisper.transcribe(raw.name, path_or_hf_repo=WHISPER, language=line["lang"], word_timestamps=True)["segments"] for x in seg.get("words", [])]
-        if len(words) < 2:
-            raise RuntimeError(f"doubled take has {len(words)} words")
-        # Cut halfway into the pause between the two words.
-        end = (words[0]["end"] + words[1]["start"]) / 2
-        encode(raw.name, out, ["-t", f"{end:.3f}"])
-
 
 report = []
 start = time.time()
@@ -225,35 +244,29 @@ for i, l in enumerate(todo, 1):
     out = STATIC / l["lang"] / f"{l['id']}.mp3"
     out.parent.mkdir(parents=True, exist_ok=True)
     best = (-1.0, "", None)
-    # Short lines are where the model stumbles (repeats, babbles), so they get more tries.
-    tries = args.tries * 2 if len(l["text"].split()) <= 2 else args.tries
+    single = len(l["text"].split()) == 1
     with tempfile.TemporaryDirectory() as tmp:
-        single = len(l["text"].split()) == 1
-        # One word: first a few plain takes, then the say-it-twice-and-cut takes.
-        plan = [(render, a) for a in range(tries if not single else args.tries)] + ([(render_doubled, a) for a in range(args.tries)] if single else [])
-        for attempt, (fn, seed) in enumerate(plan):
+        for attempt in range(args.tries):
             take = Path(tmp) / f"{attempt}.mp3"
             try:
-                fn(l, take, seed=seed)
-                trim(take, l["lang"])
-            except Exception as e:  # the model occasionally fails outright on a seed; try the next one
+                score, heard = (render_word if single else render)(l, take, seed=args.seed + attempt)
+            except Exception as e:  # a seed can fail outright; try the next one
                 best = max(best, (-0.5, f"error: {e}", None), key=lambda b: b[0])
                 continue
-            score, heard = check(take, l)
             if score > best[0]:
-                best = (score, heard, take)
+                best = (score, heard, take if take.exists() else None)
             if score >= 0.85:
                 break
         # A wrong take is worse than the browser voice. A single word must be heard exactly: in a spelling
-        # game a near miss teaches the wrong word (and Dutch "kat" once came out close to a rude word).
-        keep = 0.85 if len(l["text"].split()) == 1 else 0.8
+        # game a near miss teaches the wrong word.
+        keep = 0.85 if single else 0.8
         if best[2] and best[0] >= keep:
             best[2].replace(out)
         else:
             best = (best[0], best[1], None)
             out.unlink(missing_ok=True)
             manifest[l["lang"]].pop(l["id"], None)
-    if best[0] < 0.85:
+    if best[0] < 0.85 or "(alone:" in best[1]:
         report.append({"lang": l["lang"], "id": l["id"], "text": l["text"], "heard": best[1], "score": round(best[0], 2)})
         Path(args.report).write_text(json.dumps(report, indent=1, ensure_ascii=False))
     if not best[2]:
@@ -262,7 +275,7 @@ for i, l in enumerate(todo, 1):
     manifest[l["lang"]][l["id"]] = l["hash"]
     save_manifest()
     eta = (time.time() - start) / i * (len(todo) - i)
-    flag = "" if best[0] >= 0.85 else f"  CHECK: heard {best[1]!r}"
+    flag = "" if best[0] >= 0.85 and "(alone:" not in best[1] else f"  CHECK: heard {best[1]!r}"
     print(f"[{i}/{len(todo)}] {l['lang']} {l['id']}: {l['text']}{flag}  (eta {eta / 60:.0f} min)", flush=True)
 
 print(f"done; {len(report)} clips to listen to, see {args.report}")
