@@ -2,7 +2,7 @@
 
 [![Deploy](https://github.com/sarathsp06/gamesforkids/actions/workflows/deploy.yml/badge.svg)](https://github.com/sarathsp06/gamesforkids/actions/workflows/deploy.yml)
 
-**Six little learning games for ages 4–10, in English and Dutch.** No ads, no accounts, no tracking: it's a static
+**Seven little learning games for ages 4–10, in English and Dutch.** No ads, no accounts, no tracking: it's a static
 site, everything stays on the device.
 
 ▶️ **Play:** <https://sarathsp06.github.io/gamesforkids/>
@@ -15,6 +15,7 @@ site, everything stays on the device.
 | 🔺 | **Shape Sense** | Finds, compares and counts shapes; every prompt spoken | find the circle → count hidden triangles |
 | ♞ | **Chess Path** | Moves one chess piece to collect stars, then plays Hexapawn | rook on 4×4 → beat a smart computer |
 | 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
+| 🖌️ | **Paint Pot** | Colours in a picture with brush and paint bucket; hears each colour's name | free colouring, kept in a gallery |
 
 ## ✨ What makes it different
 
@@ -49,8 +50,10 @@ Tests are plain assertion scripts:
 for t in tests/*.test.ts; do npx tsx "$t"; done
 ```
 
-SvelteKit (Svelte 5), TypeScript, prerendered to a static site. No game engine and no runtime dependencies beyond a
-font: boards are DOM and generated SVG, animation is CSS. Progress lives in `localStorage`.
+SvelteKit (Svelte 5), TypeScript, prerendered to a static site. No game engine: boards are DOM and generated SVG,
+animation is CSS. Progress lives in `localStorage`. Runtime dependencies are a font and, for Paint Pot only, two small
+canvas libraries: [Atrament](https://github.com/jakubfiala/atrament) for the brush and
+[q-floodfill](https://github.com/pavelkukov/q-floodfill) for the paint bucket.
 
 ## 🚀 Deploy
 

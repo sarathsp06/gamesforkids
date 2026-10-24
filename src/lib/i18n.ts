@@ -10,6 +10,7 @@ import { STICKERS, WORDS, type Language } from './words';
 import { SPELL_WORDS } from './spell';
 import { STORIES, type Story } from './stories';
 import { wordKey, words } from './readalong';
+import { CRAYONS, PICTURES, type Crayon, type Picture } from './paint';
 
 /** One spoken line: `id` names its clip, `text` is what is said. */
 export interface Line {
@@ -76,7 +77,9 @@ const en = {
 	'read.problem.denied': 'The microphone is not allowed. Ask a grown-up to allow the microphone for this site.',
 	'read.problem.nomic': "I can't find a microphone. Please connect one and try again.",
 	'read.problem.network': 'Listening needs the internet right now. Please check the connection and try again.',
-	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again."
+	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again.",
+
+	'paint.go': 'Pick a colour and paint!'
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -125,7 +128,9 @@ const nl: Record<Key, Entry> = {
 	'read.problem.denied': 'De microfoon mag niet gebruikt worden. Vraag een volwassene om de microfoon voor deze site toe te staan.',
 	'read.problem.nomic': 'Ik kan geen microfoon vinden. Sluit er een aan en probeer het opnieuw.',
 	'read.problem.network': 'Luisteren heeft nu internet nodig. Controleer de verbinding en probeer het opnieuw.',
-	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.'
+	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.',
+
+	'paint.go': 'Kies een kleur en schilder maar!'
 };
 
 const CATALOG: Record<Language, Record<Key, Entry>> = { en, nl };
@@ -166,6 +171,10 @@ export const storyWord = (key: string): Line => ({
 	text: key
 });
 
+/** Paint Pot: a crayon's colour name, and the praise for a finished picture. */
+export const colour = (lang: Language, c: Crayon): Line => ({ id: `colour.${c.id}`, text: c.name[lang] });
+export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.${p.id}`, text: p.done[lang] });
+
 /** Every line that can be spoken in a language: the generator renders one clip per id. */
 export function allLines(lang: Language): Line[] {
 	const out: Line[] = [];
@@ -186,6 +195,8 @@ export function allLines(lang: Language): Line[] {
 		});
 	}
 	for (const w of storyWords) out.push(storyWord(w));
+	for (const c of CRAYONS) out.push(colour(lang, c));
+	for (const p of PICTURES) out.push(painted(lang, p));
 	return out;
 }
 

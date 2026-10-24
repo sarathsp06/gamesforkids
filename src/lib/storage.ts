@@ -103,3 +103,25 @@ export const loadRead = (): ReadProgress => {
 	return { v: 1, level: Math.max(1, Math.min(READ_LEVELS, Number(p.level) || 1)), next: p.next ?? {} };
 };
 export const saveRead = (p: ReadProgress) => write(READ, p);
+
+/** Paint Pot: finished pictures as small PNG data URLs, newest first. */
+const GALLERY = 'paintGallery';
+export const GALLERY_MAX = 12;
+export const loadGallery = (): string[] => {
+	const g = read<unknown>(GALLERY, []);
+	return Array.isArray(g) ? g.filter((x): x is string => typeof x === 'string').slice(0, GALLERY_MAX) : [];
+};
+/** Adds a picture; when storage is full, drops the oldest until it fits. False if it never fits. */
+export function addToGallery(picture: string): boolean {
+	const all = [picture, ...loadGallery()].slice(0, GALLERY_MAX);
+	while (all.length) {
+		try {
+			localStorage.setItem(GALLERY, JSON.stringify(all));
+			return true;
+		} catch {
+			if (all.length === 1) return false;
+			all.pop();
+		}
+	}
+	return false;
+}

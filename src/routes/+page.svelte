@@ -22,6 +22,9 @@
 		<a class="game read" href={resolve('/read')} aria-label="Read Along">
 			<span class="caps" aria-hidden="true"><i>📖</i><b class="g">Aa</b></span>
 		</a>
+		<a class="game paint" href={resolve('/paint')} aria-label="Paint Pot">
+			<span class="caps" aria-hidden="true"><i>🖌️</i><b class="r"></b><b class="y"></b></span>
+		</a>
 	</nav>
 	<div class="links">
 		<a class="about" href={resolve('/how-we-score')}>How we score ›</a>
@@ -89,8 +92,12 @@
 	}
 	.spelling,
 	.shapes,
-	.read {
+	.read,
+	.paint {
 		background: var(--paper);
+	}
+	b.y {
+		background: var(--sun);
 	}
 	b.g {
 		background: var(--leaf);
