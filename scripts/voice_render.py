@@ -127,15 +127,30 @@ def generate(text: str, lang: str, seed: int) -> bytes:
 
 
 def hear(path: Path, lang: str) -> str:
-    """What the transcriber hears, in the clip's language (the plain /transcribe route ignores the language)."""
+    """What the fast transcriber hears (0.1 s; it detects the language itself, which a sentence makes clear)."""
+    r = post("/transcribe", {"language": lang}, ("audio", path))
+    return json.loads(r)["text"]
+
+
+def hear_slow(path: Path, lang: str) -> str:
+    """Whisper, told the clip's language (a few seconds): the second opinion before a take is kept."""
     r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "json"}, ("file", path))
     return json.loads(r)["text"]
 
 
 def hear_words(path: Path, lang: str) -> list[dict]:
-    """The words heard, each with start and end seconds."""
+    """The words heard, each with start and end seconds: Whisper, in the clip's language (a few seconds)."""
     r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "verbose_json", "timestamp_granularities[]": "word"}, ("file", path))
     return json.loads(r).get("words", [])
+
+
+def confirm(path: Path, text: str, lang: str, score: float, heard: str) -> tuple[float, str]:
+    """A take both transcribers agree on: the lower of the two scores, so a doubt on either side counts."""
+    if score < 0.85:
+        return score, heard
+    second = hear_slow(path, lang)
+    s2 = similarity(second, text, lang)
+    return (s2, f"{heard} / whisper: {second}") if s2 < score else (score, heard)
 
 
 def similarity(heard: str, text: str, lang: str) -> float:
@@ -158,7 +173,7 @@ def render(line, out: Path, seed: int) -> tuple[float, str]:
     if dur > 1.2 + len(line["text"]) / 7 / args.speed or dur < 0.25:
         return 0.0, f"duration {dur:.1f}s"
     heard = hear(out, line["lang"])
-    return similarity(heard, line["text"], line["lang"]), heard
+    return confirm(out, line["text"], line["lang"], similarity(heard, line["text"], line["lang"]), heard)
 
 
 # A bare word is read in the wrong language or rushed ("jas" comes out as "yes"), so a single word is
@@ -197,7 +212,7 @@ def render_word(line, out: Path, seed: int) -> tuple[float, str]:
         raw.write_bytes(generate(sentence, line["lang"], seed))
         encode(raw, full)
         heard = hear(full, line["lang"])
-        score = similarity(heard, sentence, line["lang"])
+        score, heard = confirm(full, sentence, line["lang"], similarity(heard, sentence, line["lang"]), heard)
         if score < 0.85:
             return score, heard
         runs = [r for r in loud_runs(full) if r[1] - r[0] >= 0.12]
