@@ -12,8 +12,9 @@ npx --yes tsx scripts/voice-lines.ts > "$WORK/lines.json"
 extra=()
 [[ -n ${FIRST:-} ]] && extra=(--first "$FIRST")
 [[ -n ${TRIES:-} ]] && extra+=(--tries "$TRIES")
-# --force only on the first batch: after that, the manifest says what is still missing.
-[[ -n ${FORCE:-} ]] && extra+=(--force)
+# FORCE: forget every clip once, so each batch renders the next 40 still missing (a --force on every batch
+# would redo the same 40 each time).
+[[ -n ${FORCE:-} ]] && printf '{\n "en": {},\n "nl": {}\n}\n' > src/lib/voice-manifest.json
 prev=-1
 for b in {1..60}; do
   python3 scripts/voice_render.py "$WORK/lines.json" --limit 40 "${extra[@]}" \
