@@ -184,6 +184,8 @@ export const gameName = (lang: Language, id: string): Line => t(lang, `game.${id
 
 /** A word from the word lists, said in lower case. */
 export const word = (w: string): Line => ({ id: `word.${w}`, text: w.toLowerCase() });
+/** A key's name alone ("bee"), said on every press in Letter Leap; the single-word carrier keeps it short. */
+export const keyLine = (lang: Language, l: string): Line => ({ id: `key.${l}`, text: `${l}.` });
 /** A letter name, as "the letter A": a lone letter is too short for the voice model, and clearer for a child. */
 export const letter = (lang: Language, l: string): Line => ({ id: `letter.${l}`, text: `${lang === 'en' ? 'The letter' : 'De letter'} ${l}.` });
 /** A sticker animal, keyed by its English name so ids stay plain ASCII. */
@@ -208,6 +210,7 @@ export const storyWord = (key: string): Line => ({
 export const colour = (lang: Language, c: Crayon): Line => ({ id: `colour.${c.id}`, text: c.name[lang] });
 export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.${p.id}`, text: p.done[lang] });
 export const chapterName = (lang: Language, c: Chapter): Line => ({ id: `paint.chapter.${c.id}`, text: c.name[lang] });
+export const pictureName = (lang: Language, p: Picture): Line => ({ id: `paint.pic.${p.id}`, text: p.name[lang] });
 
 /** Every line that can be spoken in a language: the generator renders one clip per id. */
 export function allLines(lang: Language): Line[] {
@@ -218,7 +221,7 @@ export function allLines(lang: Language): Line[] {
 		else if (isFamily(e)) for (let n = e.from; n <= e.to; n++) out.push({ id: `${key}.${n}`, text: e.text(n) });
 	}
 	for (const w of new Set([...WORDS[lang], ...SPELL_WORDS[lang]])) out.push(word(w));
-	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l));
+	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l), keyLine(lang, l));
 	for (const emoji of Object.keys(STICKERS)) out.push(animal(lang, emoji));
 	const storyWords = new Set<string>();
 	for (const st of STORIES) {
@@ -232,6 +235,7 @@ export function allLines(lang: Language): Line[] {
 	for (const c of CRAYONS) out.push(colour(lang, c));
 	for (const p of PICTURES) out.push(painted(lang, p));
 	for (const c of CHAPTERS) out.push(chapterName(lang, c));
+	for (const p of PICTURES) out.push(pictureName(lang, p));
 	return out;
 }
 

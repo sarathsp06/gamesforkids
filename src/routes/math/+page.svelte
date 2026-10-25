@@ -147,7 +147,7 @@
 				onclick={() => {
 					clearInterval(tick);
 					screen = screen === 'sets' ? 'levels' : 'sets';
-				}}>‹</button
+				}}><Icon name="back" size={34} /></button
 			>
 		{/if}
 	</div>

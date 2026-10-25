@@ -179,7 +179,7 @@ def render(line, out: Path, seed: int) -> tuple[float, str]:
 # What the model should read for a line, where the catalog text misleads it: Dutch letter names are
 # not English ones. The clip keeps the catalog text's id and hash; only the rendered words change.
 SAY = {
-    "nl": {"De letter I.": "De letter ie.", "De letter Y.": "De letter ypsilon."},
+    "nl": {"De letter I.": "De letter ie.", "De letter Y.": "De letter ypsilon.", "I.": "ie.", "Y.": "ypsilon.", "J.": "jee.", "G.": "gee.", "H.": "haa.", "Q.": "kuu.", "X.": "iks.", "Z.": "zet."},
     "en": {},
 }
 def say(line) -> str:

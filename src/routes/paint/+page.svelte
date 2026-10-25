@@ -6,7 +6,7 @@
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
 	import { CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from '#lib/paint.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
-	import { chapterName, colour, painted, t } from '#lib/i18n.ts';
+	import { chapterName, colour, painted, pictureName, t } from '#lib/i18n.ts';
 	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
 	import Icon from '#lib/Icon.svelte';
 	import Pip from '#lib/Pip.svelte';
@@ -36,6 +36,8 @@
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
 	let viewing = $state('');
+	/** Big mode shows the name under each picture and chapter; Little mode shows pictures only. */
+	let big = $state(false);
 	let newSticker = $state('');
 	/** Fallback that shows the reward if the finished-picture speech never reports its end. */
 	let doneTimer: ReturnType<typeof setTimeout> | undefined;
@@ -49,6 +51,7 @@
 		language = loadLanguage();
 		gallery = loadGallery();
 		done = loadPainted();
+		big = document.documentElement.dataset.mode !== 'little';
 		const stop = trackPlay('paint');
 		return () => {
 			stop();
@@ -84,7 +87,7 @@
 		undo = [];
 		canUndo = false;
 		phase = 'paint';
-		speak(t(language, 'paint.go'), language);
+		speak(pictureName(language, p), language);
 		await tick();
 		pad?.destroy();
 		// Atrament sets the canvas size, which wipes it: create it before drawing the picture.
@@ -188,7 +191,7 @@
 
 {#snippet pic(p: Picture)}
 	<svg viewBox="-4 -4 108 108" aria-hidden="true">
-		<path d={p.d} fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+		<path d={p.d} fill="none" stroke="var(--ink)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
 	</svg>
 {/snippet}
 
@@ -210,8 +213,9 @@
 			{#if chapter}
 				<div class="pictures" role="group" aria-label="Pick a picture">
 					{#each chapter.pictures as p (p.id)}
-						<button type="button" class="card" aria-label={p.id} onclick={() => choose(p)}>
+						<button type="button" class="card" aria-label={p.name[language]} onclick={() => choose(p)}>
 							{@render pic(p)}
+							{#if big}<span class="pname">{p.name[language]}</span>{/if}
 							{#if done.includes(p.id)}<span class="star" aria-label="Painted"><Icon name="star" size={20} /></span>{/if}
 						</button>
 					{/each}
@@ -222,6 +226,7 @@
 						{@const n = c.pictures.filter((p) => done.includes(p.id)).length}
 						<button type="button" class="card chapter c{i % 4}" aria-label={c.name[language]} onclick={() => openChapter(c)}>
 							<span class="cover">{@render pic(c.pictures[0])}{@render pic(c.pictures[1])}</span>
+							{#if big}<span class="pname">{c.name[language]}</span>{/if}
 							<span class="progress" aria-hidden="true">
 								{#each c.pictures as p (p.id)}<i class:on={done.includes(p.id)}></i>{/each}
 							</span>
@@ -465,6 +470,13 @@
 		overflow: hidden;
 		clip: rect(0 0 0 0);
 	}
+	.pname {
+		font-family: var(--title);
+		font-weight: 700;
+		font-size: 1.1rem;
+		line-height: 1.1;
+		text-align: center;
+	}
 	.card :global(svg),
 	.card img {
 		width: 100%;
@@ -534,12 +546,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 0.7rem;
-		max-width: 42rem;
+		gap: min(0.7rem, 1vw);
+		max-width: 100%;
 	}
 	.crayon {
 		/* Nine in a row: as big as the mode asks, unless the screen is narrower than that. */
-		--crayon: min(var(--tap), 9.5vw);
+		--crayon: min(var(--tap), 7.8vw);
 		width: var(--crayon);
 		height: var(--crayon);
 		min-width: 3.2rem;

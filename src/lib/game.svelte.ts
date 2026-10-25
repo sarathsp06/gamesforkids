@@ -4,7 +4,7 @@ import {
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
 import { MAX_TIER, pickWord, type Language } from './words';
-import { letter as letterLine, t, word } from './i18n';
+import { keyLine, letter as letterLine, t, word } from './i18n';
 import { gradeAttempts, keySimilarity, type Grade } from './score';
 import { awardSticker } from './stickers';
 
@@ -138,7 +138,10 @@ class Game {
 			this.lastPress = { ok: true, n: this.lastPress.n + 1 };
 			sfx.tok();
 			if (this.index === this.word.length) this.#wordDone();
-			else this.#armIdle();
+			else {
+				speak(keyLine(this.language, letter), this.language); // every key says its name
+				this.#armIdle();
+			}
 		} else {
 			s.streak = 0;
 			this.#roundMisses++;
@@ -147,7 +150,8 @@ class Game {
 			this.hint = true;
 			this.lastPress = { ok: false, n: this.lastPress.n + 1 };
 			sfx.bloop();
-			if (this.#missesOnLetter === 2) speak(letterLine(this.language, target), this.language);
+			// The pressed key says its name; on the second miss, the one wanted is named in full.
+			speak(this.#missesOnLetter === 2 ? [keyLine(this.language, letter), letterLine(this.language, target)] : keyLine(this.language, letter), this.language);
 			this.#armIdle();
 		}
 	}

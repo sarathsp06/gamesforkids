@@ -13,6 +13,7 @@
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import Icon from '#lib/Icon.svelte';
 	import Pip from '#lib/Pip.svelte';
+	import Emoji, { glyphs } from '#lib/Emoji.svelte';
 	import Reward from '#lib/Reward.svelte';
 	import { awardSticker } from '#lib/stickers.ts';
 	import { trackPlay } from '#lib/playlog.ts';
@@ -25,7 +26,13 @@
 	/** Words moved on by the help with nothing heard at all: then the microphone isn't getting through. */
 	const SILENT_MOVES = 2;
 
-	let phase = $state<'start' | 'play' | 'reward' | 'problem'>('start');
+	let phase = $state<'start' | 'play' | 'story' | 'reward' | 'problem'>('start');
+	/** The story page: which line Pip is reading (-1 the title), and whether the whole story has been read. */
+	let reading = $state(-2);
+	let storyDone = $state(false);
+	let storyTimer = 0;
+	const STORY_RATE = 0.5; // slower than the clips' calm pace: this is the story told back, sentence by sentence
+	const LINE_FALLBACK_MS = 12000;
 	/** Why the game can't listen; 'silent' is a microphone that is on but hears nothing. */
 	let problem = $state<Problem | 'silent'>('unsupported');
 	let language = $state<Language>('en');
@@ -216,18 +223,54 @@
 	function finish() {
 		clearTimers();
 		listener?.stop();
-		newSticker = awardSticker();
-		phase = 'reward';
+		phase = 'story';
+		readStory();
 		const golds = grades.filter((g) => g === 'gold').length;
 		const p = { ...progress, next: { ...progress.next, [progress.level]: (progress.next[progress.level] ?? 0) + 1 } };
 		// Every sentence but one read alone: the next story is one level up.
 		if (golds >= grades.length - 1 && p.level < READ_LEVELS) p.level++;
 		progress = p;
 		saveRead(p);
+	}
+
+	/** The whole story on one page, read aloud slowly from the title down, each line lit as it is said. */
+	function readStory(from = -1) {
+		if (!story) return;
+		storyDone = false;
+		const lines = story.sentences[language];
+		const step = (i: number) => {
+			clearTimeout(storyTimer);
+			if (phase !== 'story') return;
+			if (i >= lines.length) {
+				reading = -2;
+				storyDone = true;
+				return;
+			}
+			reading = i;
+			const line = i < 0 ? storyTitle(language, story!) : storySentence(language, story!, i);
+			let moved = false;
+			const next = () => {
+				if (moved) return;
+				moved = true;
+				storyTimer = window.setTimeout(() => step(i + 1), i < 0 ? 900 : 700);
+			};
+			speak(line, language, next, STORY_RATE);
+			storyTimer = window.setTimeout(next, LINE_FALLBACK_MS);
+		};
+		stopSpeech();
+		step(from);
+	}
+
+	function toReward() {
+		clearTimeout(storyTimer);
+		stopSpeech();
+		newSticker = awardSticker();
+		phase = 'reward';
 		// The reward screen plays the chime and says the praise itself.
 	}
 
 	function home() {
+		clearTimeout(storyTimer);
 		stopAll();
 		phase = 'start';
 	}
@@ -300,11 +343,11 @@
 		</ol>
 		<section class="stage">
 			{#if si < 0}
-				<div class="scene cover" aria-hidden="true">{story.cover}</div>
+				<div class="scene cover" aria-hidden="true">{#each glyphs(story.cover) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</div>
 				<p class="title">{story.title[language]}</p>
 			{:else}
 				{#key si}
-					<div class="scene" aria-hidden="true">{story.sentences[language][si].scene}</div>
+					<div class="scene" aria-hidden="true">{#each glyphs(story.sentences[language][si].scene) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</div>
 					<p class="sentence" aria-live="polite">
 						{#each sentence as w, i (i)}
 							<button type="button" class="word {wordClass(i)}" onclick={() => tapWord(i)}>{w.shown}</button>
@@ -330,6 +373,31 @@
 					{/if}
 				</div>
 			{/if}
+		</section>
+	{:else if phase === 'story' && story}
+		<section class="stage">
+			<ol class="story" aria-label={story.title[language]}>
+				<li class="line title-line" class:now={reading === -1}>
+					<button type="button" onclick={() => readStory(-1)}>
+						<span class="scene small" aria-hidden="true">{#each glyphs(story.cover) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</span>
+						<span class="text title">{story.title[language]}</span>
+					</button>
+				</li>
+				{#each story.sentences[language] as sen, i (i)}
+					<li class="line" class:now={reading === i} class:read={reading > i || storyDone}>
+						<button type="button" onclick={() => readStory(i)}>
+							<span class="scene small" aria-hidden="true">{#each glyphs(sen.scene) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</span>
+							<span class="text">{sen.text}</span>
+						</button>
+					</li>
+				{/each}
+			</ol>
+			<div class="controls">
+				<Pip {language} size={80} mood={storyDone ? 'happy' : 'idle'} line={storyDone ? t(language, 'read.end') : undefined} />
+				<button type="button" class="big-btn play" class:faint={!storyDone} aria-label={storyDone ? 'Get your sticker' : 'Skip to the sticker'} onclick={toReward}>
+					<Icon name="play" size={56} />
+				</button>
+			</div>
 		</section>
 	{:else if phase === 'problem'}
 		<section class="stage">
@@ -470,7 +538,9 @@
 	.scene {
 		font-size: clamp(4rem, 16vw, 7.5rem);
 		line-height: 1;
-		letter-spacing: 0.1em;
+		display: flex;
+		justify-content: center;
+		gap: 0.15em;
 		animation: drop 300ms cubic-bezier(0.3, 1.4, 0.6, 1) backwards;
 	}
 	.title {
@@ -599,5 +669,62 @@
 		.listening.on {
 			animation: none;
 		}
+	}
+
+	/* The story page: the whole fable, one line at a time lit as Pip reads it. */
+	.story {
+		list-style: none;
+		margin: 0;
+		padding: 0.8rem;
+		width: min(44rem, 94vw);
+		max-height: calc(100dvh - 15rem);
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 24px;
+		background: var(--white);
+	}
+	.line button {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		width: 100%;
+		padding: 0.6rem 0.9rem;
+		border: 3px solid transparent;
+		border-radius: 18px;
+		background: none;
+		text-align: left;
+		font: inherit;
+		color: var(--mute);
+		transition: background-color 150ms, color 150ms;
+	}
+	.line.read button,
+	.title-line button {
+		color: var(--ink);
+	}
+	.line.now button {
+		background: var(--butter);
+		border-color: var(--ink);
+		color: var(--ink);
+	}
+	.scene.small {
+		font-size: 1.6rem;
+		line-height: 1;
+		flex: none;
+		width: 5.4rem;
+		gap: 0.1em;
+	}
+	.text {
+		font-size: clamp(1.3rem, 3.4vw, 1.8rem);
+		line-height: 1.3;
+	}
+	.text.title {
+		font-family: var(--title);
+		font-weight: 700;
+	}
+	.play.faint {
+		opacity: 0.55;
 	}
 </style>

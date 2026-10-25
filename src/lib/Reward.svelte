@@ -8,6 +8,7 @@
 	import { resolve } from '$app/paths';
 	import Icon from './Icon.svelte';
 	import Pip from './Pip.svelte';
+	import Emoji from './Emoji.svelte';
 	import { sfx, speak } from './audio';
 	import { t, type Line } from './i18n';
 	import type { Grade } from './score';
@@ -41,7 +42,7 @@
 					<span class="star {g}" style="--i: {i}"><Icon name="star" size={18} /></span>
 				{/each}
 			</div>
-			<div class="sticker" aria-label={STICKERS[sticker]?.[language]}>{sticker}</div>
+			<div class="sticker"><Emoji glyph={sticker} size="100%" label={STICKERS[sticker]?.[language]} /></div>
 			<span class="badge" aria-hidden="true"><Icon name="star" size={28} /></span>
 		</div>
 		<Pip {language} mood="happy" size={72} line={t(language, 'home.done')} />
@@ -49,7 +50,7 @@
 	<div class="right">
 		<div class="book" aria-label="Sticker book">
 			{#each book as s, i (s)}
-				<span class="cell c{i % 4}" class:has={owned.includes(s) || s === sticker}>{owned.includes(s) || s === sticker ? s : ''}</span>
+				<span class="cell c{i % 4}" class:has={owned.includes(s) || s === sticker}>{#if owned.includes(s) || s === sticker}<Emoji glyph={s} size="70%" />{/if}</span>
 			{/each}
 		</div>
 		<div class="actions">
@@ -86,8 +87,10 @@
 		place-items: center;
 	}
 	.sticker {
-		font-size: min(11rem, 42vw);
-		line-height: 1;
+		width: 70%;
+		aspect-ratio: 1;
+		display: grid;
+		place-items: center;
 		animation: flip 800ms cubic-bezier(0.3, 1.4, 0.6, 1) 500ms both;
 	}
 	@keyframes flip {

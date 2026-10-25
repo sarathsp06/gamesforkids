@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import Icon from '#lib/Icon.svelte';
 </script>
 
 <svelte:head><title>How we score — for parents</title></svelte:head>
 
 <main>
-	<a class="icon" href={resolve('/grownups')} aria-label="Back">‹</a>
+	<a class="icon" href={resolve('/grownups')} aria-label="Back"><Icon name="back" size={28} /></a>
 
 	<article>
 		<h1>How we score</h1>

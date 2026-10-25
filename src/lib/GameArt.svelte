@@ -13,9 +13,14 @@
 		<path d="M34 22 L60 70 L8 70 Z" fill="var(--blue)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
 		<circle cx="88" cy="48" r="26" fill="var(--red)" stroke="var(--ink)" stroke-width="4" />
 	{:else if game === 'paint'}
-		<path d="M20 84 L74 30 L90 46 L36 100" fill="var(--sun)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
-		<path d="M74 30 L86 18 Q96 10 102 16 Q108 22 100 32 L90 46" fill="#8b5a2b" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
-		<path d="M20 84 Q10 96 24 98 Q34 100 36 100" fill="var(--blue)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
+		<!-- A pot of paint with a brush standing in it, and a drip down the side: what the name says. -->
+		<path d="M22 40 L28 92 Q60 98 92 92 L98 40 Z" fill="var(--white)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
+		<ellipse cx="60" cy="40" rx="38" ry="11" fill="var(--blue)" stroke="var(--ink)" stroke-width="4" />
+		<path d="M36 48 Q34 62 42 68 Q48 70 46 58 L45 48 Z" fill="var(--blue)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round" />
+		<path d="M40 52 Q38 64 44 66" fill="none" stroke="var(--white)" stroke-width="2" stroke-linecap="round" />
+		<path d="M70 34 L82 6 Q84 2 88 4 Q92 6 90 10 L78 36 Z" fill="var(--red)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" />
+		<path d="M68 36 L80 38 L76 50 Q72 54 66 50 Z" fill="var(--sun)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round" />
+		<path d="M48 76 Q60 82 74 76" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" opacity="0.35" />
 	{:else if game === 'letters'}
 		<rect x="12" y="28" width="44" height="44" rx="10" fill="var(--red)" stroke="var(--ink)" stroke-width="4" />
 		<text x="34" y="62" text-anchor="middle" font-family="Andika, sans-serif" font-size="32" font-weight="700" fill="#fff">A</text>

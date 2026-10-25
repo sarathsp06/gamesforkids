@@ -22,11 +22,15 @@ export const CRAYONS: Crayon[] = [
 	{ id: 'purple', hex: '#8e44ad', name: { en: 'purple', nl: 'paars' } },
 	{ id: 'pink', hex: '#f48fb1', name: { en: 'pink', nl: 'roze' } },
 	{ id: 'brown', hex: '#8b5a2b', name: { en: 'brown', nl: 'bruin' } },
-	{ id: 'black', hex: '#000000', name: { en: 'black', nl: 'zwart' } }
+	{ id: 'black', hex: '#000000', name: { en: 'black', nl: 'zwart' } },
+	/** White on white paper: the eraser. */
+	{ id: 'white', hex: '#ffffff', name: { en: 'white', nl: 'wit' } }
 ];
 
 export interface Picture {
 	id: string;
+	/** What it is, said when the picture opens and shown under it in Big mode. */
+	name: Record<Language, string>;
 	/** Outline path in a 100×100 box. */
 	d: string;
 	/** Said when the picture is finished: praise for the work, not the child. */
@@ -58,6 +62,7 @@ const petals = (cx: number, cy: number, dist: number, r: number) =>
 const WORLD: Picture[] = [
 	{
 		id: 'sun',
+		name: { en: 'sun', nl: 'zon' },
 		d: [
 			circle(50, 50, 20),
 			'M50 22 L50 8 M50 78 L50 92 M22 50 L8 50 M78 50 L92 50',
@@ -68,6 +73,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'house',
+		name: { en: 'house', nl: 'huis' },
 		d: [
 			'M20 49 L20 88 L80 88 L80 49',
 			'M12 49 L50 15 L88 49 Z',
@@ -79,6 +85,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'fish',
+		name: { en: 'fish', nl: 'vis' },
 		d: [
 			'M18 50 Q44 20 72 50 Q44 80 18 50 Z',
 			'M72 50 L90 34 L90 66 Z',
@@ -91,6 +98,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'cat',
+		name: { en: 'cat', nl: 'kat' },
 		d: [
 			circle(50, 55, 28),
 			'M26.5 39.7 L28 14 L45 27.5 M73.5 39.7 L72 14 L55 27.5',
@@ -104,6 +112,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'flower',
+		name: { en: 'flower', nl: 'bloem' },
 		d: [
 			circle(50, 35, 10),
 			petals(50, 35, 20, 10),
@@ -115,6 +124,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'car',
+		name: { en: 'car', nl: 'auto' },
 		d: [
 			'M8 70 L8 52 L28 49 L38 33 L68 33 L80 49 L92 53 L92 70 Z',
 			'M41 37 H52 V49 H33 Z M56 37 H66 L75 49 H56 Z',
@@ -126,6 +136,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'tree',
+		name: { en: 'tree', nl: 'boom' },
 		d: [
 			'M44 92 L44 64 M56 64 L56 92',
 			'M30 64 Q14 62 18 46 Q12 30 30 26 Q36 10 52 14 Q68 8 74 24 Q90 28 84 44 Q90 60 72 64 Z',
@@ -139,6 +150,7 @@ const WORLD: Picture[] = [
 	},
 	{
 		id: 'butterfly',
+		name: { en: 'butterfly', nl: 'vlinder' },
 		d: [
 			'M46 30 Q50 25 54 30 L54 76 Q50 80 46 76 Z',
 			'M46 38 Q20 6 10 30 Q8 52 46 52 M46 54 Q18 56 20 76 Q32 90 46 66',
@@ -156,6 +168,7 @@ const WORLD: Picture[] = [
 const PIGS: Picture[] = [
 	{
 		id: 'pig',
+		name: { en: 'pig', nl: 'big' },
 		d: [
 			circle(50, 52, 30),
 			'M27 32.7 L24 12 L39.7 23.8 M73 32.7 L76 12 L60.3 23.8',
@@ -170,6 +183,7 @@ const PIGS: Picture[] = [
 	},
 	{
 		id: 'strawhouse',
+		name: { en: 'straw house', nl: 'strohuisje' },
 		d: [
 			'M22 52 L22 88 L78 88 L78 52',
 			'M14 54 Q20 20 50 14 Q80 20 86 54 Z',
@@ -182,6 +196,7 @@ const PIGS: Picture[] = [
 	},
 	{
 		id: 'wolf',
+		name: { en: 'wolf', nl: 'wolf' },
 		d: [
 			'M50 90 Q30 86 22 66 L14 40 L16 14 L34 30 Q50 24 66 30 L84 14 L86 40 L78 66 Q70 86 50 90 Z',
 			'M20 24 L21 36 L29 31 Z M80 24 L79 36 L71 31 Z',
@@ -195,6 +210,7 @@ const PIGS: Picture[] = [
 	},
 	{
 		id: 'brickhouse',
+		name: { en: 'brick house', nl: 'stenen huis' },
 		d: [
 			'M18 50 L18 88 L82 88 L82 50',
 			'M12 52 L50 18 L88 52 Z',
@@ -211,6 +227,7 @@ const PIGS: Picture[] = [
 const RED: Picture[] = [
 	{
 		id: 'redhood',
+		name: { en: 'Little Red Riding Hood', nl: 'Roodkapje' },
 		d: [
 			'M50 14 Q75 14 75 42 Q75 57 67 62 L33 62 Q25 57 25 42 Q25 14 50 14 Z',
 			circle(50, 42, 14),
@@ -226,6 +243,7 @@ const RED: Picture[] = [
 	},
 	{
 		id: 'basket',
+		name: { en: 'basket', nl: 'mand' },
 		d: [
 			'M18 50 L82 50 L74 86 L26 86 Z',
 			'M26 50 Q50 4 74 50',
@@ -237,6 +255,7 @@ const RED: Picture[] = [
 	},
 	{
 		id: 'grandma',
+		name: { en: 'grandma', nl: 'oma' },
 		d: [
 			circle(50, 50, 24),
 			circle(50, 20, 9),
@@ -253,6 +272,7 @@ const RED: Picture[] = [
 	},
 	{
 		id: 'mushroom',
+		name: { en: 'mushroom', nl: 'paddenstoel' },
 		d: [
 			'M14 54 Q14 18 50 18 Q86 18 86 54 Z',
 			'M38 54 L36 88 L64 88 L62 54',
@@ -268,6 +288,7 @@ const RED: Picture[] = [
 const RACE: Picture[] = [
 	{
 		id: 'tortoise',
+		name: { en: 'tortoise', nl: 'schildpad' },
 		d: [
 			'M14 66 Q18 26 50 26 Q80 26 84 66 Z',
 			'M34 66 L40 42 L60 42 L66 66',
@@ -280,6 +301,7 @@ const RACE: Picture[] = [
 	},
 	{
 		id: 'hare',
+		name: { en: 'hare', nl: 'haas' },
 		d: [
 			circle(50, 40, 16),
 			'M43 25.6 Q30 0 41 3 Q48 8 49 24 M57 25.6 Q70 0 59 3 Q52 8 51 24',
@@ -297,6 +319,7 @@ const RACE: Picture[] = [
 	},
 	{
 		id: 'trophy',
+		name: { en: 'trophy', nl: 'beker' },
 		d: [
 			'M30 20 L70 20 Q70 52 50 56 Q30 52 30 20 Z',
 			'M30 26 Q16 26 18 37 Q20 45 34.5 44 M70 26 Q84 26 82 37 Q80 45 65.5 44',
@@ -308,6 +331,7 @@ const RACE: Picture[] = [
 	},
 	{
 		id: 'carrot',
+		name: { en: 'carrot', nl: 'wortel' },
 		d: [
 			'M50 94 L34 40 Q50 32 66 40 Z',
 			'M44 36.5 Q28 18 40 12 Q48 20 49 34.5 M51 34.5 Q52 10 60 8 Q66 20 56 36.3',

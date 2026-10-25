@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Icon from '#lib/Icon.svelte';
 	import Pip from '#lib/Pip.svelte';
+	import Emoji from '#lib/Emoji.svelte';
 	import { speak, stopSpeech } from '#lib/audio.ts';
 	import { animal } from '#lib/i18n.ts';
 	import { STICKERS, type Language } from '#lib/words.ts';
@@ -29,7 +30,7 @@
 			{@const has = owned.includes(emoji)}
 			<li>
 				<button type="button" class:has disabled={!has} aria-label={has ? names[language] : 'Not collected yet'} onclick={() => speak(animal(language, emoji), language)}>
-					{#if has}{emoji}{/if}
+					{#if has}<Emoji glyph={emoji} size="72%" />{/if}
 				</button>
 			</li>
 		{/each}
