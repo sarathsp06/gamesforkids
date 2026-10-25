@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import Pip from '#lib/Pip.svelte';
 	import Avatar from '#lib/Avatar.svelte';
+	import Cake from '#lib/Cake.svelte';
 	import Icon from '#lib/Icon.svelte';
 	import GearHold from '#lib/GearHold.svelte';
 	import { speak, stopSpeech, unlockSpeech } from '#lib/audio.ts';
@@ -26,10 +27,6 @@
 		return stopSpeech;
 	});
 
-	const NOTE = {
-		en: 'A player is a picture and a name, kept on this device only. Age sets Little or Big mode. Progress and stickers belong to the player.',
-		nl: 'Een speler is een plaatje en een naam, alleen op dit apparaat. De leeftijd kiest de kleine of grote stand. Voortgang en stickers horen bij de speler.'
-	};
 	const DOT_GAMES = ['spell', 'shapes', 'paint', 'letters'];
 	/** Four dots: the games this device has gone past the first level in. Progress is per device for now. */
 	const played = () => DOT_GAMES.map((g) => levelOf(g).at > 1);
@@ -58,28 +55,27 @@
 
 <main>
 	<div class="top">
-		<Pip line={t(language, 'home.who')} {language} autoSay={greeted} />
-		<button type="button" class="round" aria-label="Hear it again" onclick={() => { greeted = true; speak(t(language, 'home.who'), language); }}>
+		<Pip line={t(language, adding ? 'home.age' : 'home.who')} {language} autoSay={greeted} />
+		<button type="button" class="round" aria-label="Hear it again" onclick={() => { greeted = true; speak(t(language, adding ? 'home.age' : 'home.who'), language); }}>
 			<Icon name="speaker" size={36} />
 		</button>
 	</div>
 
 	{#if adding}
 		<section class="new" aria-label="New player">
-			<div class="faces" role="group" aria-label="Pick a face">
-				{#each AVATARS as _, i (i)}
-					<button type="button" class="face" aria-label="Face {i + 1}" aria-pressed={draft.avatar === i} onclick={() => (draft.avatar = i)}>
-						<Avatar avatar={i} size={88} />
+			<div class="ages" role="group" aria-label="Age">
+				{#each Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => i + MIN_AGE) as a (a)}
+					<button type="button" class="age" aria-label="{a} years old" aria-pressed={draft.age === a} onclick={() => (draft.age = a)}>
+						<Cake candles={a} lit={draft.age === a} />
+						<span class="num">{a}</span>
 					</button>
 				{/each}
 			</div>
-			<div class="ages" role="group" aria-label="Age">
-				{#each Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => i + MIN_AGE) as a (a)}
-					<button type="button" class="age" aria-label="Age {a}" aria-pressed={draft.age === a} onclick={() => (draft.age = a)}>{a}</button>
-				{/each}
-			</div>
 			<div class="name">
-				<input type="text" maxlength="14" placeholder={language === 'nl' ? 'Naam (door een volwassene)' : 'Name (a grown-up types it)'} bind:value={draft.name} aria-label="Name" />
+				<label class="field">
+					<span>{language === 'nl' ? 'Naam (typt een volwassene, of sla over)' : 'Name (a grown-up types it, or skip)'}</span>
+					<input type="text" maxlength="14" placeholder="Mila" bind:value={draft.name} />
+				</label>
 				<button type="button" class="go" aria-label="Done" onclick={saveDraft}><Icon name="check" size={40} /></button>
 				{#if players.list.length}
 					<button type="button" class="round" aria-label="Cancel" onclick={() => (adding = false)}><Icon name="close" size={28} /></button>
@@ -121,7 +117,10 @@
 				>
 			{/each}
 		</div>
-		<p class="note">{NOTE[language]}</p>
+		<div class="links">
+			<a class="chip" href={resolve('/how-we-score')}>{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
+			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+		</div>
 		<GearHold />
 	</footer>
 </main>
@@ -253,30 +252,34 @@
 		width: 100%;
 		max-width: 52rem;
 	}
-	.faces,
 	.ages {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
+		display: grid;
+		grid-template-columns: repeat(7, minmax(0, 1fr));
 		gap: 1rem;
+		width: 100%;
 	}
-	.face {
-		padding: 0.4rem;
-		border-radius: 28px;
-		line-height: 0;
+	.age {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.4rem;
+		min-height: var(--tap);
+		padding: 0.9rem 0.3rem 0.7rem;
+		border-radius: 26px;
 	}
-	.face[aria-pressed='true'],
 	.age[aria-pressed='true'] {
 		background: var(--sun);
 		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
-	.age {
-		width: var(--tap);
-		height: var(--tap);
-		border-radius: 22px;
+	.age :global(svg) {
+		width: 100%;
+		max-width: 5.5rem;
+	}
+	.num {
 		font-family: var(--title);
 		font-weight: 700;
-		font-size: 2.2rem;
+		font-size: 2.5rem;
+		line-height: 1;
 	}
 	.name {
 		display: flex;
@@ -284,6 +287,13 @@
 		gap: 1rem;
 		flex-wrap: wrap;
 		justify-content: center;
+	}
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		font-size: 0.95rem;
+		color: var(--mute);
 	}
 	.name input {
 		font: inherit;
@@ -317,11 +327,32 @@
 		gap: 0.9rem;
 	}
 	.note {
-		margin: 0 0 0 auto;
+		margin: 0;
 		font-size: 0.95rem;
 		line-height: 1.4;
 		color: var(--mute);
 		max-width: 26rem;
+	}
+	.links {
+		display: flex;
+		gap: 0.7rem;
+		margin-left: auto;
+	}
+	.chip {
+		padding: 0.55rem 1rem;
+		border: 3px solid var(--ink);
+		border-radius: 999px;
+		background: var(--white);
+		box-shadow: 0 4px 0 var(--ink);
+		color: inherit;
+		text-decoration: none;
+		font-weight: 700;
+		font-size: 0.95rem;
+		white-space: nowrap;
+	}
+	.chip:active {
+		transform: translateY(4px);
+		box-shadow: none;
 	}
 	@media (max-width: 640px) {
 		main {
@@ -329,6 +360,12 @@
 		}
 		.note {
 			display: none;
+		}
+		.ages {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+		.links {
+			margin-left: 0;
 		}
 		footer {
 			justify-content: space-between;

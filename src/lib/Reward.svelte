@@ -9,10 +9,10 @@
 	import Icon from './Icon.svelte';
 	import Pip from './Pip.svelte';
 	import { sfx, speak } from './audio';
-	import { animal, t, type Line } from './i18n';
+	import { t, type Line } from './i18n';
 	import type { Grade } from './score';
 	import { STICKERS, type Language } from './words';
-	import { loadProgress } from './storage';
+	import { loadStickers } from './stickers';
 
 	let {
 		grades,
@@ -22,9 +22,9 @@
 		sayFirst = []
 	}: { grades: Grade[]; sticker: string; language: Language; onAgain: () => void; sayFirst?: Line[] } = $props();
 
-	const owned = loadProgress().stickers;
+	const owned = loadStickers();
 	const book = Object.keys(STICKERS).slice(0, 12);
-	const line = $derived([...sayFirst, t(language, 'home.done'), animal(language, sticker)]);
+	const line = $derived([...sayFirst, t(language, 'home.done'), t(language, 'home.sticker')]);
 
 	onMount(() => {
 		sfx.chime();

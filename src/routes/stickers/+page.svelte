@@ -6,14 +6,15 @@
 	import { speak, stopSpeech } from '#lib/audio.ts';
 	import { animal } from '#lib/i18n.ts';
 	import { STICKERS, type Language } from '#lib/words.ts';
-	import { loadLanguage, loadProgress } from '#lib/storage.ts';
+	import { loadLanguage } from '#lib/storage.ts';
+	import { loadStickers } from '#lib/stickers.ts';
 
 	let language = $state<Language>('en');
 	let owned = $state<string[]>([]);
 
 	onMount(() => {
 		language = loadLanguage();
-		owned = loadProgress().stickers;
+		owned = loadStickers();
 		return stopSpeech;
 	});
 </script>

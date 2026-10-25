@@ -3,9 +3,10 @@ import {
 	loadLanguage, loadProgress, loadSessions, saveLanguage, saveProgress, saveSessions,
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
-import { MAX_TIER, STICKERS, pickWord, type Language } from './words';
+import { MAX_TIER, pickWord, type Language } from './words';
 import { letter as letterLine, t, word } from './i18n';
 import { gradeAttempts, keySimilarity, type Grade } from './score';
+import { awardSticker } from './stickers';
 
 export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward';
 
@@ -173,15 +174,13 @@ class Game {
 	}
 
 	#reward() {
-		const all = Object.keys(STICKERS);
-		const unowned = all.filter((s) => !this.progress.stickers.includes(s));
-		this.newSticker = random(unowned.length ? unowned : all);
+		this.newSticker = awardSticker(); // the current player's book
 		let tier = this.progress.tier;
 		if (this.progress.tierMode === 'auto') {
 			if (this.#roundMisses <= TIER_UP_MAX_MISSES) tier = Math.min(MAX_TIER, tier + 1);
 			else if (this.#roundMisses >= TIER_DOWN_MIN_MISSES) tier = Math.max(1, tier - 1);
 		}
-		this.updateProgress({ tier, stickers: [...this.progress.stickers, this.newSticker] });
+		this.updateProgress({ tier });
 		this.#session.stickers++;
 		this.phase = 'reward'; // the shared Reward screen plays the chime and says the praise
 	}
