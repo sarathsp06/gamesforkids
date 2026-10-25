@@ -35,7 +35,8 @@ export function levelOf(game: string): Level {
 		}
 		case 'paint': {
 			const done = loadPainted();
-			return { at: CHAPTERS.filter((c) => c.pictures.some((p) => done.includes(p.id))).length, of: CHAPTERS.length };
+			// A chapter counts once a picture in it is painted; a fresh player is still on the first chapter.
+			return { at: Math.max(1, CHAPTERS.filter((c) => c.pictures.some((p) => done.includes(p.id))).length), of: CHAPTERS.length };
 		}
 	}
 	return { at: 1, of: 1 };
