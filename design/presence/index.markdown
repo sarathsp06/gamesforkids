@@ -198,6 +198,17 @@ devices to each other; all messages go peer to peer.
     alone; the corner view freezes, the picture stays and ✓ still gives the sticker
     - For two minutes the device keeps the room id and rejoins silently if the friend comes back; both send
       their current fills. After that, a new invite is needed
+- Pairing is found where it is used (added after building: behind the gear alone, parents did not find it)
+  - Paint Pot's tile on the home screen wears a small friends badge, from `together` in `GAMES`, so a game
+    that can be played with a friend says so before it is opened
+  - Paint Pot's chapter and picture screens always show a friends button next to the strip, switch on or off;
+    it wears a heart while a remembered friend is in Paint Pot
+  - Tapping it opens one sheet (`src/lib/TogetherSheet.svelte`): remembered friends first, the ones painting
+    now with a big "Paint together", the others dimmed; Pip says "Tap your friend to paint together!", or,
+    with no friend here, "Want to paint with a friend? Ask a grown-up to help!"
+  - Under it, for the grown-up, the three steps in plain words, and the same three-second hold as the gear,
+    which opens the switch and pairing right there; a friend paired there joins the strip at once
+  - Turning the switch from the sheet connects or leaves at once; the Grown-ups page keeps the same box
 - Fits the rest of the app
   - New: `src/lib/presence.ts` (pure: message types, the validator, region labelling, the pair-code hash,
     the friend room) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)

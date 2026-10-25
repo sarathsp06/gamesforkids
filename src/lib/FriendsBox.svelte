@@ -12,7 +12,12 @@
 	import { currentPlayer, loadPlayers } from './storage';
 	import type { Language } from './words';
 
-	let { language, online, onOnline }: { language: Language; online: boolean; onOnline: (on: boolean) => void } = $props();
+	let {
+		language,
+		online,
+		onOnline,
+		onAdded
+	}: { language: Language; online: boolean; onOnline: (on: boolean) => void; onAdded?: (f: Friend) => void } = $props();
 
 	let friends = $state<Friend[]>(loadFriends().list);
 	let mode = $state<'idle' | 'show' | 'enter' | 'waiting' | 'found' | 'added' | 'closed'>('idle');
@@ -37,6 +42,7 @@
 			add: 'Add this friend',
 			notThis: 'Not this one',
 			added: 'Friends now. Your child sees this friend with a heart in Paint Pot, and can ask them to paint together.',
+			addedOff: 'Friends now. One more step: turn on "Play with others online" above, or your child will not see this friend.',
 			closed: 'The code has expired. Make a new one.',
 			cancel: 'Cancel',
 			undo: 'Undo',
@@ -62,6 +68,7 @@
 			add: 'Voeg dit vriendje toe',
 			notThis: 'Niet dit',
 			added: 'Nu vriendjes. Je kind ziet dit vriendje met een hartje in Verfpot en kan vragen om samen te schilderen.',
+			addedOff: 'Nu vriendjes. Nog één stap: zet hierboven "Online samen met anderen" aan, anders ziet je kind dit vriendje niet.',
 			closed: 'De code is verlopen. Maak een nieuwe.',
 			cancel: 'Annuleer',
 			undo: 'Terug',
@@ -108,6 +115,8 @@
 		if (!found) return;
 		addFriend(found.key, found.avatar);
 		friends = loadFriends().list;
+		const added = friends.find((f) => f.key === found!.key);
+		if (added) onAdded?.(added);
 		mode = 'added';
 		close?.();
 		close = null;
@@ -174,7 +183,7 @@
 			<button type="button" onclick={() => { found = null; mode = code.length && close ? 'waiting' : 'idle'; }}>{s.notThis}</button>
 		</div>
 	{:else if mode === 'added'}
-		<span class="fine">{s.added}</span>
+		<span class="fine" class:cost={!online}>{online ? s.added : s.addedOff}</span>
 		<div class="actions"><button type="button" onclick={cancel}>OK</button></div>
 	{:else}
 		<span class="fine">{s.closed}</span>

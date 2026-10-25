@@ -13,9 +13,10 @@
 	import Reward from '#lib/Reward.svelte';
 	import { awardSticker } from '#lib/stickers.ts';
 	import { trackPlay } from '#lib/playlog.ts';
-	import { currentPlayer, loadSettings } from '#lib/storage.ts';
-	import { Together, type Event as TogetherEvent } from '#lib/presence.svelte.ts';
+	import { currentPlayer, loadSettings, saveSettings } from '#lib/storage.ts';
+	import { Together, type Event as TogetherEvent, type Friend } from '#lib/presence.svelte.ts';
 	import PresenceStrip from '#lib/PresenceStrip.svelte';
+	import TogetherSheet from '#lib/TogetherSheet.svelte';
 	import Avatar from '#lib/Avatar.svelte';
 	import { drawFills, fillsOf, pictureUrl, regionsOf } from '#lib/regions.ts';
 	import type { Line } from '#lib/i18n.ts';
@@ -56,7 +57,9 @@
 	let undo: ImageData[] = [];
 
 	// Painting with others (design/presence): only when a grown-up turned it on.
+	let online = $state(false);
 	let together = $state<Together | null>(null);
+	let sheet = $state<TogetherSheet>();
 	let me = $state(0);
 	/** Pip's line about the others, shown and said once; cleared on the next screen. */
 	let otherLine = $state<Line | null>(null);
@@ -70,7 +73,9 @@
 	const screen = $derived(phase === 'paint' ? 'paint' : chapter ? 'pictures' : 'chapters');
 	$effect(() => together?.setScreen(screen));
 
-	function say(key: 'paint.others' | 'friend.here' | 'friend.ask' | 'friend.wants' | 'friend.yes' | 'friend.no' | 'friend.finished' | 'friend.away') {
+	function say(
+		key: 'paint.others' | 'friend.here' | 'friend.ask' | 'friend.wants' | 'friend.yes' | 'friend.no' | 'friend.finished' | 'friend.away' | 'friend.how' | 'friend.pick'
+	) {
 		otherLine = t(language, key);
 		speak(otherLine, language);
 	}
@@ -95,6 +100,36 @@
 		asking = { kind: 'ask', key };
 		say('friend.ask');
 	}
+	/** The friends button: the sheet shows who is here, and tells a grown-up how to pair. */
+	function openTogether() {
+		asking = null;
+		sheet?.open();
+		say(together && Object.keys(together.online).length ? 'friend.pick' : 'friend.how');
+	}
+	function inviteFromSheet(key: string) {
+		otherLine = null;
+		if (together && !together.with) together.invite(key);
+	}
+	function startTogether() {
+		const tg = new Together();
+		tg.on(heard);
+		together = tg;
+		void tg.start({ language, avatar: me, publicToo: true }).catch((e) => console.warn('Paint Pot together: could not connect', e));
+	}
+	/** The grown-ups switch, turned from the sheet: connect or leave at once, as Grown-ups would on the next visit. */
+	function setOnline(on: boolean) {
+		saveSettings({ ...loadSettings(), online: on });
+		online = on;
+		if (on && !together) startTogether();
+		if (!on) {
+			together?.stop();
+			together = null;
+		}
+	}
+	function friendAdded(f: Friend) {
+		void together?.meet(f);
+	}
+
 	function answerAsk(yes: boolean) {
 		const a = asking;
 		asking = null;
@@ -146,12 +181,8 @@
 		big = document.documentElement.dataset.mode !== 'little';
 		const stop = trackPlay('paint');
 		me = currentPlayer()?.avatar ?? 0;
-		if (loadSettings().online) {
-			const tg = new Together();
-			tg.on(heard);
-			together = tg;
-			void tg.start({ language, avatar: me, publicToo: true }).catch((e) => console.warn('Paint Pot together: could not connect', e));
-		}
+		online = loadSettings().online;
+		if (online) startTogether();
 		fillsTimer = setInterval(sendFills, FILLS_MS);
 		return () => {
 			stop();
@@ -324,10 +355,28 @@
 			<button type="button" class="icon" aria-label="Home" onclick={home}><Icon name="home" size={32} /></button>
 			{#if otherLine}<Pip {language} line={otherLine} size={56} />{/if}
 		{/if}
-		{#if together && phase === 'start'}
-			<div class="strip-at"><PresenceStrip {me} peers={together.peers} friends={together.online} {onFriend} /></div>
+		{#if phase === 'start'}
+			<div class="strip-at">
+				{#if together}<PresenceStrip {me} peers={together.peers} friends={together.online} {onFriend} />{/if}
+				<button type="button" class="icon friends" aria-label="Paint with a friend" onclick={openTogether}>
+					<Icon name="friends" size={34} />
+					{#if together && Object.keys(together.online).length}
+						<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3.1 1.8-2 3.3-3.1 5.4-3.1 3.6 0 5.8 3.8 4.2 7.3C19.5 16.4 12 21 12 21z" /></svg>
+					{/if}
+				</button>
+			</div>
 		{/if}
 	</header>
+
+	<TogetherSheet
+		bind:this={sheet}
+		{language}
+		{online}
+		live={together?.online ?? {}}
+		onOnline={setOnline}
+		onInvite={inviteFromSheet}
+		onAdded={friendAdded}
+	/>
 
 	{#if asking}
 		<div class="ask" role="dialog" aria-label={otherLine?.text}>
@@ -492,6 +541,23 @@
 	}
 	.strip-at {
 		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+	}
+	.friends {
+		position: relative;
+		background: var(--sky);
+	}
+	.friends .heart {
+		position: absolute;
+		right: -6px;
+		top: -6px;
+		width: 26px;
+		height: 26px;
+		fill: var(--red);
+		stroke: var(--ink);
+		stroke-width: 2;
 	}
 	.ask {
 		position: fixed;

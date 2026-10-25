@@ -88,6 +88,8 @@ const en = {
 	'friend.no': 'Your friend wants to paint alone for now.',
 	'friend.finished': 'Your friend finished!',
 	'friend.away': 'Your friend went away.',
+	'friend.how': 'Want to paint with a friend? Ask a grown-up to help!',
+	'friend.pick': 'Tap your friend to paint together!',
 
 	'home.who': 'Who is playing today?',
 	'home.what': 'What shall we play?',
@@ -162,6 +164,8 @@ const nl: Record<Key, Entry> = {
 	'friend.no': 'Je vriendje schildert nu even alleen.',
 	'friend.finished': 'Je vriendje is klaar!',
 	'friend.away': 'Je vriendje is weggegaan.',
+	'friend.how': 'Wil je samen met een vriendje schilderen? Vraag een volwassene om te helpen!',
+	'friend.pick': 'Tik op je vriendje om samen te schilderen!',
 
 	'home.who': 'Wie speelt er vandaag?',
 	'home.what': 'Wat gaan we spelen?',

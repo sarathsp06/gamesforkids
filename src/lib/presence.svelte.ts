@@ -187,6 +187,11 @@ export class Together {
 		this.pic?.send(p);
 	}
 
+	/** A friend paired while Paint Pot is open: join their room now, not on the next visit. */
+	async meet(friend: Friend) {
+		if (!this.stopped && !this.links.has(friend.key)) await this.joinFriend(friend);
+	}
+
 	// A remembered friend's private room: only the two devices know its key.
 	private async joinFriend(friend: Friend) {
 		const me = loadFriends().key;
