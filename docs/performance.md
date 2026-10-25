@@ -21,6 +21,18 @@ Time until a page first shows its content on a cold first visit did not change (
 by round trips for the page's ~24 script files, which the local HTTP/1.1 server serves six at a time;
 GitHub Pages uses HTTP/2.
 
+### On the live site (GitHub Pages, same throttling, real internet)
+
+| | Before | After |
+|---|---|---|
+| Tap a game tile → game on screen | 1.58–2.11 s | **0.07–0.08 s** |
+| Spell Pick, first visit | 205 kB, content at 2.57 s | 128 kB, 1.54–2.06 s |
+| Paint Pot, first visit | 221 kB, 2.57 s | 144 kB, 2.56–2.58 s (now includes painting together) |
+| Home, first visit | 159 kB, 2.57 s | 211 kB, 1.55–2.07 s: the extra is every game's code, loaded so taps are instant |
+
+First-visit times vary by about half a second between runs over the real internet; the ranges are the
+medians of two sets of three runs.
+
 ## What made the difference
 
 1. **The tap no longer waits for Pip.** Home used to say the game's name and only start loading the game
