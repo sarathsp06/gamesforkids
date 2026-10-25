@@ -25,6 +25,7 @@
 			confirm: 'Remove this player? Stickers and progress on this device stay.', mode: 'Mode',
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
 			timers: 'Timers in Number Dash', week: 'This week', weekHint: 'Minutes played and where each game stands. No scores are shown to the child.',
+			about: 'About this app', promise: 'Everything a child does here stays in this browser, on this device. Nothing is sent to a server, there are no accounts, no ads and no tracking, and there never will be. This is a parent\'s project for their own children, shared freely: the code is open under the MIT licence, with no plan to sell it and no obligations either way.',
 			level: 'Level', min: 'min', none: 'Nothing played yet this week.', score: 'How we score', note:
 				'Reads like a teacher\'s note, not a dashboard: what the child can do now. The full "How we score" page is here, not on the child\'s home.'
 		},
@@ -34,6 +35,7 @@
 			confirm: 'Deze speler verwijderen? Stickers en voortgang op dit apparaat blijven.', mode: 'Stand',
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
 			timers: 'Klok in Rekenrace', week: 'Deze week', weekHint: 'Gespeelde minuten en waar elk spel staat. Het kind ziet geen scores.',
+			about: 'Over deze app', promise: 'Alles wat een kind hier doet blijft in deze browser, op dit apparaat. Er gaat niets naar een server, er zijn geen accounts, geen reclame en geen tracking, en dat blijft zo. Dit is een project van een ouder voor de eigen kinderen, vrij gedeeld: de code is open onder de MIT-licentie, zonder plannen om het te verkopen en zonder verplichtingen.',
 			level: 'Niveau', min: 'min', none: 'Deze week nog niets gespeeld.', score: 'Hoe we scoren', note:
 				'Leest als een briefje van de juf, niet als een dashboard: wat het kind nu kan. De volledige uitleg staat hier, niet op het startscherm van het kind.'
 		}
@@ -149,6 +151,14 @@
 							<span>{s.level} {lv.at} / {lv.of}{minutes[g.id] ? ` · ${Math.round(minutes[g.id])} ${s.min}` : ''}</span>
 						</div>
 					{/each}
+				</div>
+			</section>
+			<section class="box">
+				<h2>{s.about}</h2>
+				<p class="promise">{s.promise}</p>
+				<div class="links">
+					<a href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+					<a href="https://github.com/sarathsp06/gamesforkids/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>
 				</div>
 			</section>
 			<section class="box foot">
@@ -347,6 +357,19 @@
 	}
 	.note.paper {
 		background: var(--paper);
+	}
+	.promise {
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.5;
+	}
+	.links {
+		display: flex;
+		gap: 1rem;
+		font-weight: 700;
+	}
+	.links a {
+		color: var(--blue);
 	}
 	.foot {
 		flex-direction: row;

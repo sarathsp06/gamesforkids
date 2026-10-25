@@ -71,6 +71,9 @@
 					</button>
 				{/each}
 			</div>
+			<p class="promise">{language === 'nl'
+				? 'Alles blijft in deze browser; er gaat niets naar buiten. Gemaakt door een ouder voor zijn kinderen: gratis, zonder reclame of accounts, en zo blijft het.'
+				: 'Everything stays in this browser; nothing leaves it. Made by a parent for their own children: free, with no ads or accounts, and it will stay that way.'}</p>
 			<div class="name">
 				<label class="field">
 					<span>{language === 'nl' ? 'Naam (typt een volwassene, of sla over)' : 'Name (a grown-up types it, or skip)'}</span>
@@ -287,6 +290,14 @@
 		gap: 1rem;
 		flex-wrap: wrap;
 		justify-content: center;
+	}
+	.promise {
+		margin: 0;
+		max-width: 40rem;
+		text-align: center;
+		font-size: 1rem;
+		line-height: 1.45;
+		color: var(--mute);
 	}
 	.field {
 		display: flex;

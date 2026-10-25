@@ -17,6 +17,12 @@ site, everything stays on the device.
 | 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
 | 🖌️ | **Paint Pot** | Colours in pictures from fairy tales and fables with brush and bucket; hears each colour's name | sun and house → the Three Little Pigs, Red Riding Hood |
 
+## 🤝 A promise
+
+Everything a child does stays in the browser, on that device. Nothing is sent to a server; there are no
+accounts, no ads and no tracking, and there never will be. This is a parent's project for their own children,
+shared freely under the [MIT licence](LICENSE): no plan to sell it, no obligations either way.
+
 ## 🦉 How it's put together
 
 - **Who is playing?** A player is a drawn face, a name and an age, kept on the device. Age picks the mode:
