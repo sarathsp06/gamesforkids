@@ -475,8 +475,8 @@
 			--key-ratio: 1.75;
 		}
 	}
-	/* Phones (design board 8b): no centring in the full height. Home and the dots sit in the top row, the
-	   question right under it, and the answers low where a thumb reaches. */
+	/* Phones (design board 8b): home and the dots in the top row, the answers low where a thumb reaches, and
+	   what comes before them (Pip, the question) in the middle of the space between. */
 	@media (max-width: 600px) {
 		main {
 			place-items: start center;
@@ -484,7 +484,10 @@
 		}
 		.dots + .stage {
 			min-height: calc(100dvh - var(--tap) - 4rem);
-			justify-content: space-between;
+		}
+		.dots + .stage > :global(:first-child),
+		.dots + .stage > :global(:last-child) {
+			margin-top: auto;
 		}
 	}
 </style>
