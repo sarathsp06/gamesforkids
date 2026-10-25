@@ -1,7 +1,7 @@
 ---
 co-review: design
 ---
-# Add presence and play-together: other children are here, and a friend can colour with you
+# Add presence and play-together in Paint Pot: other children are painting, and a friend can paint with you
 
 ## Context
 
@@ -10,10 +10,21 @@ owner wants two kinds of "together", both safe by construction: a warm, anonymou
 are playing right now (a strip of avatars, and in Paint Pot a shelf of pictures other children just finished),
 and real play with one friend a grown-up chose. No chat, no names, nothing typed, ever.
 
+The first version is Paint Pot only (decided after review): the strip, the shelf and painting side by side
+with a friend all live there, and every other game is untouched. The same channel later carries a device's
+progress to another device (`design/progress-transfer`), and the other games can join once Paint Pot has
+shown it works.
+
 This design is written against the redesign canvas (Little and Big modes, Pip the owl who says every prompt,
 the "who is playing" picker, one sticker book, the Grown-ups area behind a three-second hold on the gear, one
-calm voice). Where the canvas and today's code differ, the canvas wins. Everything here is additive: with the
-switch off, which is the default, the app is exactly as it is now and loads nothing new.
+calm voice), of which the first part is now in `main`: players with six drawn avatars (`src/lib/players.ts`),
+Pip, the Grown-ups page (`src/routes/grownups`) and the gear hold. Where the canvas and the code differ, the
+canvas wins. Everything here is additive: with the switch off, which is the default, the app is exactly as it
+is now and loads nothing new.
+
+The app also makes a promise, on the first page and in Grown-ups: everything your child does stays in this
+browser, nothing goes anywhere, nobody is watching. With the switch off that stays true word for word. With
+it on, it no longer is, and the design below makes the promise say so rather than quietly bend it.
 
 The whole thing in one picture: two rooms, and what may cross the wire in each.
 
@@ -24,7 +35,7 @@ flowchart LR
     GA["Pair with a friend\n(behind the gear, first time)"] --> QA["Private pair room"]
     FA["Remembered friend online:\ntap the avatar to invite"] --> QA
     PA --> UA["Strip: avatars only\nShelf: redrawn pictures"]
-    QA --> MA["Side by side\nTake turns"]
+    QA --> MA["Side by side\n(own pictures)"]
   end
   subgraph B["Sam's laptop"]
     SB["Grown-ups switch"] --> PB["Public room"]
@@ -37,7 +48,7 @@ flowchart LR
   QA <-. "find the friend" .-> R
   QB <-. "find the friend" .-> R
   PA <== "hi: avatar + game\npic: picture id + a crayon per region\nwant / list, newest 24" ==> PB
-  QA <== "fills: a crayon per region\nat: position\nanswer: grade" ==> QB
+  QA <== "fills: a crayon per region\nat: position" ==> QB
   X["Never: names, text, bitmaps,\nthe pair code, anything stored"]
   classDef never fill:#FFE3DC,stroke:#1C1B18
   class X never
@@ -68,22 +79,27 @@ devices to each other; all messages go peer to peer.
     - In the public room every device online learns the IP of every other, including anyone who opens the
       room with a script
     - That is the cost of running no server, and why the feature is off until a grown-up turns it on
-    - Public rooms are small on purpose: the room id includes the language and a random shard of four, so a
-      child shares a mesh with a handful of devices
+    - The public room is per language, in one shard for now (changed when built: with four random shards,
+      two of the few devices online rarely met). Every device connects to every other, so the shard count is
+      the knob to raise if a room ever gets crowded
   - Plan B if signalling proves flaky on school or home networks: a tiny Cloudflare Worker with one Durable
     Object per room, relaying the same JSON over WebSockets
     - About 80 lines, the free tier covers it, and nothing is peer to peer any more, so other devices never
       see an IP; only Cloudflare does. The message layer below is the same either way
 - A grown-up turns it on, in Grown-ups, under Sound: "Play with others online", off by default
-  - Off: nothing is imported and no relay is contacted. On: the public room is joined on the home screen and
-    in Paint Pot
+  - Off: nothing is imported and no relay is contacted. On: the public room is joined while the child is in
+    Paint Pot, and left on the way out
   - One honest note under it, in grown-up text: shows your child that other children are playing and lets
     them see pictures others finished
     - And the cost: devices connect directly, so other devices online can see this device's internet
       address. Nothing else is shared: no name, no photo, nothing typed
+  - While it is on, the promise changes with it: the About paragraph in Grown-ups and the first page gain one
+    sentence, in both languages, saying what now leaves the device and that other devices can see its address
+    - The Small print page gets the same in its firm voice. Switching off removes the sentence again, so the
+      promise is never shorter than the truth
 - Only things that cannot carry a child's words or drawings cross the wire
-  - Presence is `hi {v, avatar, game}`: an index into the twelve drawn avatars of the "who is playing" picker,
-    and a known game id or `home`
+  - Presence is `hi {v, avatar, game}`: an index into the six drawn avatars of the "who is playing" picker,
+    and the screen it is on (`chapters`, `pictures`, `paint`); a game id joins it when other games do
     - The peer id is Trystero's own `selfId`, random per page load, never persisted, never shown
     - The player's name never leaves the device: the strip shows avatars only
   - A gallery picture is `pic {v, id, picture, n, fills}`: a random id, a known picture id from
@@ -120,15 +136,15 @@ devices to each other; all messages go peer to peer.
     Everything we want from "someone else is painting too" is in the moment, so none of that fits
     - A lasting shared gallery, if ever wanted, is a moderated one on our own storage, not IPFS
 - The strip shows avatars: no numbers, nothing to tap
-  - Little home: a row of small drawn avatars (48 px, ink line, no keycap shadow, they are not buttons) under
-    the top bar, starting beside the child's own player pill, which stays first and a little larger
-    - Big home: the same row under the title. Paint Pot: on the chapter and picture screens, never while
-      painting. Phone: the same row on one line
+  - On Paint Pot's chapter and picture screens, never while painting: a row of small drawn avatars under the
+    top bar, starting with the child's own, a little larger
+    - 48 px, ink line, no keycap shadow, since they are not buttons. Little and Big mode look the same here;
+      on a phone the row stays on one line
+  - The home screens show no strip in this version; that comes with the other games
   - Alone, the row is just the child's own avatar; nothing says "nobody is here" and Pip says nothing
   - Someone arrives: their avatar fades in with the "tok" sound, once; nothing moves after that. Under reduced
     motion it simply appears
-  - Each avatar wears a tiny badge of the game that child is in, the tile's own icon. At most six avatars, no
-    count, no "12 playing"
+  - At most six avatars, no count, no "12 playing", no badge: everyone in the strip is painting
   - A remembered friend's avatar wears the heart badge and comes first after the child's own; it is the one
     avatar that can be tapped, to invite (below). Every other avatar is not a button
   - The shelf of other children's pictures sits on Paint Pot's gallery screen under the child's own, redrawn
@@ -152,18 +168,19 @@ devices to each other; all messages go peer to peer.
   - Paired once, the two devices remember each other, so next time no code is needed (added in review)
     - On first use each device makes a random 128-bit friend key and stores it in `localStorage`; the two
       swap keys inside the pair room, and each keeps the other's key and avatar as a remembered friend
-    - In the public room a device's presence carries, per friend, a daily tag: a hash of the friend key and
-      the date. A friend recognises the tag; a stranger cannot invert it or forge it
-    - The friend is online and the switch is on: their avatar shows on the strip with the heart. Tapping it
-      makes Pip ask "Ask your friend to play?", then offers at most three mode pictures
-    - The invite is `knock {tag, nonce}`; the friend's device checks the tag and Pip says "Your friend wants
-      to play! Come?" with one big ▶. Both derive the private room from the friend key, the date and the nonce
-    - A grown-up can forget a friend in Grown-ups; the friend key stays per device for now, not per player,
-      since the "who is playing" picker is still on the canvas
-    - Can go wrong: a child taps the heart avatar again and again. One knock per friend per minute; a knock
-      the friend ignores just fades, with no sound on either side
-  - Every mode is cooperative: `docs/learning.md` says children this age learn poorly from losing, so there is
-    never a loser and never a score per child
+    - Each friendship has its own private room, named and locked by a hash of both friend keys (changed when
+      built, from daily tags in the public room: friends find each other whichever public shard they are in,
+      and nothing about a friendship appears in the public room at all)
+    - With the switch on, a device in Paint Pot joins each friend's room. The friend is there: their avatar
+      shows on the strip with the heart. Tapping it makes Pip ask "Ask your friend to paint with you?"
+    - The invite goes in that room; the friend's Pip says "Your friend wants to paint with you! Come?" with one
+      big ▶ and a ✕. Yes, and both paint side by side in the same room
+    - A grown-up can forget a friend in Grown-ups, in the Players box. The friend key is per device, not per
+      player: a friendship is between two family devices, and siblings on one tablet share it
+    - Can go wrong: a child taps the heart avatar again and again. One invite per friend per minute; an
+      invite the friend ignores just fades, with no sound on either side
+  - The one mode in this version is cooperative: `docs/learning.md` says children this age learn poorly from
+    losing, so there is never a loser and never a score per child
     - Side by side (Paint Pot): the same picture, but each child paints their own copy, never one shared
       canvas (decided in review)
       - A live picture of the friend's copy sits in the corner, redrawn from the friend's region fills
@@ -171,28 +188,24 @@ devices to each other; all messages go peer to peer.
       - The friend's crayon shows as a small avatar dot over it (`at {x, y}` normalised, ten a second,
         position only)
       - Bucket fills show in the friend's view; brush strokes stay on the child's own device, since a
-        stroke is a bitmap and never travels. Pip explains nothing; the child just sees the friend's colours
-        arrive
+        stroke is a bitmap and never travels
+      - Pip explains nothing; the child just sees the friend's colours arrive
       - Each ✓ finishes that child's own picture, with praise and the sticker as today; Pip tells the other
         "Your friend finished!" and the finished copy shows in the corner until they finish too
       - The picture goes into the child's own gallery, and onto the public shelf when the switch is on
         (decided in review: both)
-    - Take turns (Shape Sense, Number Dash): the pairing device picks a seed, both build the same question
-      list from it, and turns alternate
-      - The waiting child sees Pip say "Your friend's turn" beside the friend's avatar
-      - The answering device sends `answer {i, grade}`; one shared row of five stars fills from both. "Almost!"
-        is said only to the child who answered. Timers are off
-    - Hexapawn against a friend is left out: it is solved, whoever moves second can always win, and one child
-      loses every game. Chess Path's puzzles can be taken in turns like the other turn games
   - The friend leaves mid-picture: the avatar dims, Pip says "Your friend went away", and the child carries on
     alone; the corner view freezes, the picture stays and ✓ still gives the sticker
     - For two minutes the device keeps the room id and rejoins silently if the friend comes back; both send
-      their current fills and the turn game its last answered index. After that, a new invite is needed
+      their current fills. After that, a new invite is needed
 - Fits the rest of the app
   - New: `src/lib/presence.ts` (pure: message types, the validator, region labelling, the pair-code hash,
-    the friend tag) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)
+    the friend room) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)
     - The strip is its own component, `src/lib/PresenceStrip.svelte`; the switch and pairing go in the
       Grown-ups dialog
+  - Moving progress to another device uses the same transport: a QR code opens a one-time private room
+    like the pair room (see `design/progress-transfer`)
+    - So the room code in `src/lib/presence.svelte.ts` is written to be reused, not tied to painting
   - Every spoken line (the seven Pip lines above and the sixteen code-picture names) joins the voice catalog in
     `src/lib/i18n.ts` and is rendered in Pip's voice like every other line
   - Tests in `tests/presence.test.ts`, pure parts only
@@ -201,8 +214,7 @@ devices to each other; all messages go peer to peer.
     - The validator accepts each good message and rejects an unknown field, a wrong type, an avatar out of
       range, an unknown picture, too few fills, a list over 24
     - The pair-code room id is deterministic and never equals the public room id
-    - The daily friend tag matches for the same key and date, differs for another key or the next day, and
-      a knock with a wrong tag is rejected
+    - Both friends derive the same friend room whichever key is whose, and a third key gives another room
 
 ## Alternatives
 
@@ -243,7 +255,11 @@ devices to each other; all messages go peer to peer.
 - One shared canvas for painting together (both children fill the same picture, last write wins): simpler
   state, but the owner prefers each child keeping a picture of their own while watching the friend's grow,
   so it is out.
-- A competitive mode (first to finish, Hexapawn): left out, see the learning notes.
+- Play-together in the other games, now (asked first, then deferred after review): Take turns in Shape Sense
+  and Number Dash, from one shared question list, with one star row filled by both. It stays a good next
+  step on the same channel, but Paint Pot goes first to prove the transport with real children.
+- A competitive mode (first to finish, Hexapawn): left out, see the learning notes. Hexapawn is solved, so
+  one child loses every game.
 
 ## Behaviour
 
@@ -257,9 +273,9 @@ devices to each other; all messages go peer to peer.
 - The child changes player mid-session: the avatar in the presence message changes, the peer id does not; the
   shelf is kept.
 - The page is closed or the tab sleeps: Trystero's leave runs on `pagehide`; peers see the avatar go.
-- A device that is not a friend sends a knock, or guesses at one: no tag matches, so it is dropped and
-  nothing shows on the child's screen. Only a grown-up pairing makes a friend; nothing a child does online
-  can, and the tags strangers see change every day, so they cannot follow a device across days either.
+- A device that is not a friend wants to invite: it cannot, because invites only exist inside a friend room,
+  and finding that room takes both friend keys. Only a grown-up pairing makes a friend; nothing a child does
+  online can.
 - Two children pair while the public switch is off: pairing works on its own, since it is a separate room;
   the public strip stays hidden.
 

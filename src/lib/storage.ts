@@ -171,8 +171,10 @@ export interface Settings {
 	timers: boolean;
 	/** How fast Pip talks: calm is the recorded pace, normal a little quicker. */
 	pace: 'calm' | 'normal';
+	/** Paint Pot shows other children and their pictures, peer to peer. Off until a grown-up turns it on. */
+	online: boolean;
 }
-export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, timers: false, pace: 'calm' });
+export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, timers: false, pace: 'calm', online: false });
 export const loadSettings = (): Settings => {
 	const s = read<Partial<Settings> | null>(SETTINGS, null);
 	return s?.v === 1 ? { ...defaultSettings(), ...s } : defaultSettings();

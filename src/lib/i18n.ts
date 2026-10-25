@@ -80,6 +80,14 @@ const en = {
 	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again.",
 
 	'paint.go': 'Pick a colour and paint!',
+	'paint.others': 'Look what other children painted!',
+	'friend.here': 'Your friend is here!',
+	'friend.ask': 'Ask your friend to paint with you?',
+	'friend.wants': 'Your friend wants to paint with you! Come?',
+	'friend.yes': 'Let\'s paint together! Pick a picture.',
+	'friend.no': 'Your friend wants to paint alone for now.',
+	'friend.finished': 'Your friend finished!',
+	'friend.away': 'Your friend went away.',
 
 	'home.who': 'Who is playing today?',
 	'home.what': 'What shall we play?',
@@ -146,6 +154,14 @@ const nl: Record<Key, Entry> = {
 	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.',
 
 	'paint.go': 'Kies een kleur en schilder maar!',
+	'paint.others': 'Kijk wat andere kinderen geschilderd hebben!',
+	'friend.here': 'Je vriendje is er!',
+	'friend.ask': 'Vraag je vriendje om samen te schilderen?',
+	'friend.wants': 'Je vriendje wil samen schilderen! Kom je?',
+	'friend.yes': 'Samen schilderen! Kies een plaatje.',
+	'friend.no': 'Je vriendje schildert nu even alleen.',
+	'friend.finished': 'Je vriendje is klaar!',
+	'friend.away': 'Je vriendje is weggegaan.',
 
 	'home.who': 'Wie speelt er vandaag?',
 	'home.what': 'Wat gaan we spelen?',
