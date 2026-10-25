@@ -39,10 +39,11 @@ export const AVATARS: Look[] = [
 
 /** The games each mode shows on the home screen, in order. Little mode leaves out games that need reading. */
 /** `together`: the game can be played with a paired friend (design/presence), shown on its tile. */
-export const GAMES: { id: string; path: string; little: boolean; tint: string; together?: boolean }[] = [
+/** `tablet`: needs a tablet's room (painting, playing with a friend), so a phone's home leaves it out. */
+export const GAMES: { id: string; path: string; little: boolean; tint: string; together?: boolean; tablet?: boolean }[] = [
 	{ id: 'spell', path: '/spell', little: true, tint: 'mint' },
 	{ id: 'shapes', path: '/shapes', little: true, tint: 'blush' },
-	{ id: 'paint', path: '/paint', little: true, tint: 'butter', together: true },
+	{ id: 'paint', path: '/paint', little: true, tint: 'butter', together: true, tablet: true },
 	{ id: 'letters', path: '/letter-leap', little: true, tint: 'paper' },
 	{ id: 'math', path: '/math', little: true, tint: 'sky' },
 	{ id: 'chess', path: '/chess', little: false, tint: 'butter' },

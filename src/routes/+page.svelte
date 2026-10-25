@@ -119,9 +119,12 @@
 	{/if}
 
 	<footer>
-		<div class="links">
-			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-		</div>
+		<!-- While adding a player the GitHub link is already with the other links above. -->
+		{#if !adding}
+			<div class="links">
+				<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+			</div>
+		{/if}
 		<GearHold />
 	</footer>
 </main>
@@ -371,6 +374,32 @@
 		}
 		.ages {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 0.7rem;
+		}
+		.age {
+			padding: 0.5rem 0.2rem 0.4rem;
+			border-radius: 20px;
+		}
+		.age :global(svg) {
+			width: 78%;
+		}
+		/* The name and the ✓ come straight after the ages, so Done is on screen without scrolling. */
+		.name {
+			order: 1;
+			flex-wrap: nowrap;
+			align-items: flex-end;
+			width: 100%;
+		}
+		.field {
+			flex: 1;
+			min-width: 0;
+		}
+		.name input {
+			width: 100%;
+		}
+		.promise,
+		.info {
+			order: 2;
 		}
 		footer {
 			justify-content: space-between;

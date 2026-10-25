@@ -436,4 +436,16 @@
 			animation: none;
 		}
 	}
+	/* Phones (design board 8b): no centring in the full height. Home and the dots sit in the top row, the
+	   question right under it, and the answers low where a thumb reaches. */
+	@media (max-width: 600px) {
+		main {
+			place-items: start center;
+			padding-top: calc(var(--tap) + 2rem);
+		}
+		.dots + .stage {
+			min-height: calc(100dvh - var(--tap) - 4rem);
+			justify-content: space-between;
+		}
+	}
 </style>

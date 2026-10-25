@@ -38,7 +38,7 @@
 		levels = Object.fromEntries(GAMES.map((g) => [g.id, levelOf(g.id)]));
 		// Pip suggests the game played least this week.
 		const minutes = week(loadPlayLog()).games;
-		suggest = [...GAMES].sort((a, b) => (minutes[a.id] ?? 0) - (minutes[b.id] ?? 0))[0].id;
+		suggest = [...GAMES].filter((g) => !g.tablet || !phone()).sort((a, b) => (minutes[a.id] ?? 0) - (minutes[b.id] ?? 0))[0].id;
 		return () => {
 			clearTimeout(timer);
 			// Leaving for a game: let Pip finish the game's name on the next screen.
@@ -55,6 +55,8 @@
 		leaving = true;
 		speak(gameName(language, id), language);
 	}
+	/** Same width as the phone layout below (design board 8). */
+	const phone = () => matchMedia('(max-width: 600px)').matches;
 	const label = (id: string) => (id ? gameName(language, id).text : '');
 </script>
 
@@ -83,6 +85,7 @@
 				href={resolve(g.path as '/')}
 				class="tile {g.tint}"
 				class:opening={opening === g.id}
+				class:tablet={g.tablet}
 				aria-label="{label(g.id)}, level {levels[g.id]?.at} of {levels[g.id]?.of}"
 				onclick={() => open(g.id)}
 			>
@@ -313,6 +316,30 @@
 			order: 3;
 			width: 100%;
 			margin: 0;
+		}
+	}
+	/* Phones (design board 8): tablet-only games and the extra cards go, and the tiles share the screen. */
+	@media (max-width: 600px) {
+		main {
+			height: 100dvh;
+			gap: 1.2rem;
+		}
+		.tile.tablet,
+		.tile.locked,
+		.tile.card {
+			display: none;
+		}
+		.tiles {
+			grid-auto-rows: minmax(8rem, 1fr);
+		}
+		.tile {
+			min-height: 0;
+			padding: 0.6rem;
+			gap: 0.4rem;
+		}
+		.tile :global(svg) {
+			max-height: 100%;
+			min-height: 0;
 		}
 	}
 </style>

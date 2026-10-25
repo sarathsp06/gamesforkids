@@ -166,7 +166,8 @@
 					<a href={resolve('/small-print')}>{s.small}</a>
 				</div>
 			</section>
-			<FriendsBox {language} online={settings.online} onOnline={(on) => update({ online: on })} />
+			<!-- Playing with a friend needs a tablet's room (design board 8), so a phone leaves the switch out. -->
+			<div class="tablet"><FriendsBox {language} online={settings.online} onOnline={(on) => update({ online: on })} /></div>
 			<MoveBox {language} />
 			<section class="box foot">
 				<span>{s.note}</span>
@@ -404,6 +405,28 @@
 		}
 		.cols {
 			grid-template-columns: 1fr;
+		}
+	}
+	/* Phones: a finger, not a mouse, so every control is at least 44 px. */
+	@media (max-width: 600px) {
+		.tablet {
+			display: none;
+		}
+		.small,
+		select {
+			min-height: 2.75rem;
+		}
+		input[type='checkbox'] {
+			width: 1.75rem;
+			height: 1.75rem;
+		}
+		.row {
+			min-height: 2.75rem;
+		}
+		.links a,
+		.foot a {
+			display: inline-block;
+			padding: 0.7rem 0;
 		}
 	}
 </style>

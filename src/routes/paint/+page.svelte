@@ -875,4 +875,10 @@
 			transition: none;
 		}
 	}
+	/* Phones: start at the top instead of centring in the full height. */
+	@media (max-width: 600px) {
+		main {
+			place-items: start center;
+		}
+	}
 </style>

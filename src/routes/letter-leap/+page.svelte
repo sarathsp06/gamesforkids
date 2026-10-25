@@ -468,11 +468,23 @@
 		gap: var(--key-gap);
 		padding-left: calc(var(--indent) * var(--key-w));
 	}
-	/* Phones held upright: narrow keys, but plenty of height, so make them taller to tap. */
+	/* Phones held upright: ten keys a row can't be 44 px wide (a phone's own keyboard isn't either), but there
+	   is plenty of height, so make them tall enough to hit. */
 	@media (orientation: portrait) and (max-width: 600px) {
 		.keyboard {
-			--key-ratio: 1.45;
+			--key-ratio: 1.75;
 		}
 	}
-
+	/* Phones (design board 8b): no centring in the full height. Home and the dots sit in the top row, the
+	   question right under it, and the answers low where a thumb reaches. */
+	@media (max-width: 600px) {
+		main {
+			place-items: start center;
+			padding-top: calc(var(--tap) + 2rem);
+		}
+		.dots + .stage {
+			min-height: calc(100dvh - var(--tap) - 4rem);
+			justify-content: space-between;
+		}
+	}
 </style>
