@@ -7,7 +7,7 @@
  */
 import type { Language } from './words';
 
-export const READ_LEVELS = 4;
+export { READ_LEVELS } from './limits';
 
 export interface Sentence {
 	scene: string;

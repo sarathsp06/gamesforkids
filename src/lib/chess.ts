@@ -8,7 +8,7 @@
  * "par": that is how close a solution was. Stars are taken like chess captures: you must land on
  * one, and it blocks a rook or bishop line until taken.
  */
-export const CHESS_LEVELS = 8;
+export { CHESS_LEVELS } from './limits';
 /** Levels from here on are Hexapawn games, not path puzzles. */
 export const HEX_LEVEL = 7;
 

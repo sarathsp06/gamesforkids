@@ -23,6 +23,7 @@
 	let levels = $state<Record<string, Level>>({});
 	let suggest = $state('');
 	let opening = $state('');
+	let leaving = false;
 	let timer = 0;
 
 	onMount(() => {
@@ -40,17 +41,19 @@
 		suggest = [...GAMES].sort((a, b) => (minutes[a.id] ?? 0) - (minutes[b.id] ?? 0))[0].id;
 		return () => {
 			clearTimeout(timer);
-			stopSpeech();
+			// Leaving for a game: let Pip finish the game's name on the next screen.
+			if (!leaving) stopSpeech();
 		};
 	});
 
-	/** Pip says the game's name, then it opens: the tile teaches its own label. */
-	function open(id: string, path: string) {
-		if (opening) return;
+	/**
+	 * Pip says the game's name while the game opens: the tile still teaches its own label, but the tap never
+	 * waits for the voice. The link itself navigates (its code is preloaded while home is on screen).
+	 */
+	function open(id: string) {
 		opening = id;
-		const go = () => goto(resolve(path as '/'));
-		speak(gameName(language, id), language, go);
-		timer = window.setTimeout(go, 2500);
+		leaving = true;
+		speak(gameName(language, id), language);
 	}
 	const label = (id: string) => (id ? gameName(language, id).text : '');
 </script>
@@ -73,14 +76,15 @@
 		</div>
 	</header>
 
-	<section class="tiles" class:cols3={mode === 'little'} class:cols4={mode === 'big'}>
+	<!-- Each game's code loads while home is on screen, so a tap opens it at once. -->
+	<section class="tiles" class:cols3={mode === 'little'} class:cols4={mode === 'big'} data-sveltekit-preload-code="viewport">
 		{#each gamesFor(mode) as g (g.id)}
-			<button
-				type="button"
+			<a
+				href={resolve(g.path as '/')}
 				class="tile {g.tint}"
 				class:opening={opening === g.id}
 				aria-label="{label(g.id)}, level {levels[g.id]?.at} of {levels[g.id]?.of}"
-				onclick={() => open(g.id, g.path)}
+				onclick={() => open(g.id)}
 			>
 				<GameArt game={g.id} width={mode === 'little' ? 170 : 120} />
 				{#if mode === 'big'}
@@ -89,7 +93,7 @@
 						{#each Array.from({ length: levels[g.id]?.of ?? 0 }, (_, i) => i) as i (i)}<i class:on={i < (levels[g.id]?.at ?? 0)}></i>{/each}
 					</span>
 				{/if}
-			</button>
+			</a>
 		{/each}
 		{#if mode === 'little'}
 			<div class="tile locked" aria-label="More games in Big mode">
@@ -100,9 +104,9 @@
 			<div class="tile card">
 				<Pip line={t(language, 'home.try')} {language} size={64} />
 				{#if suggest}
-					<button type="button" class="try" onclick={() => open(suggest, GAMES.find((g) => g.id === suggest)!.path)}>
+					<a class="try" href={resolve(GAMES.find((g) => g.id === suggest)!.path as '/')} onclick={() => open(suggest)}>
 						<GameArt game={suggest} width={70} /><span>{label(suggest)}</span>
-					</button>
+					</a>
 				{/if}
 			</div>
 		{/if}
@@ -194,6 +198,7 @@
 		background: var(--white);
 		box-shadow: 0 8px 0 var(--ink);
 		color: inherit;
+		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.tile:active,
@@ -266,6 +271,8 @@
 		font-family: var(--title);
 		font-weight: 700;
 		font-size: 1.1rem;
+		color: inherit;
+		text-decoration: none;
 	}
 	.card :global(.bubble) {
 		font-size: 1.1rem;

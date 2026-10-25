@@ -5,7 +5,7 @@
  * (gap or curved side), 4 odd one out, 5 what comes next, 6 count overlapping circles,
  * 7 count the triangles among other shapes.
  */
-export const SHAPE_LEVELS = 7;
+export { SHAPE_LEVELS } from './limits';
 
 export type Kind = 'circle' | 'triangle' | 'square' | 'rectangle';
 export const KINDS: Kind[] = ['circle', 'triangle', 'square', 'rectangle'];

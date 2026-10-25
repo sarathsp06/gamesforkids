@@ -2,6 +2,7 @@ import { asset } from '$app/paths';
 import { textHash, type Line } from './i18n';
 import { LANGUAGES, type Language } from './words';
 import manifest from './voice-manifest.json';
+import { soundOn, voiceOn } from './sound';
 
 /** Clip pace: recorded clips are made at a calm pace for children, which the browser voice gets at rate 0.6. */
 const BASE_RATE = 0.6;
@@ -34,7 +35,7 @@ export function speak(lines: Line | Line[] | string, language: Language, onDone?
 			if (mine !== run) return;
 			if (i === ls.length) return onDone?.();
 			const l = ls[i++];
-			p.src = asset(`/voice/${language}/${l.id}.mp3` as Parameters<typeof asset>[0]);
+			p.src = asset(`voice/${language}/${l.id}.mp3` as Parameters<typeof asset>[0]);
 			p.playbackRate = rate / BASE_RATE;
 			p.onended = () => (i < ls.length ? setTimeout(next, CLIP_GAP_MS) : next());
 			// A clip that won't play: say the rest with the browser voice instead.
@@ -100,9 +101,7 @@ export function unlockSpeech() {
 }
 
 let ctx: AudioContext | null = null;
-export let soundOn = { value: true };
-/** Pip's voice; off: speak() calls onDone at once and nothing is said. */
-export let voiceOn = { value: true };
+export { soundOn, voiceOn };
 
 function tone(freqs: number[], step: number, length: number, type: OscillatorType = 'sine', gain = 0.15) {
 	if (!soundOn.value || typeof AudioContext === 'undefined') return;

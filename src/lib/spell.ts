@@ -14,7 +14,7 @@ const CONFUSIONS: Record<Language, [string, string][]> = {
 };
 
 /** Spell Pick levels: 1 clearly different words, 2 close real words, 3 a sound-alike spelling + a far word, 4 a sound-alike spelling + a close word. */
-export const SPELL_LEVELS = 4;
+export { SPELL_LEVELS } from './limits';
 
 const shuffle = <T>(xs: T[]) => [...xs].sort(() => Math.random() - 0.5);
 

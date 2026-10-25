@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { AVATARS, GAMES, LITTLE_MAX_AGE, MAX_AGE, MIN_AGE, gamesFor, modeFor } from '../src/lib/players';
 import { week } from '../src/lib/playlog';
-import { allLines } from '../src/lib/i18n';
+import { allLines } from '../src/lib/voice-catalog';
 
 // Age picks the mode; a pinned mode wins.
 for (let age = MIN_AGE; age <= MAX_AGE; age++) {

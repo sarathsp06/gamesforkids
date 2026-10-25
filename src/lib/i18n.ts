@@ -4,13 +4,13 @@
  * (see scripts/voice.md). Games build Lines with t(), word(), letter() and animal(), and
  * speak() plays the clips, falling back to the browser voice for any line without a current clip.
  *
- * Plain Node-safe module: the clip generator imports allLines() from here.
+ * Plain Node-safe module; the clip generator's full list of lines is allLines() in voice-catalog.ts.
  */
-import { STICKERS, WORDS, type Language } from './words';
-import { SPELL_WORDS } from './spell';
-import { STORIES, type Story } from './stories';
-import { wordKey, words } from './readalong';
-import { CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from './paint';
+// Types only from the game data: pages import this module, and must not carry every story and picture with it.
+// The full list of lines for the clip generator is in voice-catalog.ts.
+import { STICKERS, type Language } from './words';
+import type { Story } from './stories';
+import type { Chapter, Crayon, Picture } from './paint';
 
 /** One spoken line: `id` names its clip, `text` is what is said. */
 export interface Line {
@@ -212,30 +212,14 @@ export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.
 export const chapterName = (lang: Language, c: Chapter): Line => ({ id: `paint.chapter.${c.id}`, text: c.name[lang] });
 export const pictureName = (lang: Language, p: Picture): Line => ({ id: `paint.pic.${p.id}`, text: p.name[lang] });
 
-/** Every line that can be spoken in a language: the generator renders one clip per id. */
-export function allLines(lang: Language): Line[] {
+/** The catalog's own lines in a language: every key, every variant, every number of a family. */
+export function catalogLines(lang: Language): Line[] {
 	const out: Line[] = [];
 	for (const [key, e] of Object.entries(CATALOG[lang])) {
 		if (typeof e === 'string') out.push({ id: key, text: e });
 		else if (Array.isArray(e)) e.forEach((text, i) => out.push({ id: `${key}.${i}`, text }));
 		else if (isFamily(e)) for (let n = e.from; n <= e.to; n++) out.push({ id: `${key}.${n}`, text: e.text(n) });
 	}
-	for (const w of new Set([...WORDS[lang], ...SPELL_WORDS[lang]])) out.push(word(w));
-	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l), keyLine(lang, l));
-	for (const emoji of Object.keys(STICKERS)) out.push(animal(lang, emoji));
-	const storyWords = new Set<string>();
-	for (const st of STORIES) {
-		out.push(storyTitle(lang, st));
-		st.sentences[lang].forEach((sen, i) => {
-			out.push(storySentence(lang, st, i));
-			for (const w of words(sen.text)) storyWords.add(wordKey(w.shown));
-		});
-	}
-	for (const w of storyWords) out.push(storyWord(w));
-	for (const c of CRAYONS) out.push(colour(lang, c));
-	for (const p of PICTURES) out.push(painted(lang, p));
-	for (const c of CHAPTERS) out.push(chapterName(lang, c));
-	for (const p of PICTURES) out.push(pictureName(lang, p));
 	return out;
 }
 

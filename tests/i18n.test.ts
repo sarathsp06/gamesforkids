@@ -1,6 +1,7 @@
 // npx tsx tests/i18n.test.ts
 import { strict as assert } from 'node:assert';
-import { allLines, t, textHash, word } from '../src/lib/i18n';
+import { t, textHash, word } from '../src/lib/i18n';
+import { allLines } from '../src/lib/voice-catalog';
 import manifest from '../src/lib/voice-manifest.json';
 
 for (const lang of ['en', 'nl'] as const) {

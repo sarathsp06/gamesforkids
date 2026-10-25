@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, preloadCode } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Pip from '#lib/Pip.svelte';
 	import Avatar from '#lib/Avatar.svelte';
@@ -23,6 +23,7 @@
 	onMount(() => {
 		language = loadLanguage();
 		players = loadPlayers();
+		preloadCode('/home'); // the next screen after a tap on a player
 		if (!players.list.length) startAdd();
 		return stopSpeech;
 	});

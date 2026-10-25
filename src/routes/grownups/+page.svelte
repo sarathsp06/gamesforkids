@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Icon from '#lib/Icon.svelte';
 	import Avatar from '#lib/Avatar.svelte';
-	import { soundOn, voiceOn } from '#lib/audio.ts';
+	import { soundOn, voiceOn } from '#lib/sound.ts';
 	import { GAMES, MAX_AGE, MIN_AGE, modeFor, type Player } from '#lib/players.ts';
 	import { loadLanguage, loadPlayLog, loadPlayers, loadSettings, saveLanguage, savePlayers, saveSettings, type Players, type Settings } from '#lib/storage.ts';
 	import { week } from '#lib/playlog.ts';

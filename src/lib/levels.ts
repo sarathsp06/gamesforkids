@@ -1,8 +1,5 @@
 /** Each game's progress as "level n of m", for the home tiles' dots and the grown-ups' notes. */
-import { SPELL_LEVELS } from './spell';
-import { SHAPE_LEVELS } from './shapes';
-import { CHESS_LEVELS } from './chess';
-import { READ_LEVELS } from './stories';
+import { CHESS_LEVELS, READ_LEVELS, SHAPE_LEVELS, SPELL_LEVELS } from './limits';
 import { LEVELS as MATH_LEVELS, isUnlocked } from './math';
 import { MAX_TIER } from './words';
 import { CHAPTERS } from './paint';

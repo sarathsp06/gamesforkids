@@ -1,21 +1,24 @@
 <script lang="ts" module>
 	/**
 	 * One drawn emoji (Microsoft's Fluent Emoji, flat, MIT), the same on every device. scripts/emoji_fetch.py
-	 * puts an SVG per glyph in assets/emoji; a glyph without one falls back to the device's own.
+	 * puts an SVG per glyph in static/emoji/; it is loaded as a plain file only when shown, so no page carries
+	 * the pictures in its JavaScript. A glyph without one falls back to the device's own.
 	 */
-	const files = import.meta.glob('./assets/emoji/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
-	const byKey: Record<string, string> = {};
-	for (const [path, url] of Object.entries(files)) byKey[path.split('/').pop()!.replace('.svg', '')] = url;
+	import { asset } from '$app/paths';
+	import { EMOJI_KEYS } from './emoji-keys';
 
 	const key = (glyph: string) =>
 		[...glyph]
-			.filter((c) => c !== '️')
+			.filter((c) => c !== '\ufe0f')
 			.map((c) => c.codePointAt(0)!.toString(16))
 			.join('-');
-	export const emojiUrl = (glyph: string): string | undefined => byKey[key(glyph)];
+	export const emojiUrl = (glyph: string): string | undefined => {
+		const k = key(glyph);
+		return EMOJI_KEYS.has(k) ? asset(`emoji/${k}.svg` as Parameters<typeof asset>[0]) : undefined;
+	};
 	/** Splits a string of emoji into glyphs (joined sequences stay together). */
 	export const glyphs = (text: string): string[] =>
-		text.match(/\p{Extended_Pictographic}️?(?:‍\p{Extended_Pictographic}️?)*/gu) ?? [];
+		text.match(/\p{Extended_Pictographic}\ufe0f?(?:\u200d\p{Extended_Pictographic}\ufe0f?)*/gu) ?? [];
 </script>
 
 <script lang="ts">
@@ -24,7 +27,7 @@
 </script>
 
 {#if url}
-	<img class="emoji" src={url} alt={label ?? ''} role={label ? 'img' : undefined} aria-hidden={label ? undefined : true} style="--s: {typeof size === 'number' ? `${size}px` : size}" draggable="false" />
+	<img class="emoji" src={url} alt={label ?? ''} role={label ? 'img' : undefined} aria-hidden={label ? undefined : true} style="--s: {typeof size === 'number' ? `${size}px` : size}" draggable="false" decoding="async" />
 {:else}
 	<span class="emoji text" role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} style="--s: {typeof size === 'number' ? `${size}px` : size}">{glyph}</span>
 {/if}

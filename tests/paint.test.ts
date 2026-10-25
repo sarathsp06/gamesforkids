@@ -1,7 +1,7 @@
 // npx tsx tests/paint.test.ts
 import { strict as assert } from 'node:assert';
 import { CHAPTERS, CRAYONS, PICTURES } from '../src/lib/paint';
-import { allLines } from '../src/lib/i18n';
+import { allLines } from '../src/lib/voice-catalog';
 
 const numbers = (d: string) => (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 

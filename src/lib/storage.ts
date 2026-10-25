@@ -1,7 +1,5 @@
 import type { Language } from './words';
-import { SHAPE_LEVELS } from './shapes';
-import { CHESS_LEVELS } from './chess';
-import { READ_LEVELS } from './stories';
+import { CHESS_LEVELS, READ_LEVELS, SHAPE_LEVELS } from './limits';
 
 // Keys shared with the old Next.js app: existing players keep their history and language.
 const SESSIONS = 'letterLeapSessions';
