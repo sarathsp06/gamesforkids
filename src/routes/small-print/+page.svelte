@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Icon from '#lib/Icon.svelte';
 	import { loadLanguage } from '#lib/storage.ts';
 	import type { Language } from '#lib/words.ts';
@@ -20,7 +21,7 @@
 				['Licence', 'The code is open source under the MIT licence. You may use, copy, change and share it, including commercially, as long as the licence notice stays with it. Fonts, icons, flags, emoji and voice models come from their own open licences, listed in the README.']
 			],
 			licence: 'Read the MIT licence',
-			back: 'Back to grown-ups'
+			back: 'Back'
 		},
 		nl: {
 			title: 'De kleine lettertjes',
@@ -33,16 +34,18 @@
 				['Licentie', 'De code is open source onder de MIT-licentie. Je mag ze gebruiken, kopiëren, aanpassen en delen, ook commercieel, zolang de licentievermelding erbij blijft. Lettertypes, iconen, vlaggen, emoji en stemmodellen vallen onder hun eigen open licenties, opgesomd in de README.']
 			],
 			licence: 'Lees de MIT-licentie',
-			back: 'Terug naar volwassenen'
+			back: 'Terug'
 		}
 	};
 	const s = $derived(T[language]);
+	// Opened from the first page while adding a child, or from Grown-ups: Back goes where it came from.
+	const back = $derived(page.url.searchParams.get('from') === 'start' ? resolve('/') : resolve('/grownups'));
 </script>
 
 <svelte:head><title>The small print — Games for Kids</title></svelte:head>
 
 <main>
-	<a class="icon" href={resolve('/grownups')} aria-label={s.back}><Icon name="back" size={28} /></a>
+	<a class="icon" href={back} aria-label={s.back}><Icon name="back" size={28} /></a>
 	<article>
 		<h1>{s.title}</h1>
 		<p class="lead">{s.lead}</p>

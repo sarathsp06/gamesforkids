@@ -74,6 +74,11 @@
 			<p class="promise">{language === 'nl'
 				? 'Alles wat je kind hier doet blijft gewoon hier, in deze browser. Er gaat niets naar buiten. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe: gratis, zonder reclame, zonder accounts.'
 				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
+			<div class="info">
+				<a class="chip" href="{resolve('/how-we-score')}?from=start">{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
+				<a class="chip" href="{resolve('/small-print')}?from=start">{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
+				<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+			</div>
 			<div class="name">
 				<label class="field">
 					<span>{language === 'nl' ? 'Naam (typt een volwassene, of sla over)' : 'Name (a grown-up types it, or skip)'}</span>
@@ -121,9 +126,7 @@
 			{/each}
 		</div>
 		<div class="links">
-			<a class="chip" href={resolve('/how-we-score')}>{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
 			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-			<a class="chip" href={resolve('/small-print')}>{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
 		</div>
 		<GearHold />
 	</footer>
@@ -349,6 +352,12 @@
 		display: flex;
 		gap: 0.7rem;
 		margin-left: auto;
+	}
+	.info {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.7rem;
 	}
 	.chip {
 		padding: 0.55rem 1rem;
