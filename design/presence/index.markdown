@@ -12,8 +12,14 @@ and real play with one friend a grown-up chose. No chat, no names, nothing typed
 
 This design is written against the redesign canvas (Little and Big modes, Pip the owl who says every prompt,
 the "who is playing" picker, one sticker book, the Grown-ups area behind a three-second hold on the gear, one
-calm voice). Where the canvas and today's code differ, the canvas wins. Everything here is additive: with the
-switch off, which is the default, the app is exactly as it is now and loads nothing new.
+calm voice), of which the first part is now in `main`: players with six drawn avatars (`src/lib/players.ts`),
+Pip, the Grown-ups page (`src/routes/grownups`) and the gear hold. Where the canvas and the code differ, the
+canvas wins. Everything here is additive: with the switch off, which is the default, the app is exactly as it
+is now and loads nothing new.
+
+The app also makes a promise, on the first page and in Grown-ups: everything your child does stays in this
+browser, nothing goes anywhere, nobody is watching. With the switch off that stays true word for word. With
+it on, it no longer is, and the design below makes the promise say so rather than quietly bend it.
 
 The whole thing in one picture: two rooms, and what may cross the wire in each.
 
@@ -81,8 +87,12 @@ devices to each other; all messages go peer to peer.
     them see pictures others finished
     - And the cost: devices connect directly, so other devices online can see this device's internet
       address. Nothing else is shared: no name, no photo, nothing typed
+  - While it is on, the promise changes with it: the About paragraph in Grown-ups and the first page gain one
+    sentence, in both languages, saying what now leaves the device and that other devices can see its address
+    - The Small print page gets the same in its firm voice. Switching off removes the sentence again, so the
+      promise is never shorter than the truth
 - Only things that cannot carry a child's words or drawings cross the wire
-  - Presence is `hi {v, avatar, game}`: an index into the twelve drawn avatars of the "who is playing" picker,
+  - Presence is `hi {v, avatar, game}`: an index into the six drawn avatars of the "who is playing" picker,
     and a known game id or `home`
     - The peer id is Trystero's own `selfId`, random per page load, never persisted, never shown
     - The player's name never leaves the device: the strip shows avatars only
@@ -158,8 +168,8 @@ devices to each other; all messages go peer to peer.
       makes Pip ask "Ask your friend to play?", then offers at most three mode pictures
     - The invite is `knock {tag, nonce}`; the friend's device checks the tag and Pip says "Your friend wants
       to play! Come?" with one big ▶. Both derive the private room from the friend key, the date and the nonce
-    - A grown-up can forget a friend in Grown-ups; the friend key stays per device for now, not per player,
-      since the "who is playing" picker is still on the canvas
+    - A grown-up can forget a friend in Grown-ups, in the Players box. The friend key is per device, not per
+      player: a friendship is between two family devices, and siblings on one tablet share it
     - Can go wrong: a child taps the heart avatar again and again. One knock per friend per minute; a knock
       the friend ignores just fades, with no sound on either side
   - Every mode is cooperative: `docs/learning.md` says children this age learn poorly from losing, so there is
@@ -193,6 +203,8 @@ devices to each other; all messages go peer to peer.
     the friend tag) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)
     - The strip is its own component, `src/lib/PresenceStrip.svelte`; the switch and pairing go in the
       Grown-ups dialog
+  - The progress-transfer note (`design/progress-transfer`) can ride on the same pair room and friend key
+    when its transport is chosen; nothing here is designed for it, and nothing stands in its way
   - Every spoken line (the seven Pip lines above and the sixteen code-picture names) joins the voice catalog in
     `src/lib/i18n.ts` and is rendered in Pip's voice like every other line
   - Tests in `tests/presence.test.ts`, pure parts only
