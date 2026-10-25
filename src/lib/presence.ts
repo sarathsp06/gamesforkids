@@ -18,12 +18,12 @@ export const CRUMB = 100;
 export const SCREENS = ['chapters', 'pictures', 'paint'] as const;
 export type Screen = (typeof SCREENS)[number];
 
-// Messages, one Trystero action each. `v` lets a later version refuse what it can't read.
+// Messages, one named kind each. `v` lets a later version refuse what it can't read.
 export interface Hi { v: 1; avatar: number; screen: Screen }
 export interface Pic { v: 1; id: string; picture: string; n: number; fills: number[] }
 export interface Want { v: 1 }
 export interface List { v: 1; pics: Pic[] }
-/** Pairing: a device's friend key and face, swapped inside the pair room. */
+/** Pairing: a device's friend key and face, swapped inside the one-time pair room. */
 export interface Hello { v: 1; key: string; avatar: number }
 /** Painting with a friend: an invite, an answer, the picture to open, progress, a crayon position, a finish. */
 export interface Invite { v: 1 }
@@ -63,7 +63,7 @@ export const valid = {
 export type Kind = keyof typeof valid;
 
 /** How often each peer may send each kind, in ms. Faster messages are dropped; a flood ignores the peer. */
-export const RATE: Partial<Record<Kind, number>> = { hi: 2000, pic: 10000, want: 10000, list: 10000, invite: 60000, at: 80, fills: 1000 };
+export const RATE: Partial<Record<Kind, number>> = { hi: 2000, pic: 10000, want: 10000, list: 10000, invite: 60000, at: 200, fills: 900 };
 export const PENALTY_MS = 60000;
 /** Dropped messages within a minute before a peer is ignored for one. */
 export const FLOOD = 10;
@@ -158,8 +158,6 @@ export async function sha256(text: string): Promise<string> {
 export const newKey = (): string => [...globalThis.crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
 /** A short random id for a shared picture. */
 export const newPicId = (): string => newKey().slice(0, 12);
-/** Today as YYYY-MM-DD in the device's own time zone, so a code made at 23:59 still works a minute later on the same day. */
-export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /**
  * The public Paint Pot room, per language. One shard while few children are online: with more, two devices
@@ -167,19 +165,15 @@ export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth
  */
 export const SHARDS = 1;
 export const publicRoom = (language: string, shard: number) => `paint-${language}-${shard}`;
-/** The public room's password is in this source: it keeps relays from reading signalling, nothing more. */
+/** The public room's password is in this source: it keeps relays from reading the messages, nothing more. */
 export const PUBLIC_PASSWORD = 'gamesforkids-paint-v1';
 
-/** Sixteen sticker drawings a grown-up can match without reading. */
+/** Sixteen sticker drawings a grown-up can match without reading (the two pictures of a progress move). */
 export const CODE_PICTURES = ['🐱', '🐶', '🐟', '🦆', '🐮', '🐴', '🐻', '🦉', '🐷', '🦁', '🐘', '🦒', '🐰', '🦋', '🐢', '🐸'] as const;
-if (!CODE_PICTURES.every((c) => c in STICKERS)) throw new Error('pair code pictures must be stickers');
-export const CODE_LENGTH = 4;
-export const newCode = (): number[] => [...globalThis.crypto.getRandomValues(new Uint8Array(CODE_LENGTH))].map((b) => b % CODE_PICTURES.length);
-export const isCode = (c: unknown): c is number[] => Array.isArray(c) && c.length === CODE_LENGTH && c.every((i) => int(i, 0, CODE_PICTURES.length - 1));
-/** The pairing room and its password, from the four pictures and the date; the code itself is never sent. */
-export async function pairRoom(code: number[], date = today()) {
-	const base = `pair|${code.join('.')}|${date}`;
-	return { room: `pair-${(await sha256(base)).slice(0, 24)}`, password: await sha256(`pw|${base}`) };
+if (!CODE_PICTURES.every((c) => c in STICKERS)) throw new Error('code pictures must be stickers');
+/** The pairing room and its password, from the one-time key in the QR code; the key itself is never sent. */
+export async function pairRoom(key: string) {
+	return { room: `pair-${(await sha256(`pair|${key}`)).slice(0, 24)}`, password: await sha256(`pw|pair|${key}`) };
 }
 /** The private room of two friends: the same on both devices whichever key is whose. */
 export async function friendRoom(a: string, b: string) {

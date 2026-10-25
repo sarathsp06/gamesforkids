@@ -80,8 +80,8 @@
 				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
 			{#if online}
 				<p class="promise">{language === 'nl'
-					? 'Behalve dit, want "Samen met anderen" staat aan: in Verfpot ziet dit apparaat andere apparaten rechtstreeks, en die zien zijn internetadres. Gedeeld wordt alleen welk gezichtje je kind koos en de kleuren van afgemaakte tekeningen.'
-					: 'Except this, because "Play with others" is on: in Paint Pot this device connects directly to other devices, which see its internet address. All it shares is which face your child picked and the colours of finished pictures.'}</p>
+					? 'Behalve dit, want "Samen met anderen" staat aan: in Verfpot gaan versleutelde berichten via openbare relay-servers; andere apparaten zien het internetadres van dit apparaat niet. Gedeeld wordt alleen welk gezichtje je kind koos en de kleuren van afgemaakte tekeningen.'
+					: 'Except this, because "Play with others" is on: in Paint Pot encrypted messages go through public relay servers; other devices never see this device\'s internet address. All it shares is which face your child picked and the colours of finished pictures.'}</p>
 			{/if}
 			<div class="info">
 				<a class="chip" href="{resolve('/how-we-score')}/?from=start">{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>

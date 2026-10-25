@@ -1,7 +1,7 @@
 /**
  * The one-time room behind "Send to another device" (design/progress-transfer). The key lives only in the QR
  * code's #fragment; the room id, its password and the two match pictures are all derived from it, so the
- * relays see neither the key nor the data, and WebRTC carries the bundle end to end encrypted.
+ * relays see neither the key nor the data: the bundle crosses them encrypted, in pieces.
  */
 import { channel, openRoom, type Room } from './p2p';
 import { CODE_PICTURES, isKey, sha256 } from './presence';

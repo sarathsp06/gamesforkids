@@ -1,7 +1,7 @@
 // npx tsx tests/presence.test.ts
 import { strict as assert } from 'node:assert';
 import {
-	CODE_PICTURES, FLOOD, Limiter, PENALTY_MS, SHELF_MAX, crayonAt, friendRoom, isCode, labelRegions, newCode, newKey, pairRoom, publicRoom, valid
+	FLOOD, Limiter, PENALTY_MS, SHELF_MAX, crayonAt, friendRoom, isKey, labelRegions, newKey, pairRoom, publicRoom, valid
 } from '../src/lib/presence';
 import { CRAYONS } from '../src/lib/paint';
 
@@ -82,16 +82,13 @@ assert.ok(!valid.pic(null) && !valid.pic('pic') && !valid.pic([pic]));
 	assert.ok(l.allow('b', 'hi', 2600), 'other peers are unaffected');
 }
 
-// Codes and rooms.
-for (let i = 0; i < 50; i++) assert.ok(isCode(newCode()));
-assert.ok(!isCode([1, 2, 3]) && !isCode([0, 0, 0, CODE_PICTURES.length]));
-const code = [3, 1, 4, 1];
-const a = await pairRoom(code, '2026-10-25');
-assert.deepEqual(a, await pairRoom(code, '2026-10-25'), 'same code, same day, same room');
-assert.notEqual(a.room, (await pairRoom(code, '2026-10-26')).room, 'a new day, a new room');
-assert.notEqual(a.room, (await pairRoom([3, 1, 4, 2], '2026-10-25')).room);
-const plain = code.join('.');
-assert.ok(![a.room, a.password].some((x) => x.includes(plain)), 'the code itself never shows');
+// Keys and rooms.
+const key = newKey();
+assert.ok(isKey(key));
+const a = await pairRoom(key);
+assert.deepEqual(a, await pairRoom(key), 'both devices find the same room from the QR key');
+assert.notEqual(a.room, (await pairRoom(newKey())).room);
+assert.ok(![a.room, a.password].some((x) => x.includes(key)), 'the key itself never shows');
 assert.notEqual(a.room, publicRoom('en', 0));
 const [k1, k2] = [newKey(), newKey()];
 assert.deepEqual(await friendRoom(k1, k2), await friendRoom(k2, k1), 'both friends find the same room');

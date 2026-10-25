@@ -85,7 +85,11 @@
 		else if (e === 'invited') {
 			asking = { kind: 'wants' };
 			say('friend.wants');
-		} else if (e === 'accepted') say('friend.yes');
+		} else if (e === 'accepted') {
+			say('friend.yes');
+			// Already on a picture while the yes was on its way: bring the friend to it.
+			if (phase === 'paint') together?.openPicture(picture.id);
+		}
 		else if (e === 'declined') say('friend.no');
 		else if (e === 'friendDone') say('friend.finished');
 		else if (e === 'friendAway') say('friend.away');

@@ -76,8 +76,9 @@ SvelteKit (Svelte 5), TypeScript, prerendered to a static site. No game engine: 
 animation is CSS. Progress lives in `localStorage`. Runtime dependencies are a font and, for Paint Pot only, two small
 canvas libraries: [Atrament](https://github.com/jakubfiala/atrament) for the brush and
 [q-floodfill](https://github.com/pavelkukov/q-floodfill) for the paint bucket. Two more load only when a grown-up
-uses what needs them: [Trystero](https://github.com/dmotz/trystero) for peer-to-peer rooms (Paint Pot with others,
-moving progress) and [qrcode](https://github.com/soldair/node-qrcode) for the move code. Both are MIT. Designs:
+uses what needs them: [@noble/secp256k1](https://github.com/paulmillr/noble-secp256k1) to sign the encrypted messages
+sent through public Nostr relays (Paint Pot with others, adding a friend, moving progress; see `src/lib/p2p.ts`)
+and [qrcode](https://github.com/soldair/node-qrcode) for the QR codes. Both are MIT. Designs:
 [presence](design/presence/index.markdown), [moving progress](design/progress-transfer/index.markdown).
 
 ## 🚀 Deploy
@@ -93,9 +94,9 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
   the browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app
   keeps no audio.
 - **Paint Pot with others** (Grown-ups, off by default): your child sees the faces of other children painting and
-  the pictures they finish, and can paint side by side with a friend you paired with four pictures. Devices
-  connect directly, so they can see each other's internet address; only a drawn face, a screen and one colour
-  per area of a picture are shared. No names, no chat, nothing typed, nothing stored.
+  the pictures they finish, and can paint side by side with a friend you added by scanning one QR code. Messages
+  go through public relays, encrypted; devices never connect to each other or see each other's internet address.
+  Only a drawn face, a screen and one colour per area of a picture are shared. No names, no chat, nothing typed, nothing stored.
 - **Move to another device** (Grown-ups): show a QR code and scan it with the other device's camera; check the
   two pictures match and tap Send. Or save a file, or copy a small link that works without a connection.
   Taking progress in always adds to what is there and asks first.

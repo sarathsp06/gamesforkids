@@ -1,6 +1,6 @@
 /**
  * Moving progress between devices (design/progress-transfer): one versioned bundle, carried by a QR code over
- * a one-time peer-to-peer room, by a small link, or by a file. Taking one in is always a merge a grown-up
+ * a one-time encrypted room on the relays, by a small link, or by a file. Taking one in is always a merge a grown-up
  * confirms. Reads and writes go through storage.ts, so this module runs anywhere `localStorage` exists.
  */
 import { AVATARS, MAX_AGE, MIN_AGE, type Player } from './players';

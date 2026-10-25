@@ -3,6 +3,12 @@ co-review: design
 ---
 # Add presence and play-together in Paint Pot: other children are painting, and a friend can paint with you
 
+> **Update, October 2026 (built):** the transport is now relay-only. Real phones on mobile data or guest Wi-Fi
+> could find each other but never connect directly (no TURN server), so every message now goes through public
+> Nostr relays as an ephemeral event, AES-GCM encrypted with a key from the room name and password; large
+> messages are split into pieces. Devices no longer see each other's IP address. Pairing is one QR code with a
+> one-time key (canvas board 7b) instead of four pictures. See `src/lib/p2p.ts`.
+
 ## Context
 
 Every game is played alone on one device, and the site has no server, no accounts and no tracking. The

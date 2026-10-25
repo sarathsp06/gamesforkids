@@ -169,7 +169,7 @@ export interface Settings {
 	timers: boolean;
 	/** How fast Pip talks: calm is the recorded pace, normal a little quicker. */
 	pace: 'calm' | 'normal';
-	/** Paint Pot shows other children and their pictures, peer to peer. Off until a grown-up turns it on. */
+	/** Paint Pot shows other children and their pictures, through encrypted relay messages. Off until a grown-up turns it on. */
 	online: boolean;
 }
 export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, timers: false, pace: 'calm', online: false });

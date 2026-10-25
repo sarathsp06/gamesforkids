@@ -29,7 +29,7 @@
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
 			timers: 'Timers in Number Dash', week: 'This week', weekHint: 'Minutes played and where each game stands. No scores are shown to the child.',
 			about: 'About this app', promise: 'Everything your child does here stays right here, in this browser, on this device. Nothing goes anywhere, and nobody is watching. I made this for my own children, and I\'m glad to share it with yours. It\'s free, there are no ads or accounts, and that\'s how it will stay. The code is open for anyone to use.', small: 'The small print',
-			online: 'Because you turned on "Play with others": while your child is in Paint Pot, this device connects directly to other devices, which can see its internet address. It shares only which drawn face your child picked and the colours of finished pictures. No name, no photo, nothing typed.',
+			online: 'Because you turned on "Play with others": while your child is in Paint Pot, this device sends encrypted messages through public relay servers. Other devices never see its internet address. It shares only which drawn face your child picked and the colours of finished pictures. No name, no photo, nothing typed.',
 			level: 'Level', min: 'min', none: 'Nothing played yet this week.', score: 'How we score', note:
 				'Reads like a teacher\'s note, not a dashboard: what the child can do now. The full "How we score" page is here, not on the child\'s home.'
 		},
@@ -40,7 +40,7 @@
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
 			timers: 'Klok in Rekenrace', week: 'Deze week', weekHint: 'Gespeelde minuten en waar elk spel staat. Het kind ziet geen scores.',
 			about: 'Over deze app', promise: 'Alles wat je kind hier doet blijft gewoon hier, in deze browser, op dit apparaat. Er gaat niets naar buiten en niemand kijkt mee. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe. Het is gratis, zonder reclame of accounts, en zo blijft het. De code is open voor iedereen.', small: 'De kleine lettertjes',
-			online: 'Omdat je "Samen met anderen" aanzette: zolang je kind in Verfpot is, maakt dit apparaat rechtstreeks verbinding met andere apparaten, die zijn internetadres kunnen zien. Het deelt alleen welk getekend gezichtje je kind koos en de kleuren van afgemaakte tekeningen. Geen naam, geen foto, niets getypt.',
+			online: 'Omdat je "Samen met anderen" aanzette: zolang je kind in Verfpot is, stuurt dit apparaat versleutelde berichten via openbare relay-servers. Andere apparaten zien zijn internetadres nooit. Het deelt alleen welk getekend gezichtje je kind koos en de kleuren van afgemaakte tekeningen. Geen naam, geen foto, niets getypt.',
 			level: 'Niveau', min: 'min', none: 'Deze week nog niets gespeeld.', score: 'Hoe we scoren', note:
 				'Leest als een briefje van de juf, niet als een dashboard: wat het kind nu kan. De volledige uitleg staat hier, niet op het startscherm van het kind.'
 		}

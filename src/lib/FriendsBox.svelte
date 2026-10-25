@@ -1,12 +1,12 @@
 <script lang="ts">
 	/**
-	 * Grown-ups: Paint Pot with others (design/presence). The switch, off by default, with the honest cost
-	 * beside it; pairing two devices as friends with four pictures; the friends this device remembers.
+	 * Grown-ups: Paint Pot with others (design/presence, board 7b). The switch, off by default, with the honest
+	 * cost beside it; one way to add a friend, a QR code the other device scans; the friends this device keeps.
 	 */
 	import { onDestroy } from 'svelte';
+	import { resolve } from '$app/paths';
 	import Avatar from './Avatar.svelte';
-	import Emoji from './Emoji.svelte';
-	import { CODE_LENGTH, CODE_PICTURES, newCode, type Hello } from './presence';
+	import { newKey } from './presence';
 	import { addFriend, forgetFriend, loadFriends, type Friend } from './presence.svelte';
 	import { pair } from './pairing';
 	import { currentPlayer, loadPlayers } from './storage';
@@ -20,112 +20,91 @@
 	}: { language: Language; online: boolean; onOnline: (on: boolean) => void; onAdded?: (f: Friend) => void } = $props();
 
 	let friends = $state<Friend[]>(loadFriends().list);
-	let mode = $state<'idle' | 'show' | 'enter' | 'waiting' | 'found' | 'added' | 'closed'>('idle');
-	let code = $state<number[]>([]);
-	let found = $state<Hello | null>(null);
+	let mode = $state<'idle' | 'qr' | 'added' | 'closed'>('idle');
+	let qr = $state('');
+	let added = $state<Friend | null>(null);
 	let close: (() => void) | null = null;
 
 	const T = {
 		en: {
 			title: 'Play with others',
 			online: 'Play with others online, in Paint Pot',
-			note: 'Shows your child that other children are painting, and lets them see pictures others finished. Painting with a friend you paired below needs this too.',
-			cost: 'Devices connect directly, so other devices online can see this device\'s internet address. Nothing else is shared: no name, no photo, nothing typed; a finished picture travels only as one colour per area of the outline.',
-			pair: 'Pair with a friend',
-			pairHint: 'A friend is another family\'s device your child may paint with. Do this together with the other grown-up: one shows a code, the other taps the same four pictures.',
-			show: 'Show a code',
-			enter: 'Enter a code',
-			showHint: 'Tap these four pictures, in this order, on the other device.',
-			enterHint: 'Tap the four pictures the other device shows, in order.',
-			waiting: 'Looking for the other device… This stays open for ten minutes.',
-			found: 'This device wants to be friends. Is this the face the other device shows?',
-			add: 'Add this friend',
-			notThis: 'Not this one',
-			added: 'Friends now. Your child sees this friend with a heart in Paint Pot, and can ask them to paint together.',
-			addedOff: 'Friends now. One more step: turn on "Play with others online" above, or your child will not see this friend.',
+			note: 'Shows your child that other children are painting, and lets them see pictures others finished. Painting with a friend needs this too.',
+			cost: 'Messages go through public relay servers, encrypted, so only devices in the same game can read them. Other devices never learn this device\'s internet address; the relays see it, as any website does. Nothing else is shared: no name, no photo, nothing typed; a finished picture travels only as one colour per area of the outline.',
+			friends: 'Friends',
+			add: 'Add a friend',
+			addHint: 'A friend is another family\'s device your child may paint with. Do this together with the other grown-up.',
+			scan: 'Scan this with the friend\'s device camera. Both become friends at once.',
+			now: 'Friends now!',
+			nowHint: 'Your child sees this friend with a heart in Paint Pot and can ask them to paint together.',
 			closed: 'The code has expired. Make a new one.',
 			cancel: 'Cancel',
-			undo: 'Undo',
-			friends: 'Friends on this device',
 			none: 'No friends yet.',
 			since: 'since',
 			forget: 'Forget',
-			confirmForget: 'Forget this friend? You can pair again later.'
+			confirmForget: 'Forget this friend? You can add them again later.'
 		},
 		nl: {
 			title: 'Samen met anderen',
 			online: 'Online samen met anderen, in Verfpot',
-			note: 'Laat je kind zien dat andere kinderen aan het schilderen zijn, en toont tekeningen die anderen afmaakten. Samen schilderen met een vriendje dat je hieronder koppelt, heeft dit ook nodig.',
-			cost: 'Apparaten maken rechtstreeks verbinding, dus andere apparaten online kunnen het internetadres van dit apparaat zien. Verder wordt niets gedeeld: geen naam, geen foto, niets getypt; een afgemaakte tekening gaat alleen als één kleur per vlak van de omtrek.',
-			pair: 'Koppel een vriendje',
-			pairHint: 'Een vriendje is het apparaat van een ander gezin waarmee je kind mag schilderen. Doe dit samen met de andere volwassene: de een toont een code, de ander tikt dezelfde vier plaatjes.',
-			show: 'Toon een code',
-			enter: 'Voer een code in',
-			showHint: 'Tik deze vier plaatjes, in deze volgorde, op het andere apparaat.',
-			enterHint: 'Tik de vier plaatjes die het andere apparaat toont, op volgorde.',
-			waiting: 'Op zoek naar het andere apparaat… Dit blijft tien minuten open.',
-			found: 'Dit apparaat wil vriendjes worden. Is dit het gezichtje dat het andere apparaat toont?',
-			add: 'Voeg dit vriendje toe',
-			notThis: 'Niet dit',
-			added: 'Nu vriendjes. Je kind ziet dit vriendje met een hartje in Verfpot en kan vragen om samen te schilderen.',
-			addedOff: 'Nu vriendjes. Nog één stap: zet hierboven "Online samen met anderen" aan, anders ziet je kind dit vriendje niet.',
+			note: 'Laat je kind zien dat andere kinderen aan het schilderen zijn, en toont tekeningen die anderen afmaakten. Samen schilderen met een vriendje heeft dit ook nodig.',
+			cost: 'Berichten gaan versleuteld via openbare relay-servers, zodat alleen apparaten in hetzelfde spel ze kunnen lezen. Andere apparaten krijgen het internetadres van dit apparaat nooit te zien; de relays wel, zoals elke website. Verder wordt niets gedeeld: geen naam, geen foto, niets getypt; een afgemaakte tekening gaat alleen als één kleur per vlak van de omtrek.',
+			friends: 'Vriendjes',
+			add: 'Voeg een vriendje toe',
+			addHint: 'Een vriendje is het apparaat van een ander gezin waarmee je kind mag schilderen. Doe dit samen met de andere volwassene.',
+			scan: 'Scan dit met de camera van het apparaat van het vriendje. Dan zijn ze meteen allebei vriendjes.',
+			now: 'Nu vriendjes!',
+			nowHint: 'Je kind ziet dit vriendje met een hartje in Verfpot en kan vragen om samen te schilderen.',
 			closed: 'De code is verlopen. Maak een nieuwe.',
 			cancel: 'Annuleer',
-			undo: 'Terug',
-			friends: 'Vriendjes op dit apparaat',
 			none: 'Nog geen vriendjes.',
 			since: 'sinds',
 			forget: 'Vergeet',
-			confirmForget: 'Dit vriendje vergeten? Je kunt later opnieuw koppelen.'
+			confirmForget: 'Dit vriendje vergeten? Je kunt het later opnieuw toevoegen.'
 		}
 	};
 	const s = $derived(T[language]);
 	const myAvatar = () => (currentPlayer() ?? loadPlayers().list[0])?.avatar ?? 0;
 
-	async function start(c: number[]) {
-		code = c;
-		found = null;
+	/** The friend page's address on this site; the one-time key goes after the #, which never leaves the browser. */
+	function friendUrl(key: string) {
+		const path = resolve('/friend');
+		return `${location.origin}${path.endsWith('/') ? path : `${path}/`}#pair=${key}`;
+	}
+
+	async function start() {
 		close?.();
+		added = null;
+		const key = newKey();
+		const QR = await import('qrcode');
+		qr = await QR.toString(friendUrl(key), { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+		mode = 'qr';
 		close = await pair(
-			c,
+			key,
 			myAvatar(),
 			(h) => {
-				if (mode === 'added') return;
-				found = h;
-				mode = 'found';
+				if (mode !== 'qr') return;
+				addFriend(h.key, h.avatar);
+				friends = loadFriends().list;
+				added = friends.find((f) => f.key === h.key) ?? null;
+				// Painting with a friend needs the switch: adding one is the grown-up saying yes to it.
+				if (!online) onOnline(true);
+				if (added) onAdded?.(added);
+				mode = 'added';
+				// Leave the room a moment later, so this device's hello surely reaches the other one.
+				const c = close;
+				close = null;
+				setTimeout(() => c?.(), 3000);
 			},
 			() => {
-				if (mode === 'show' || mode === 'waiting') mode = 'closed';
+				if (mode === 'qr') mode = 'closed';
 			}
 		);
-	}
-	function show() {
-		mode = 'show';
-		void start(newCode());
-	}
-	function tap(i: number) {
-		if (code.length >= CODE_LENGTH) return;
-		code = [...code, i];
-		if (code.length === CODE_LENGTH) {
-			mode = 'waiting';
-			void start(code);
-		}
-	}
-	function accept() {
-		if (!found) return;
-		addFriend(found.key, found.avatar);
-		friends = loadFriends().list;
-		const added = friends.find((f) => f.key === found!.key);
-		if (added) onAdded?.(added);
-		mode = 'added';
-		close?.();
-		close = null;
 	}
 	function cancel() {
 		close?.();
 		close = null;
-		code = [];
-		found = null;
+		added = null;
 		mode = 'idle';
 	}
 	function forget(key: string) {
@@ -143,54 +122,32 @@
 	<span class="fine">{s.note}</span>
 	<span class="fine cost">{s.cost}</span>
 
-	<h3>{s.pair}</h3>
+	<h3>{s.friends}</h3>
 	{#if mode === 'idle'}
-		<span class="fine">{s.pairHint}</span>
-		<div class="actions">
-			<button type="button" onclick={show}>{s.show}</button>
-			<button type="button" onclick={() => { code = []; mode = 'enter'; }}>{s.enter}</button>
+		<span class="fine">{s.addHint}</span>
+		<div class="actions"><button type="button" class="primary" onclick={start}>{s.add}</button></div>
+	{:else if mode === 'qr'}
+		<div class="scan">
+			<div class="qr" aria-label="QR code">{@html qr}</div>
+			<span>{s.scan}</span>
 		</div>
-	{:else if mode === 'show'}
-		<span class="fine">{s.showHint}</span>
-		<div class="code" aria-label="Pair code">
-			{#each code as i, n (n)}<span class="pic"><Emoji glyph={CODE_PICTURES[i]} size={52} /></span>{/each}
-		</div>
-		<span class="fine">{s.waiting}</span>
 		<div class="actions"><button type="button" onclick={cancel}>{s.cancel}</button></div>
-	{:else if mode === 'enter' || mode === 'waiting'}
-		<span class="fine">{mode === 'enter' ? s.enterHint : s.waiting}</span>
-		<div class="code" aria-label="Pair code">
-			{#each Array.from({ length: CODE_LENGTH }, (_, n) => n) as n (n)}
-				<span class="pic slot">{#if code[n] !== undefined}<Emoji glyph={CODE_PICTURES[code[n]]} size={52} />{/if}</span>
-			{/each}
-		</div>
-		{#if mode === 'enter'}
-			<div class="keys" role="group" aria-label="Pictures">
-				{#each CODE_PICTURES as g, i (g)}
-					<button type="button" class="key" onclick={() => tap(i)}><Emoji glyph={g} size={36} /></button>
-				{/each}
+	{:else if mode === 'added' && added}
+		<div class="now">
+			<div class="faces">
+				<Avatar avatar={myAvatar()} size={64} />
+				<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z" /></svg>
+				<Avatar avatar={added.avatar} size={64} />
 			</div>
-		{/if}
-		<div class="actions">
-			{#if mode === 'enter' && code.length}<button type="button" onclick={() => (code = code.slice(0, -1))}>{s.undo}</button>{/if}
-			<button type="button" onclick={cancel}>{s.cancel}</button>
+			<strong>{s.now}</strong>
+			<span class="fine">{s.nowHint}</span>
 		</div>
-	{:else if mode === 'found' && found}
-		<span class="fine">{s.found}</span>
-		<div class="found"><Avatar avatar={found.avatar} size={64} /></div>
-		<div class="actions">
-			<button type="button" class="primary" onclick={accept}>{s.add}</button>
-			<button type="button" onclick={() => { found = null; mode = code.length && close ? 'waiting' : 'idle'; }}>{s.notThis}</button>
-		</div>
-	{:else if mode === 'added'}
-		<span class="fine" class:cost={!online}>{online ? s.added : s.addedOff}</span>
 		<div class="actions"><button type="button" onclick={cancel}>OK</button></div>
 	{:else}
 		<span class="fine">{s.closed}</span>
 		<div class="actions"><button type="button" onclick={cancel}>OK</button></div>
 	{/if}
 
-	<h3>{s.friends}</h3>
 	{#if friends.length}
 		{#each friends as f (f.key)}
 			<div class="friend">
@@ -199,7 +156,7 @@
 				<button type="button" onclick={() => forget(f.key)}>{s.forget}</button>
 			</div>
 		{/each}
-	{:else}
+	{:else if mode === 'idle'}
 		<span class="fine">{s.none}</span>
 	{/if}
 </section>
@@ -261,32 +218,46 @@
 		background: var(--sun);
 		font-weight: 700;
 	}
-	.code {
+	.scan {
 		display: flex;
-		gap: 0.6rem;
-	}
-	.pic {
-		width: 68px;
-		height: 68px;
-		display: grid;
-		place-items: center;
-		border: 3px solid var(--ink);
+		flex-direction: column;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 1rem;
 		border-radius: 16px;
-		background: var(--paper);
+		background: var(--sky);
+		text-align: center;
 	}
-	.slot {
-		border-style: dashed;
+	.qr {
+		width: min(240px, 70vw);
+		background: var(--white);
 	}
-	.keys {
-		display: grid;
-		grid-template-columns: repeat(8, minmax(0, 1fr));
-		gap: 0.4rem;
+	.qr :global(svg) {
+		display: block;
+		width: 100%;
+		height: auto;
 	}
-	.key {
-		aspect-ratio: 1;
-		display: grid;
-		place-items: center;
-		padding: 0.2rem;
+	.now {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1rem;
+		border-radius: 16px;
+		background: var(--mint);
+		text-align: center;
+	}
+	.faces {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+	}
+	.heart {
+		width: 36px;
+		height: 36px;
+		fill: var(--red);
+		stroke: var(--ink);
+		stroke-width: 1.6;
 	}
 	.friend {
 		display: flex;
@@ -295,10 +266,5 @@
 	}
 	.who {
 		flex: 1;
-	}
-	@media (max-width: 640px) {
-		.keys {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
-		}
 	}
 </style>

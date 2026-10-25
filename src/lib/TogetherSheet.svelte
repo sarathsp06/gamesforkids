@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Paint with a friend, from inside Paint Pot (design/presence). The child sees their friends: the ones
-	 * painting now can be tapped to invite. A grown-up reads, in three numbered steps, how to pair a friend,
+	 * painting now can be tapped to invite. A grown-up reads, in two numbered steps, how to add a friend,
 	 * and sets it up right here behind the same three-second hold as the gear, without leaving the game.
 	 */
 	import Avatar from './Avatar.svelte';
@@ -52,8 +52,7 @@
 			intro: 'Your child can paint side by side with a friend on another family\'s device. Set it up once, together with the other grown-up:',
 			steps: [
 				'Hold the button below for three seconds.',
-				'Turn on "Play with others online".',
-				'Tap "Show a code" here and "Enter a code" on the other device, then tap the same four pictures there.'
+				'Tap "Add a friend" and scan the QR code with the other device\'s camera.'
 			],
 			after: 'After that, no code is needed: when the friend opens Paint Pot, their face shows here with a heart, and your child taps it to paint together.',
 			more: 'Pair another friend, or change this: hold the button for three seconds.',
@@ -71,8 +70,7 @@
 			intro: 'Je kind kan naast een vriendje schilderen, op het apparaat van een ander gezin. Stel het één keer in, samen met de andere volwassene:',
 			steps: [
 				'Houd de knop hieronder drie seconden vast.',
-				'Zet "Online samen met anderen" aan.',
-				'Tik hier op "Toon een code" en op het andere apparaat op "Voer een code in", en tik daar dezelfde vier plaatjes.'
+				'Tik op "Voeg een vriendje toe" en scan de QR-code met de camera van het andere apparaat.'
 			],
 			after: 'Daarna is er geen code meer nodig: als het vriendje Verfpot opent, staat zijn gezichtje hier met een hartje, en je kind tikt erop om samen te schilderen.',
 			more: 'Nog een vriendje koppelen, of dit aanpassen: houd de knop drie seconden vast.',

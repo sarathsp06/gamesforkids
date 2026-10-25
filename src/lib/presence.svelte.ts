@@ -207,8 +207,8 @@ export class Together {
 			invite: channel(room, 'invite', valid.invite, lim),
 			answer: channel(room, 'answer', valid.answer, lim),
 			open: channel(room, 'open', valid.open, lim),
-			fills: channel(room, 'fills', valid.fills, lim),
-			at: channel(room, 'at', valid.at, lim),
+			fills: channel(room, 'fills', valid.fills, lim, 1000),
+			at: channel(room, 'at', valid.at, lim, 250),
 			done: channel(room, 'done', valid.done, lim)
 		};
 		this.links.set(friend.key, link);
