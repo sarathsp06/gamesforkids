@@ -5,11 +5,11 @@
 	import Avatar from '#lib/Avatar.svelte';
 	import { soundOn, voiceOn } from '#lib/audio.ts';
 	import { GAMES, MAX_AGE, MIN_AGE, modeFor, type Player } from '#lib/players.ts';
-	import { loadLanguage, loadPlayLog, loadPlayers, loadSettings, savePlayers, saveSettings, type Players, type Settings } from '#lib/storage.ts';
+	import { loadLanguage, loadPlayLog, loadPlayers, loadSettings, saveLanguage, savePlayers, saveSettings, type Players, type Settings } from '#lib/storage.ts';
 	import { week } from '#lib/playlog.ts';
 	import { levelOf } from '#lib/levels.ts';
 	import { gameName } from '#lib/i18n.ts';
-	import type { Language } from '#lib/words.ts';
+	import { LANGUAGES, type Language } from '#lib/words.ts';
 
 	let language = $state<Language>('en');
 	let players = $state<Players>({ v: 1, list: [], current: null });
@@ -20,7 +20,7 @@
 
 	const T = {
 		en: {
-			title: 'Grown-ups', hint: 'Opened by holding the gear for three seconds. Everything here stays on this device.',
+			title: 'Grown-ups', hint: 'Opened by holding the gear for three seconds. Everything here stays on this device. The flags set the language of the games and of this page.',
 			players: 'Players', little: 'Little', big: 'Big', auto: 'by age', edit: 'Edit', done: 'Done', remove: 'Remove',
 			confirm: 'Remove this player? Stickers and progress on this device stay.', mode: 'Mode',
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
@@ -29,7 +29,7 @@
 				'Reads like a teacher\'s note, not a dashboard: what the child can do now. The full "How we score" page is here, not on the child\'s home.'
 		},
 		nl: {
-			title: 'Volwassenen', hint: 'Open je door het tandwiel drie seconden vast te houden. Alles hier blijft op dit apparaat.',
+			title: 'Volwassenen', hint: 'Open je door het tandwiel drie seconden vast te houden. Alles hier blijft op dit apparaat. De vlaggen kiezen de taal van de spelletjes en van deze pagina.',
 			players: 'Spelers', little: 'Klein', big: 'Groot', auto: 'op leeftijd', edit: 'Wijzig', done: 'Klaar', remove: 'Verwijder',
 			confirm: 'Deze speler verwijderen? Stickers en voortgang op dit apparaat blijven.', mode: 'Stand',
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
@@ -73,6 +73,20 @@
 	<header>
 		<h1>{s.title}</h1>
 		<span class="hint">{s.hint}</span>
+		<div class="flags" role="group" aria-label="Language">
+			{#each LANGUAGES as l (l.id)}
+				<button
+					type="button"
+					class="flag"
+					aria-label={l.name}
+					aria-pressed={language === l.id}
+					onclick={() => {
+						language = l.id;
+						saveLanguage(l.id);
+					}}><Icon name={l.id} size={28} /></button
+				>
+			{/each}
+		</div>
 		<a class="close" href={resolve('/home')} aria-label="Close"><Icon name="close" size={22} /></a>
 	</header>
 
@@ -173,8 +187,25 @@
 		color: var(--mute);
 		line-height: 1.4;
 	}
-	.close {
+	.flags {
+		display: flex;
+		gap: 0.5rem;
 		margin-left: auto;
+	}
+	.flag {
+		width: 3rem;
+		height: 3rem;
+		padding: 0;
+		border: 3px solid var(--ink);
+		border-radius: 50%;
+		background: var(--white);
+		display: grid;
+		place-items: center;
+	}
+	.flag[aria-pressed='true'] {
+		box-shadow: 0 0 0 4px var(--ink);
+	}
+	.close {
 		width: 3rem;
 		height: 3rem;
 		border: 3px solid var(--ink);
