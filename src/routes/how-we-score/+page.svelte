@@ -68,6 +68,13 @@
 			</li>
 		</ul>
 		<p>Anything else — 6 for 8, 67 for 57 — is “not yet”.</p>
+		<p>
+			<strong>Moving up a level.</strong> Each level has ten rounds of ten sums. A round finished in
+			<strong>under a minute</strong> fills a star; <strong>three stars open the next level</strong>. Mistakes only cost
+			the seconds they take. The clock, the stars and the next level's lock are on the screen where the child picks a
+			round, and after each round Pip says whether it earned a star. A grown-up can turn the clock off in Grown-ups:
+			then the times are hidden and any finished round fills a star.
+		</p>
 		<h3>Words (Spell Pick)</h3>
 		<p>
 			The child hears a word and picks the right spelling. In English and Dutch the same sound can be written in

@@ -4,7 +4,7 @@ import { LEVELS as MATH_LEVELS, isUnlocked } from './math';
 import { MAX_TIER } from './words';
 import { CHAPTERS } from './paint';
 import {
-	loadChessLevel, loadMath, loadPainted, loadProgress, loadRead, loadShapeLevel, loadSpellLevel
+	loadChessLevel, loadMath, loadPainted, loadProgress, loadRead, loadSettings, loadShapeLevel, loadSpellLevel
 } from './storage';
 
 export interface Level {
@@ -26,8 +26,9 @@ export function levelOf(game: string): Level {
 			return { at: loadProgress().tier, of: MAX_TIER };
 		case 'math': {
 			const best = loadMath().best;
+			const clock = loadSettings().clock;
 			let at = 1;
-			for (let l = 1; l <= MATH_LEVELS.length; l++) if (isUnlocked(best, l)) at = l;
+			for (let l = 1; l <= MATH_LEVELS.length; l++) if (isUnlocked(best, l, clock)) at = l;
 			return { at, of: MATH_LEVELS.length };
 		}
 		case 'paint': {

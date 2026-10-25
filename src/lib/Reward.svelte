@@ -20,12 +20,22 @@
 		sticker,
 		language,
 		onAgain,
-		sayFirst = []
-	}: { grades: Grade[]; sticker: string; language: Language; onAgain: () => void; sayFirst?: Line[] } = $props();
+		sayFirst = [],
+		say
+	}: {
+		grades: Grade[];
+		sticker: string;
+		language: Language;
+		onAgain: () => void;
+		sayFirst?: Line[];
+		/** What Pip says instead of "You did it!": a game's own news about the round. */
+		say?: Line;
+	} = $props();
 
 	const owned = loadStickers();
 	const book = Object.keys(STICKERS).slice(0, 12);
-	const line = $derived([...sayFirst, t(language, 'home.done'), t(language, 'home.sticker')]);
+	const cheer = $derived(say ?? t(language, 'home.done'));
+	const line = $derived([...sayFirst, cheer, t(language, 'home.sticker')]);
 
 	onMount(() => {
 		sfx.chime();
@@ -45,7 +55,7 @@
 			<div class="sticker"><Emoji glyph={sticker} size="100%" label={STICKERS[sticker]?.[language]} /></div>
 			<span class="badge" aria-hidden="true"><Icon name="star" size={28} /></span>
 		</div>
-		<Pip {language} mood="happy" size={72} line={t(language, 'home.done')} />
+		<Pip {language} mood="happy" size={72} line={cheer} />
 	</div>
 	<div class="right">
 		<div class="book" aria-label="Sticker book">

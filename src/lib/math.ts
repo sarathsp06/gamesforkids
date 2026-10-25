@@ -68,8 +68,11 @@ export function questionnaire(level: number, set: number): Question[] {
 	return out;
 }
 
-export const passedSets = (best: Record<string, number>, level: number) =>
-	Array.from({ length: SETS_PER_LEVEL }, (_, s) => best[`${level}-${s}`]).filter((ms) => ms <= PASS_MS).length;
+/** Does a round with this best time fill a star? With the clock on, only under a minute; off, any finished round. */
+export const counts = (ms: number | undefined, clock: boolean) => ms !== undefined && (!clock || ms <= PASS_MS);
 
-export const isUnlocked = (best: Record<string, number>, level: number) =>
-	level === 0 || passedSets(best, level - 1) >= PASS_SETS;
+export const passedSets = (best: Record<string, number>, level: number, clock = true) =>
+	Array.from({ length: SETS_PER_LEVEL }, (_, s) => best[`${level}-${s}`]).filter((ms) => counts(ms, clock)).length;
+
+export const isUnlocked = (best: Record<string, number>, level: number, clock = true) =>
+	level === 0 || passedSets(best, level - 1, clock) >= PASS_SETS;

@@ -27,7 +27,7 @@
 			stickers: (n: number) => (n === 1 ? '1 sticker' : `${n} stickers`),
 			pictures: (n: number) => (n === 1 ? '1 picture' : `${n} pictures`),
 			noPictures: 'No pictures come with this; they stay where they are.',
-			settings: 'Also take its settings (voice, sounds, timers)',
+			settings: 'Also take its settings (voice, sounds, clock)',
 			merge: 'Nothing on this device is lost: players and stickers are added, the higher level wins.',
 			yes: 'Yes, add it',
 			no: 'No'

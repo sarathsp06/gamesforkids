@@ -27,7 +27,7 @@
 			players: 'Players', little: 'Little', big: 'Big', auto: 'by age', edit: 'Edit', done: 'Done', remove: 'Remove',
 			confirm: 'Remove this player? Stickers and progress on this device stay.', mode: 'Mode',
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
-			timers: 'Timers in Number Dash', week: 'This week', weekHint: 'Minutes played and where each game stands. No scores are shown to the child.',
+			clock: 'Clock in Number Dash (under a minute fills a star)', week: 'This week', weekHint: 'Minutes played and where each game stands. No scores are shown to the child.',
 			about: 'About this app', promise: 'Everything your child does here stays right here, in this browser, on this device. Nothing goes anywhere, and nobody is watching. I made this for my own children, and I\'m glad to share it with yours. It\'s free, there are no ads or accounts, and that\'s how it will stay. The code is open for anyone to use.', small: 'The small print',
 			online: 'Because you turned on "Play with others": while your child is in Paint Pot, this device sends encrypted messages through public relay servers. Other devices never see its internet address. It shares only which drawn face your child picked and the colours of finished pictures. No name, no photo, nothing typed.',
 			level: 'Level', min: 'min', none: 'Nothing played yet this week.', score: 'How we score', note:
@@ -38,7 +38,7 @@
 			players: 'Spelers', little: 'Klein', big: 'Groot', auto: 'op leeftijd', edit: 'Wijzig', done: 'Klaar', remove: 'Verwijder',
 			confirm: 'Deze speler verwijderen? Stickers en voortgang op dit apparaat blijven.', mode: 'Stand',
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
-			timers: 'Klok in Rekenrace', week: 'Deze week', weekHint: 'Gespeelde minuten en waar elk spel staat. Het kind ziet geen scores.',
+			clock: 'Klok in Rekenrace (binnen een minuut geeft een ster)', week: 'Deze week', weekHint: 'Gespeelde minuten en waar elk spel staat. Het kind ziet geen scores.',
 			about: 'Over deze app', promise: 'Alles wat je kind hier doet blijft gewoon hier, in deze browser, op dit apparaat. Er gaat niets naar buiten en niemand kijkt mee. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe. Het is gratis, zonder reclame of accounts, en zo blijft het. De code is open voor iedereen.', small: 'De kleine lettertjes',
 			online: 'Omdat je "Samen met anderen" aanzette: zolang je kind in Verfpot is, stuurt dit apparaat versleutelde berichten via openbare relay-servers. Andere apparaten zien zijn internetadres nooit. Het deelt alleen welk getekend gezichtje je kind koos en de kleuren van afgemaakte tekeningen. Geen naam, geen foto, niets getypt.',
 			level: 'Niveau', min: 'min', none: 'Deze week nog niets gespeeld.', score: 'Hoe we scoren', note:
@@ -132,7 +132,7 @@
 						<option value="calm">{s.calm}</option><option value="normal">{s.normal}</option>
 					</select>
 				</label>
-				<label class="row"><span>{s.timers}</span><input type="checkbox" checked={settings.timers} onchange={(e) => update({ timers: e.currentTarget.checked })} /></label>
+				<label class="row"><span>{s.clock}</span><input type="checkbox" checked={settings.clock} onchange={(e) => update({ clock: e.currentTarget.checked })} /></label>
 			</section>
 		</div>
 

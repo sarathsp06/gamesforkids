@@ -165,14 +165,18 @@ export interface Settings {
 	voice: boolean;
 	/** The little sounds: tok, bloop, chime. */
 	sound: boolean;
-	/** Number Dash shows its clock; off by default, as the research advises for young children. */
-	timers: boolean;
+	/**
+	 * Number Dash's clock, on by default: a round under a minute fills a star towards the next level, and the
+	 * child should see that. Off, the clock and the times go, and any finished round fills a star. (Named
+	 * anew from `timers`, which was off by default, so every device starts with the clock on once.)
+	 */
+	clock: boolean;
 	/** How fast Pip talks: calm is the recorded pace, normal a little quicker. */
 	pace: 'calm' | 'normal';
 	/** Paint Pot shows other children and their pictures, through encrypted relay messages. Off until a grown-up turns it on. */
 	online: boolean;
 }
-export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, timers: false, pace: 'calm', online: false });
+export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, clock: true, pace: 'calm', online: false });
 export const loadSettings = (): Settings => {
 	const s = read<Partial<Settings> | null>(SETTINGS, null);
 	return s?.v === 1 ? { ...defaultSettings(), ...s } : defaultSettings();
