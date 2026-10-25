@@ -17,6 +17,25 @@ site, everything stays on the device.
 | 📖 | **Read Along** | Reads Aesop's fables aloud; words light up as they're read | "The lion is asleep." → full fables |
 | 🖌️ | **Paint Pot** | Colours in pictures from fairy tales and fables with brush and bucket; hears each colour's name | sun and house → the Three Little Pigs, Red Riding Hood |
 
+## 🤝 A promise
+
+Everything your child does here stays right here, in the browser, on that device. Nothing goes anywhere, and
+nobody is watching. I made this for my own children and I'm glad to share it with yours: free, no ads, no
+accounts, and that's how it will stay. The code is open under the [MIT licence](LICENSE); the firm version of
+all this is the in-app **Small print** page.
+
+## 🦉 How it's put together
+
+- **Who is playing?** A player is a drawn face, a name and an age, kept on the device. Age picks the mode:
+  **Little (3–5)** shows five tap games with no words on the tiles; **Big (6–9)** shows all seven with labels and
+  level dots. A grown-up can pin the mode.
+- **Pip the owl** is the one voice: every prompt is spoken, and tapping Pip says it again.
+- **Read Along** ends by reading the whole fable back slowly, one line lit at a time; **Letter Leap** says every key
+  as it is pressed; **Paint Pot** has a white crayon that works as an eraser.
+- **One sticker book** for every game: a finished round earns a sticker, with the same reward moment everywhere.
+- **Grown-ups** sit behind a three-second hold on the gear: players, voice and sound, speaking pace, the Number
+  Dash clock (off by default), and a week view of minutes played.
+
 ## ✨ What makes it different
 
 - **"Almost!" counts.** Answers are graded by *how close* they were, not right/wrong. *kat* for *cat* sounds right, R
@@ -72,5 +91,8 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
 
 Fables are Aesop's (public domain), retold in our own words. Paint Pot's characters come from fairy tales and
 fables (public domain), drawn in our own style. Voices: [Chatterbox
-Multilingual](https://github.com/resemble-ai/chatterbox) (MIT). Font: [Andika](https://software.sil.org/andika/), made
-for beginning readers.
+Multilingual](https://github.com/resemble-ai/chatterbox) (MIT). Fonts: [Andika](https://software.sil.org/andika/), made
+for beginning readers, and [Fredoka](https://fonts.google.com/specimen/Fredoka) for titles. Icons:
+[Material Symbols](https://fonts.google.com/icons) (Apache-2.0); flags: [circle-flags](https://github.com/HatScripts/circle-flags) (MIT);
+stickers and story scenes: [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) flat (MIT), fetched once by
+`scripts/emoji_fetch.py` so they look the same on every device.

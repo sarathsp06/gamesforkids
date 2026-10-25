@@ -2,16 +2,26 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { speak, stopSpeech, sfx, unlockSpeech } from '#lib/audio.ts';
-	import { SPELL_LEVELS, choices, pickSpellWord, similarity } from '#lib/spell.ts';
+	import { SPELL_LEVELS, SPELL_WORDS, choices, pickSpellWord, similarity } from '#lib/spell.ts';
 	import { NEAR, gradeAttempts, type Grade } from '#lib/score.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { t, word as said } from '#lib/i18n.ts';
 	import { loadLanguage, loadSpellLevel, saveLanguage, saveSpellLevel } from '#lib/storage.ts';
+	import { PICTURES, WORD_PICTURES } from '#lib/paint.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const ROUND_WORDS = 5;
 	const SLOW = 0.45; // extra slow: the child has to catch every sound
 	const BREATHE_MS = 900; // small pause before the word is spoken, on start and between words
-	const MEDAL: Record<Grade, string> = { gold: '★', silver: '★', bronze: '★' };
+	const PROMPT: Record<Language, string> = {
+		en: 'Hear a word, pick its spelling.',
+		nl: 'Hoor een woord, kies hoe je het schrijft.'
+	};
+	const ALMOST: Record<Language, string> = { en: 'Almost!', nl: 'Bijna!' };
 
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
@@ -26,12 +36,25 @@
 	let grades = $state<Grade[]>([]);
 	let solved = $state(false);
 	let wordsDone = $state(0);
+	let newSticker = $state('');
+	/** Little mode (3–5): real words get their picture next to the spelling. */
+	let little = $state(false);
 	let timer = 0;
+
+	/** The picture for a real word (never for a sound-alike spelling), in Little mode only. */
+	const pictureFor = (option: string) => {
+		if (!little || !SPELL_WORDS[language].includes(option)) return undefined;
+		const id = WORD_PICTURES[language][option.toLowerCase()];
+		return id ? PICTURES.find((p) => p.id === id) : undefined;
+	};
 
 	onMount(() => {
 		language = loadLanguage();
 		level = loadSpellLevel();
+		little = document.documentElement.dataset.mode === 'little';
+		const stop = trackPlay('spell');
 		return () => {
+			stop();
 			clearTimeout(timer);
 			clearTimeout(speakTimer);
 			stopSpeech();
@@ -91,6 +114,7 @@
 
 	/** Four or more first-try words: the next round is one level harder. */
 	function finishRound() {
+		newSticker = awardSticker();
 		phase = 'reward';
 		if (grades.filter((g) => g === 'gold').length >= 4 && level < SPELL_LEVELS) {
 			level++;
@@ -102,15 +126,16 @@
 <main>
 	<div class="corner left">
 		{#if phase === 'start'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={34} /></a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); clearTimeout(speakTimer); stopSpeech(); phase = 'start'; }}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); clearTimeout(speakTimer); stopSpeech(); phase = 'start'; }}><Icon name="home" size={34} /></button>
 		{/if}
 	</div>
 
 	{#if phase === 'start'}
 		<section class="stage">
-			<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+			<Pip {language} line={PROMPT[language]} />
+			<button type="button" class="big-btn play" aria-label="Play" onclick={play}><Icon name="play" size={72} /></button>
 			<div class="flags" role="group" aria-label="Language">
 				{#each LANGUAGES as l (l.id)}
 					<button
@@ -122,7 +147,7 @@
 							language = l.id;
 							saveLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
@@ -148,10 +173,12 @@
 			{/each}
 		</ol>
 		<section class="stage">
-			<button type="button" class="big-btn ear" aria-label="Hear the word again" onclick={() => speak(said(word), language, undefined, SLOW)}>🔊</button>
+			<!-- No bubble: the word in writing would give the spelling away. Tapping Pip says it again. -->
+			<div class="pip-quiet"><Pip {language} size={92} line={said(word)} /></div>
 			<div class="options" role="group" aria-label="Pick the right spelling">
 				{#key word}
 					{#each options as option (option)}
+						{@const picture = pictureFor(option)}
 						<button
 							type="button"
 							class="option"
@@ -159,24 +186,23 @@
 							class:near={nearPicks.includes(option)}
 							class:wrong={crossed.includes(option)}
 							disabled={solved || crossed.includes(option)}
-							onclick={() => pick(option)}>{option.toLowerCase()}</button
+							onclick={() => pick(option)}
 						>
+							{#if picture}
+								<svg class="word-pic" viewBox="-4 -4 108 108" aria-hidden="true">
+									<path d={picture.d} fill="none" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+								</svg>
+							{/if}
+							<span class="word">{option.toLowerCase()}</span>
+							{#if nearPicks.includes(option)}<span class="almost">{ALMOST[language]}</span>{/if}
+						</button>
 					{/each}
 				{/key}
 			</div>
 		</section>
 	{:else}
-		{@const golds = grades.filter((g) => g === 'gold').length}
 		<section class="stage">
-			<div class="trophy" aria-label="Round done">{golds === ROUND_WORDS ? '🏆' : golds >= 3 ? '🥇' : '🥈'}</div>
-			<div class="stars" aria-hidden="true">
-				{#each grades as g, i (i)}
-					<span class={g} style="--d: {i * 120}ms">★</span>
-				{/each}
-			</div>
-			<div class="actions">
-				<button type="button" class="big-btn play" aria-label="Play level {level}" onclick={play}>▶</button>
-			</div>
+			<Reward {grades} sticker={newSticker} {language} onAgain={play} />
 		</section>
 	{/if}
 </main>
@@ -189,6 +215,7 @@
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
 		overflow: hidden;
+		background: var(--mint);
 	}
 	.stage {
 		display: flex;
@@ -203,13 +230,15 @@
 		left: 1rem;
 	}
 
+	/* Keycaps: 4 px ink line, 6 px solid shadow that presses down. */
 	.icon,
 	.big-btn,
 	.flag,
+	.lvl,
 	.option {
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
 		color: inherit;
 		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
@@ -217,15 +246,15 @@
 	.icon:active,
 	.big-btn:active,
 	.flag:active,
+	.lvl:active,
 	.option:enabled:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border-radius: 50%;
-		font-size: 1.9rem;
 		line-height: 1;
 		display: grid;
 		place-items: center;
@@ -240,40 +269,35 @@
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
 	}
-	.ear {
-		width: clamp(5rem, 16vw, 6.5rem);
-		height: clamp(5rem, 16vw, 6.5rem);
-		border-radius: 50%;
-		font-size: clamp(2.2rem, 7vw, 3rem);
+	.pip-quiet :global(.bubble) {
+		display: none;
 	}
 	.flags {
 		display: flex;
 		gap: 2rem;
 	}
 	.flag {
-		width: 5.5rem;
-		height: 5.5rem;
+		min-width: max(5.5rem, var(--tap));
+		min-height: max(5.5rem, var(--tap));
 		border-radius: 50%;
-		font-size: 2.4rem;
+		display: grid;
+		place-items: center;
 	}
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 	.levels {
 		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
 		gap: 1rem;
 	}
 	.lvl {
-		width: 3.6rem;
-		height: 3.6rem;
-		border: var(--line) solid var(--ink);
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border-radius: 50%;
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
 		font: inherit;
 		font-size: 1.7rem;
 		font-weight: 700;
@@ -301,17 +325,14 @@
 		line-height: 1;
 	}
 	/* Grade colors: gold (first try), silver (one near miss), bronze (kept trying). */
-	.dots li.gold,
-	.stars span.gold {
+	.dots li.gold {
 		background: var(--sun);
 	}
-	.dots li.silver,
-	.stars span.silver {
-		background: #c9ced6;
+	.dots li.silver {
+		background: var(--silver);
 	}
-	.dots li.bronze,
-	.stars span.bronze {
-		background: #e0a172;
+	.dots li.bronze {
+		background: var(--bronze);
 	}
 
 	.options {
@@ -321,6 +342,11 @@
 		width: min(26rem, 94vw);
 	}
 	.option {
+		display: flex;
+		align-items: center;
+		gap: 1.4rem;
+		text-align: left;
+		min-height: var(--tap);
 		padding: clamp(0.7rem, 2.2vh, 1.1rem) 1rem;
 		border-radius: 20px;
 		font-family: inherit;
@@ -329,6 +355,17 @@
 		line-height: 1;
 		letter-spacing: 0.06em;
 		animation: drop 260ms cubic-bezier(0.3, 1.4, 0.6, 1) backwards;
+	}
+	.word-pic {
+		flex: none;
+		width: 84px;
+		height: 84px;
+	}
+	.almost {
+		margin-left: auto;
+		font-family: var(--title);
+		font-size: 1.3rem;
+		letter-spacing: 0;
 	}
 	.option:nth-child(2) {
 		animation-delay: 90ms;
@@ -347,6 +384,9 @@
 		color: var(--paper);
 		animation: cheer 400ms ease-in-out;
 	}
+	.option.right .word-pic path {
+		stroke: var(--paper);
+	}
 	@keyframes cheer {
 		30% {
 			transform: scale(1.08);
@@ -355,6 +395,8 @@
 	.option.wrong {
 		background: #eee;
 		color: #9a9a9a;
+	}
+	.option.wrong .word {
 		text-decoration: line-through;
 		text-decoration-thickness: 4px;
 	}
@@ -362,36 +404,13 @@
 	.option.near {
 		background: #ffe2a8;
 		color: #8a6d1a;
+	}
+	.option.near .word {
 		text-decoration: none;
 	}
 
-	.trophy {
-		font-size: clamp(6rem, 24vw, 10rem);
-		line-height: 1;
-		animation: cheer 500ms ease-in-out;
-	}
-	.stars {
-		display: flex;
-		gap: 0.6rem;
-	}
-	.stars span {
-		display: grid;
-		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
-		border: 3px solid var(--ink);
-		border-radius: 50%;
-		font-size: 1.6rem;
-		line-height: 1;
-	}
-	.stars span {
-		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;
-		animation-delay: var(--d);
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.option,
-		.stars span,
-		.trophy {
+		.option {
 			animation: none;
 		}
 	}

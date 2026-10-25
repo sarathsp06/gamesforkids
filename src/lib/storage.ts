@@ -133,3 +133,61 @@ export const loadPainted = (): string[] => {
 	return Array.isArray(d) ? d.filter((x): x is string => typeof x === 'string') : [];
 };
 export const savePainted = (ids: string[]) => write(PAINTED, ids);
+
+/** Players on this device and who is playing now. */
+import { modeFor, type Player } from './players';
+const PLAYERS = 'players';
+export interface Players {
+	v: 1;
+	list: Player[];
+	current: string | null;
+}
+export const loadPlayers = (): Players => {
+	const p = read<Partial<Players> | null>(PLAYERS, null);
+	if (p?.v !== 1 || !Array.isArray(p.list)) return { v: 1, list: [], current: null };
+	const list = p.list.filter((x): x is Player => !!x && typeof x.id === 'string' && typeof x.age === 'number');
+	return { v: 1, list, current: list.some((x) => x.id === p.current) ? p.current! : null };
+};
+export const savePlayers = (p: Players) => write(PLAYERS, p);
+export const currentPlayer = (): Player | null => {
+	const p = loadPlayers();
+	return p.list.find((x) => x.id === p.current) ?? null;
+};
+/** Little or Big for whoever is playing; Big when nobody is chosen yet. */
+export const currentMode = () => {
+	const p = currentPlayer();
+	return p ? modeFor(p) : 'big';
+};
+
+/** Grown-up settings shared by every game. */
+const SETTINGS = 'settings';
+export interface Settings {
+	v: 1;
+	/** Pip's recorded and browser voice. */
+	voice: boolean;
+	/** The little sounds: tok, bloop, chime. */
+	sound: boolean;
+	/** Number Dash shows its clock; off by default, as the research advises for young children. */
+	timers: boolean;
+	/** How fast Pip talks: calm is the recorded pace, normal a little quicker. */
+	pace: 'calm' | 'normal';
+}
+export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, timers: false, pace: 'calm' });
+export const loadSettings = (): Settings => {
+	const s = read<Partial<Settings> | null>(SETTINGS, null);
+	return s?.v === 1 ? { ...defaultSettings(), ...s } : defaultSettings();
+};
+export const saveSettings = (s: Settings) => write(SETTINGS, s);
+
+/** A short log of play: one entry per visit to a game, for the grown-ups' week view. Newest 200 kept. */
+const PLAYLOG = 'playLog';
+export interface Play {
+	game: string;
+	at: string; // ISO start
+	ms: number;
+}
+export const loadPlayLog = (): Play[] => {
+	const l = read<unknown>(PLAYLOG, []);
+	return Array.isArray(l) ? l.filter((x): x is Play => !!x && typeof x.game === 'string' && typeof x.ms === 'number') : [];
+};
+export const savePlayLog = (l: Play[]) => write(PLAYLOG, l.slice(-200));

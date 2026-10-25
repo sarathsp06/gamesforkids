@@ -3,11 +3,12 @@ import {
 	loadLanguage, loadProgress, loadSessions, saveLanguage, saveProgress, saveSessions,
 	defaultProgress, type Progress, type SessionStats
 } from './storage';
-import { MAX_TIER, STICKERS, pickWord, type Language } from './words';
-import { animal, letter as letterLine, t, word } from './i18n';
+import { MAX_TIER, pickWord, type Language } from './words';
+import { keyLine, letter as letterLine, t, word } from './i18n';
 import { gradeAttempts, keySimilarity, type Grade } from './score';
+import { awardSticker } from './stickers';
 
-export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward' | 'stickers';
+export type Phase = 'start' | 'listening' | 'typing' | 'wordDone' | 'reward';
 
 export const ROUND_WORDS = 5;
 const REVEAL_FALLBACK_MS = 4000;
@@ -137,7 +138,10 @@ class Game {
 			this.lastPress = { ok: true, n: this.lastPress.n + 1 };
 			sfx.tok();
 			if (this.index === this.word.length) this.#wordDone();
-			else this.#armIdle();
+			else {
+				speak(keyLine(this.language, letter), this.language); // every key says its name
+				this.#armIdle();
+			}
 		} else {
 			s.streak = 0;
 			this.#roundMisses++;
@@ -146,7 +150,8 @@ class Game {
 			this.hint = true;
 			this.lastPress = { ok: false, n: this.lastPress.n + 1 };
 			sfx.bloop();
-			if (this.#missesOnLetter === 2) speak(letterLine(this.language, target), this.language);
+			// The pressed key says its name; on the second miss, the one wanted is named in full.
+			speak(this.#missesOnLetter === 2 ? [keyLine(this.language, letter), letterLine(this.language, target)] : keyLine(this.language, letter), this.language);
 			this.#armIdle();
 		}
 	}
@@ -173,30 +178,22 @@ class Game {
 	}
 
 	#reward() {
-		const all = Object.keys(STICKERS);
-		const unowned = all.filter((s) => !this.progress.stickers.includes(s));
-		this.newSticker = random(unowned.length ? unowned : all);
+		this.newSticker = awardSticker(); // the current player's book
 		let tier = this.progress.tier;
 		if (this.progress.tierMode === 'auto') {
 			if (this.#roundMisses <= TIER_UP_MAX_MISSES) tier = Math.min(MAX_TIER, tier + 1);
 			else if (this.#roundMisses >= TIER_DOWN_MIN_MISSES) tier = Math.max(1, tier - 1);
 		}
-		this.updateProgress({ tier, stickers: [...this.progress.stickers, this.newSticker] });
+		this.updateProgress({ tier });
 		this.#session.stickers++;
-		this.phase = 'reward';
-		sfx.chime();
-		speak([t(this.language, 'praise'), animal(this.language, this.newSticker)], this.language);
+		this.phase = 'reward'; // the shared Reward screen plays the chime and says the praise
 	}
 
 	home() {
 		this.#clearTimers();
 		stopSpeech();
-		if (this.phase !== 'start' && this.phase !== 'stickers') this.#saveSession();
+		if (this.phase !== 'start') this.#saveSession();
 		this.phase = 'start';
-	}
-
-	openStickers() {
-		this.phase = 'stickers';
 	}
 
 	#saveSession() {

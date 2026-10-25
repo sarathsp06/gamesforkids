@@ -7,9 +7,15 @@
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { t, type Line } from '#lib/i18n.ts';
 	import { loadLanguage, loadShapeLevel, saveLanguage, saveShapeLevel } from '#lib/storage.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const ROUND = 5;
 	const BREATHE_MS = 900; // small pause before the prompt, on start and between questions
+	const PROMPT: Record<Language, string> = { en: 'Find the shape I say.', nl: 'Zoek de vorm die ik zeg.' };
 	let phase = $state<'start' | 'play' | 'reward'>('start');
 	let language = $state<Language>('en');
 	let level = $state(1);
@@ -20,13 +26,16 @@
 	let grades = $state<Grade[]>([]);
 	let solved = $state(false);
 	let done = $state(0);
+	let newSticker = $state('');
 	let timer = 0;
 	let speakTimer = 0;
 
 	onMount(() => {
 		language = loadLanguage();
 		level = loadShapeLevel();
+		const stop = trackPlay('shapes');
 		return () => {
+			stop();
 			clearTimeout(timer);
 			clearTimeout(speakTimer);
 			stopSpeech();
@@ -94,6 +103,7 @@
 
 	/** Four or more first-try answers: the next round is one level harder. */
 	function finish() {
+		newSticker = awardSticker();
 		phase = 'reward';
 		if (grades.filter((g) => g === 'gold').length >= 4 && level < SHAPE_LEVELS) {
 			level++;
@@ -118,15 +128,16 @@
 <main>
 	<div class="corner left">
 		{#if phase === 'start'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={34} /></a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); clearTimeout(speakTimer); stopSpeech(); phase = 'start'; }}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={() => { clearTimeout(timer); clearTimeout(speakTimer); stopSpeech(); phase = 'start'; }}><Icon name="home" size={34} /></button>
 		{/if}
 	</div>
 
 	{#if phase === 'start'}
 		<section class="stage">
-			<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+			<Pip {language} line={PROMPT[language]} />
+			<button type="button" class="big-btn play" aria-label="Play" onclick={play}><Icon name="play" size={72} /></button>
 			<div class="flags" role="group" aria-label="Language">
 				{#each LANGUAGES as l (l.id)}
 					<button
@@ -138,7 +149,7 @@
 							language = l.id;
 							saveLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
@@ -164,7 +175,7 @@
 			{/each}
 		</ol>
 		<section class="stage">
-			<button type="button" class="big-btn ear" aria-label="Hear it again" onclick={() => speak(prompt(), language)}>🔊</button>
+			<Pip {language} size={92} line={prompt()} />
 			{#if q.row.length}
 				<div class="row" aria-label="Pattern">
 					{#each q.row as s, i (i)}<span class="cell">{@render pic(s)}</span>{/each}
@@ -202,15 +213,8 @@
 			</div>
 		</section>
 	{:else}
-		{@const golds = grades.filter((g) => g === 'gold').length}
 		<section class="stage">
-			<div class="trophy" aria-label="Round done">{golds === ROUND ? '🏆' : golds >= 3 ? '🥇' : '🥈'}</div>
-			<div class="stars" aria-hidden="true">
-				{#each grades as g, i (i)}
-					<span class={g} style="--d: {i * 120}ms">★</span>
-				{/each}
-			</div>
-			<button type="button" class="big-btn play" aria-label="Play level {level}" onclick={play}>▶</button>
+			<Reward {grades} sticker={newSticker} {language} onAgain={play} />
 		</section>
 	{/if}
 </main>
@@ -223,6 +227,7 @@
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
 		overflow: hidden;
+		background: var(--blush);
 	}
 	.stage {
 		display: flex;
@@ -243,8 +248,8 @@
 	.lvl,
 	.option {
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
 		color: inherit;
 		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
@@ -254,14 +259,13 @@
 	.flag:active,
 	.lvl:active,
 	.option:enabled:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border-radius: 50%;
-		font-size: 1.9rem;
 		line-height: 1;
 		display: grid;
 		place-items: center;
@@ -276,32 +280,27 @@
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
-	}
-	.ear {
-		width: clamp(4.5rem, 14vw, 6rem);
-		height: clamp(4.5rem, 14vw, 6rem);
-		border-radius: 50%;
-		font-size: clamp(2rem, 6vw, 2.8rem);
 	}
 	.flags,
 	.levels {
 		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
 		gap: 1rem;
 	}
 	.flags {
 		gap: 2rem;
 	}
 	.flag {
-		width: 5.5rem;
-		height: 5.5rem;
+		min-width: max(5.5rem, var(--tap));
+		min-height: max(5.5rem, var(--tap));
 		border-radius: 50%;
-		font-size: 2.4rem;
+		display: grid;
+		place-items: center;
 	}
 	.lvl {
-		width: 3.6rem;
-		height: 3.6rem;
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border-radius: 50%;
 		font: inherit;
 		font-size: 1.7rem;
@@ -309,7 +308,7 @@
 	}
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 
 	.dots {
@@ -333,17 +332,14 @@
 		font-size: clamp(1rem, 3.8vw, 1.5rem);
 		line-height: 1;
 	}
-	.dots li.gold,
-	.stars span.gold {
+	.dots li.gold {
 		background: var(--sun);
 	}
-	.dots li.silver,
-	.stars span.silver {
-		background: #c9ced6;
+	.dots li.silver {
+		background: var(--silver);
 	}
-	.dots li.bronze,
-	.stars span.bronze {
-		background: #e0a172;
+	.dots li.bronze {
+		background: var(--bronze);
 	}
 
 	.picture {
@@ -389,6 +385,8 @@
 		width: min(26rem, 80vw);
 	}
 	.option {
+		min-width: var(--tap);
+		min-height: var(--tap);
 		aspect-ratio: 1;
 		padding: 0.6rem;
 		border-radius: 20px;
@@ -433,31 +431,8 @@
 		opacity: 1;
 	}
 
-	.trophy {
-		font-size: clamp(6rem, 24vw, 10rem);
-		line-height: 1;
-		animation: cheer 500ms ease-in-out;
-	}
-	.stars {
-		display: flex;
-		gap: 0.6rem;
-	}
-	.stars span {
-		display: grid;
-		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
-		border: 3px solid var(--ink);
-		border-radius: 50%;
-		font-size: 1.6rem;
-		line-height: 1;
-		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;
-		animation-delay: var(--d);
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.option,
-		.stars span,
-		.trophy {
+		.option {
 			animation: none;
 		}
 	}

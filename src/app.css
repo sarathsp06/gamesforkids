@@ -1,29 +1,73 @@
 :root {
-	--paper: #ffffff;
-	--ink: #000000;
+	/* Picture-book palette: warm paper, soft ink, four strong colours with fixed meanings, four tints for backgrounds. */
+	--paper: #fffbf1;
+	--white: #ffffff;
+	--ink: #1c1b18;
+	--mute: #4a4843;
 	--red: #e2352b;
 	--blue: #1d5fb0;
 	--sun: #f6c21a;
 	--leaf: #2f8f4e;
+	--blush: #ffe3dc;
+	--sky: #dcebfa;
+	--butter: #fff1bf;
+	--mint: #ddf1e2;
+	--silver: #c9ced6;
+	--bronze: #e0a172;
 	--line: 4px;
+	--title: 'Fredoka', 'Arial Rounded MT Bold', system-ui, sans-serif;
+	/* Smallest tap target: Little mode (3–5) gets bigger ones everywhere. */
+	--tap: 4rem;
 	font-family: 'Andika', system-ui, sans-serif;
 	color: var(--ink);
 	background: var(--paper);
+}
+:root[data-mode='little'] {
+	--tap: 6rem;
 }
 
 * {
 	box-sizing: border-box;
 }
 
+html {
+	/* A child's thumbs: no pull-to-refresh, no double-tap zoom, no long-press menus, no text selection. */
+	overscroll-behavior: none;
+	-webkit-text-size-adjust: 100%;
+	-webkit-tap-highlight-color: transparent;
+}
+
 body {
 	margin: 0;
 	min-height: 100dvh;
+	touch-action: manipulation;
+	-webkit-touch-callout: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+input,
+textarea {
+	user-select: text;
+	-webkit-user-select: text;
 }
 
 button {
 	font: inherit;
 	color: inherit;
 	cursor: pointer;
+	touch-action: manipulation;
+}
+
+img {
+	-webkit-user-drag: none;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--title);
+	font-weight: 700;
 }
 
 :focus-visible {

@@ -8,6 +8,7 @@ const numbers = (d: string) => (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 assert.equal(new Set(PICTURES.map((p) => p.id)).size, PICTURES.length, 'unique picture ids');
 assert.equal(new Set(CRAYONS.map((c) => c.id)).size, CRAYONS.length, 'unique crayon ids');
 assert.equal(new Set(CRAYONS.map((c) => c.hex)).size, CRAYONS.length, 'no two crayons the same colour');
+assert.ok(CRAYONS.some((c) => c.hex === '#ffffff'), 'white crayon: the eraser');
 
 for (const ch of CHAPTERS) {
 	// A cover shows the first two pictures; a chapter is a short story, not a book.
@@ -27,12 +28,14 @@ for (const p of PICTURES) {
 	assert.ok(numbers(p.d).every((n) => n >= 0 && n <= 100), `${p.id}: fits the box`);
 	assert.match(p.d, /^M/, `${p.id}: path starts with a move`);
 	assert.ok(p.done.en && p.done.nl, `${p.id}: praise in both languages`);
+	assert.ok(p.name.en && p.name.nl, `${p.id}: named in both languages`);
 }
 
 for (const lang of ['en', 'nl'] as const) {
 	const ids = new Set(allLines(lang).map((l) => l.id));
 	for (const c of CRAYONS) assert.ok(ids.has(`colour.${c.id}`), `${lang}: colour line for ${c.id}`);
 	for (const p of PICTURES) assert.ok(ids.has(`paint.done.${p.id}`), `${lang}: praise line for ${p.id}`);
+	for (const p of PICTURES) assert.ok(ids.has(`paint.pic.${p.id}`), `${lang}: name line for ${p.id}`);
 	for (const c of CHAPTERS) assert.ok(ids.has(`paint.chapter.${c.id}`), `${lang}: name line for ${c.id}`);
 	assert.ok(ids.has('paint.go'), `${lang}: start line`);
 }

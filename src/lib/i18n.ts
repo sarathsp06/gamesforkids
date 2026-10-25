@@ -79,7 +79,22 @@ const en = {
 	'read.problem.network': 'Listening needs the internet right now. Please check the connection and try again.',
 	'read.problem.silent': "I can't hear any words. Check that the microphone is on and not muted, then try again.",
 
-	'paint.go': 'Pick a colour and paint!'
+	'paint.go': 'Pick a colour and paint!',
+
+	'home.who': 'Who is playing today?',
+	'home.what': 'What shall we play?',
+	'home.try': 'Shall we try this one?',
+	'home.done': 'You did it!',
+	'home.sticker': 'Here is your sticker!',
+	'home.age': 'How old are you?',
+	'home.new': 'A new sticker!',
+	'game.spell': 'Spell Pick',
+	'game.math': 'Number Dash',
+	'game.letters': 'Letter Leap',
+	'game.shapes': 'Shape Sense',
+	'game.chess': 'Chess Path',
+	'game.read': 'Read Along',
+	'game.paint': 'Paint Pot'
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof en;
@@ -130,7 +145,22 @@ const nl: Record<Key, Entry> = {
 	'read.problem.network': 'Luisteren heeft nu internet nodig. Controleer de verbinding en probeer het opnieuw.',
 	'read.problem.silent': 'Ik hoor geen woorden. Kijk of de microfoon aan staat en niet gedempt is, en probeer het opnieuw.',
 
-	'paint.go': 'Kies een kleur en schilder maar!'
+	'paint.go': 'Kies een kleur en schilder maar!',
+
+	'home.who': 'Wie speelt er vandaag?',
+	'home.what': 'Wat gaan we spelen?',
+	'home.try': 'Zullen we deze proberen?',
+	'home.done': 'Je hebt het gedaan!',
+	'home.sticker': 'Hier is je sticker!',
+	'home.age': 'Hoe oud ben je?',
+	'home.new': 'Een nieuwe sticker!',
+	'game.spell': 'Spelling Kiezen',
+	'game.math': 'Rekenrace',
+	'game.letters': 'Letter Sprong',
+	'game.shapes': 'Vormen Zien',
+	'game.chess': 'Schaakpad',
+	'game.read': 'Lees Mee',
+	'game.paint': 'Verfpot'
 };
 
 const CATALOG: Record<Language, Record<Key, Entry>> = { en, nl };
@@ -149,8 +179,13 @@ export function t(lang: Language, key: Key, n?: number): Line {
 	return { id: `${key}.${n}`, text: e.text(n!) };
 }
 
+/** A game's name, by its home-tile id (spell, math, letters, shapes, chess, read, paint). */
+export const gameName = (lang: Language, id: string): Line => t(lang, `game.${id}` as TextKey);
+
 /** A word from the word lists, said in lower case. */
 export const word = (w: string): Line => ({ id: `word.${w}`, text: w.toLowerCase() });
+/** A key's name alone ("bee"), said on every press in Letter Leap; the single-word carrier keeps it short. */
+export const keyLine = (lang: Language, l: string): Line => ({ id: `key.${l}`, text: `${l}.` });
 /** A letter name, as "the letter A": a lone letter is too short for the voice model, and clearer for a child. */
 export const letter = (lang: Language, l: string): Line => ({ id: `letter.${l}`, text: `${lang === 'en' ? 'The letter' : 'De letter'} ${l}.` });
 /** A sticker animal, keyed by its English name so ids stay plain ASCII. */
@@ -175,6 +210,7 @@ export const storyWord = (key: string): Line => ({
 export const colour = (lang: Language, c: Crayon): Line => ({ id: `colour.${c.id}`, text: c.name[lang] });
 export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.${p.id}`, text: p.done[lang] });
 export const chapterName = (lang: Language, c: Chapter): Line => ({ id: `paint.chapter.${c.id}`, text: c.name[lang] });
+export const pictureName = (lang: Language, p: Picture): Line => ({ id: `paint.pic.${p.id}`, text: p.name[lang] });
 
 /** Every line that can be spoken in a language: the generator renders one clip per id. */
 export function allLines(lang: Language): Line[] {
@@ -185,7 +221,7 @@ export function allLines(lang: Language): Line[] {
 		else if (isFamily(e)) for (let n = e.from; n <= e.to; n++) out.push({ id: `${key}.${n}`, text: e.text(n) });
 	}
 	for (const w of new Set([...WORDS[lang], ...SPELL_WORDS[lang]])) out.push(word(w));
-	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l));
+	for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') out.push(letter(lang, l), keyLine(lang, l));
 	for (const emoji of Object.keys(STICKERS)) out.push(animal(lang, emoji));
 	const storyWords = new Set<string>();
 	for (const st of STORIES) {
@@ -199,6 +235,7 @@ export function allLines(lang: Language): Line[] {
 	for (const c of CRAYONS) out.push(colour(lang, c));
 	for (const p of PICTURES) out.push(painted(lang, p));
 	for (const c of CHAPTERS) out.push(chapterName(lang, c));
+	for (const p of PICTURES) out.push(pictureName(lang, p));
 	return out;
 }
 

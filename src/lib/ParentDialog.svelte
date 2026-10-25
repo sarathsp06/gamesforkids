@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { game } from './game.svelte';
 	import { LANGUAGES, MAX_TIER } from './words';
+	import { loadStickers, resetStickers } from './stickers';
+
+	let stickers = $state(0);
+	$effect(() => {
+		void game.progress; // re-count when a round ends
+		stickers = loadStickers().length;
+	});
 
 	let dialog: HTMLDialogElement;
 	export const open = () => dialog.showModal();
@@ -68,11 +75,11 @@
 	</label>
 
 	<div class="row">
-		<span>{t.stickers}: {game.progress.stickers.length} {t.collected}</span>
+		<span>{t.stickers}: {stickers} {t.collected}</span>
 		<button
 			type="button"
-			disabled={!game.progress.stickers.length}
-			onclick={() => confirm(t.confirmReset) && game.updateProgress({ stickers: [] })}>{t.reset}</button
+			disabled={!stickers}
+			onclick={() => confirm(t.confirmReset) && (resetStickers(), (stickers = 0))}>{t.reset}</button
 		>
 	</div>
 

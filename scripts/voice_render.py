@@ -127,15 +127,30 @@ def generate(text: str, lang: str, seed: int) -> bytes:
 
 
 def hear(path: Path, lang: str) -> str:
-    """What the transcriber hears, in the clip's language (the plain /transcribe route ignores the language)."""
+    """What the fast transcriber hears (0.1 s; it detects the language itself, which a sentence makes clear)."""
+    r = post("/transcribe", {"language": lang}, ("audio", path))
+    return json.loads(r)["text"]
+
+
+def hear_slow(path: Path, lang: str) -> str:
+    """Whisper, told the clip's language (a few seconds): the second opinion before a take is kept."""
     r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "json"}, ("file", path))
     return json.loads(r)["text"]
 
 
 def hear_words(path: Path, lang: str) -> list[dict]:
-    """The words heard, each with start and end seconds."""
+    """The words heard, each with start and end seconds: Whisper, in the clip's language (a few seconds)."""
     r = post("/v1/audio/transcriptions", {"language": lang, "response_format": "verbose_json", "timestamp_granularities[]": "word"}, ("file", path))
     return json.loads(r).get("words", [])
+
+
+def confirm(path: Path, text: str, lang: str, score: float, heard: str) -> tuple[float, str]:
+    """A take both transcribers agree on: the lower of the two scores, so a doubt on either side counts."""
+    if score < 0.85:
+        return score, heard
+    second = hear_slow(path, lang)
+    s2 = similarity(second, text, lang)
+    return (s2, f"{heard} / whisper: {second}") if s2 < score else (score, heard)
 
 
 def similarity(heard: str, text: str, lang: str) -> float:
@@ -147,7 +162,7 @@ def similarity(heard: str, text: str, lang: str) -> float:
 
 def render(line, out: Path, seed: int) -> tuple[float, str]:
     """A take of the line, encoded to out; returns how well it says its text and what was heard."""
-    text = line["text"]
+    text = say(line)
     if not text.rstrip().endswith((".", "!", "?")):
         text += "."
     with tempfile.NamedTemporaryFile(suffix=".wav") as raw:
@@ -158,12 +173,24 @@ def render(line, out: Path, seed: int) -> tuple[float, str]:
     if dur > 1.2 + len(line["text"]) / 7 / args.speed or dur < 0.25:
         return 0.0, f"duration {dur:.1f}s"
     heard = hear(out, line["lang"])
-    return similarity(heard, line["text"], line["lang"]), heard
+    return confirm(out, say(line), line["lang"], similarity(heard, say(line), line["lang"]), heard)
+
+
+# What the model should read for a line, where the catalog text misleads it: Dutch letter names are
+# not English ones. The clip keeps the catalog text's id and hash; only the rendered words change.
+SAY = {
+    "nl": {"De letter I.": "De letter ie.", "De letter Y.": "De letter ypsilon.", "I.": "ie.", "Y.": "ypsilon.", "J.": "jee.", "G.": "gee.", "H.": "haa.", "Q.": "kuu.", "X.": "iks.", "Z.": "zet."},
+    "en": {},
+}
+def say(line) -> str:
+    return SAY[line["lang"]].get(line["text"], line["text"])
 
 
 # A bare word is read in the wrong language or rushed ("jas" comes out as "yes"), so a single word is
 # rendered inside a short sentence and cut out at the pause before it.
 CARRIER = {"en": "The word is: {w}.", "nl": "Het woord is: {w}."}
+# When the colon leaves no pause (soft first sounds), later tries end the carrier with a full stop instead.
+CARRIER_PAUSED = {"en": "The word is. {w}.", "nl": "Het woord is. {w}."}
 QUIET = "-45dB"  # soft enough to keep a word's first and last consonant
 PAUSE = 0.06  # seconds of quiet that count as a pause
 
@@ -188,16 +215,16 @@ def loud_runs(path: Path) -> list[tuple[float, float]]:
     return runs
 
 
-def render_word(line, out: Path, seed: int) -> tuple[float, str]:
+def render_word(line, out: Path, seed: int, paused=False) -> tuple[float, str]:
     """A single word: say it in a carrier sentence, check the whole sentence, keep only the word."""
     w = line["text"].strip().rstrip(".!?")
-    sentence = CARRIER[line["lang"]].format(w=w)
+    sentence = (CARRIER_PAUSED if paused else CARRIER)[line["lang"]].format(w=w)
     with tempfile.TemporaryDirectory() as tmp:
         raw, full = Path(tmp) / "raw.wav", Path(tmp) / "full.mp3"
         raw.write_bytes(generate(sentence, line["lang"], seed))
         encode(raw, full)
         heard = hear(full, line["lang"])
-        score = similarity(heard, sentence, line["lang"])
+        score, heard = confirm(full, sentence, line["lang"], similarity(heard, sentence, line["lang"]), heard)
         if score < 0.85:
             return score, heard
         runs = [r for r in loud_runs(full) if r[1] - r[0] >= 0.12]
@@ -209,8 +236,9 @@ def render_word(line, out: Path, seed: int) -> tuple[float, str]:
             if len(words) < 2:
                 return 0.0, f"no pause before the word: {heard}"
             start, end = words[-1]["start"], duration(full)
-        # A word is at least a fifth of a second; shorter means the cut caught a release, not the word.
-        if not 0.2 <= end - start <= 1.5:
+        # A word is at least a fifth of a second (an eighth for a two- or three-letter one); shorter means
+        # the cut caught a release, not the word.
+        if not (0.12 if len(w) <= 3 else 0.2) <= end - start <= 1.5:
             return 0.0, f"word run {end - start:.2f}s: {heard}"
         # A little room on both sides: a soft first consonant and the release of the last one.
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(full), "-ss", f"{max(start - 0.04, 0):.3f}", "-t", f"{end - start + 0.1:.3f}",
@@ -249,7 +277,10 @@ for i, l in enumerate(todo, 1):
         for attempt in range(args.tries):
             take = Path(tmp) / f"{attempt}.mp3"
             try:
-                score, heard = (render_word if single else render)(l, take, seed=args.seed + attempt)
+                if single:
+                    score, heard = render_word(l, take, seed=args.seed + attempt, paused=attempt >= 2)
+                else:
+                    score, heard = render(l, take, seed=args.seed + attempt)
             except Exception as e:  # a seed can fail outright; try the next one
                 best = max(best, (-0.5, f"error: {e}", None), key=lambda b: b[0])
                 continue

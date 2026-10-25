@@ -11,6 +11,12 @@
 	import { READ_LEVELS, STORIES, type Story } from '#lib/stories.ts';
 	import { loadLanguage, loadRead, saveLanguage, saveRead, type ReadProgress } from '#lib/storage.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import Icon from '#lib/Icon.svelte';
+	import Pip from '#lib/Pip.svelte';
+	import Emoji, { glyphs } from '#lib/Emoji.svelte';
+	import Reward from '#lib/Reward.svelte';
+	import { awardSticker } from '#lib/stickers.ts';
+	import { trackPlay } from '#lib/playlog.ts';
 
 	const GLOW_MS = 4000; // no progress this long: the next word glows
 	const SAY_MS = 8000; // ...this long: the game says it
@@ -20,7 +26,13 @@
 	/** Words moved on by the help with nothing heard at all: then the microphone isn't getting through. */
 	const SILENT_MOVES = 2;
 
-	let phase = $state<'start' | 'play' | 'reward' | 'problem'>('start');
+	let phase = $state<'start' | 'play' | 'story' | 'reward' | 'problem'>('start');
+	/** The story page: which line Pip is reading (-1 the title), and whether the whole story has been read. */
+	let reading = $state(-2);
+	let storyDone = $state(false);
+	let storyTimer = 0;
+	const STORY_RATE = 0.5; // slower than the clips' calm pace: this is the story told back, sentence by sentence
+	const LINE_FALLBACK_MS = 12000;
 	/** Why the game can't listen; 'silent' is a microphone that is on but hears nothing. */
 	let problem = $state<Problem | 'silent'>('unsupported');
 	let language = $state<Language>('en');
@@ -39,6 +51,7 @@
 	/** The recogniser just heard something (matched or not): the 🎤 bounces, so the child knows it listens. */
 	let hearing = $state(false);
 	let hearingTimer = 0;
+	let newSticker = $state('');
 
 	let listener: Listener | null = null;
 	let appSpeaking = false;
@@ -63,7 +76,11 @@
 			listenState = s;
 			if (isProblem(s) && phase === 'play') showProblem(s);
 		});
-		return stopAll;
+		const stop = trackPlay('read');
+		return () => {
+			stopAll();
+			stop();
+		};
 	});
 
 	function stopAll() {
@@ -206,18 +223,54 @@
 	function finish() {
 		clearTimers();
 		listener?.stop();
-		phase = 'reward';
+		phase = 'story';
+		readStory();
 		const golds = grades.filter((g) => g === 'gold').length;
 		const p = { ...progress, next: { ...progress.next, [progress.level]: (progress.next[progress.level] ?? 0) + 1 } };
 		// Every sentence but one read alone: the next story is one level up.
 		if (golds >= grades.length - 1 && p.level < READ_LEVELS) p.level++;
 		progress = p;
 		saveRead(p);
-		sfx.chime();
-		say([t(language, 'praise'), t(language, 'read.end')]);
+	}
+
+	/** The whole story on one page, read aloud slowly from the title down, each line lit as it is said. */
+	function readStory(from = -1) {
+		if (!story) return;
+		storyDone = false;
+		const lines = story.sentences[language];
+		const step = (i: number) => {
+			clearTimeout(storyTimer);
+			if (phase !== 'story') return;
+			if (i >= lines.length) {
+				reading = -2;
+				storyDone = true;
+				return;
+			}
+			reading = i;
+			const line = i < 0 ? storyTitle(language, story!) : storySentence(language, story!, i);
+			let moved = false;
+			const next = () => {
+				if (moved) return;
+				moved = true;
+				storyTimer = window.setTimeout(() => step(i + 1), i < 0 ? 900 : 700);
+			};
+			speak(line, language, next, STORY_RATE);
+			storyTimer = window.setTimeout(next, LINE_FALLBACK_MS);
+		};
+		stopSpeech();
+		step(from);
+	}
+
+	function toReward() {
+		clearTimeout(storyTimer);
+		stopSpeech();
+		newSticker = awardSticker();
+		phase = 'reward';
+		// The reward screen plays the chime and says the praise itself.
 	}
 
 	function home() {
+		clearTimeout(storyTimer);
 		stopAll();
 		phase = 'start';
 	}
@@ -228,26 +281,27 @@
 
 {#snippet notice(p: Problem | 'silent')}
 	<div class="notice" role="alert">
-		<div class="nomic" aria-hidden="true">🎤<span>🚫</span></div>
+		<div class="nomic" aria-hidden="true"><Icon name="mic" size={88} /><span><Icon name="close" size={40} /></span></div>
 		<p class="why">{t(language, `read.problem.${p}`).text}</p>
 		<p class="needs">{t(language, 'read.needs').text}</p>
-		<button type="button" class="round" aria-label="Hear it" onclick={() => speak([t(language, `read.problem.${p}`), t(language, 'read.needs')], language)}>🔊</button>
+		<button type="button" class="round" aria-label="Hear it" onclick={() => speak([t(language, `read.problem.${p}`), t(language, 'read.needs')], language)}><Icon name="speaker" size={36} /></button>
 	</div>
 {/snippet}
 
 <main>
 	<div class="corner left">
 		{#if phase === 'start'}
-			<a class="icon" href={resolve('/')} aria-label="All games">⌂</a>
+			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={36} /></a>
 		{:else}
-			<button type="button" class="icon" aria-label="Home" onclick={home}>⌂</button>
+			<button type="button" class="icon" aria-label="Home" onclick={home}><Icon name="home" size={36} /></button>
 		{/if}
 	</div>
 
 	{#if phase === 'start'}
 		<section class="stage">
 			{#if supported}
-				<button type="button" class="big-btn play" aria-label="Play" onclick={play}>▶</button>
+				<Pip {language} line={t(language, 'read.go')} />
+				<button type="button" class="big-btn play" aria-label="Play" onclick={play}><Icon name="play" size={72} /></button>
 			{:else}
 				{@render notice('unsupported')}
 			{/if}
@@ -262,7 +316,7 @@
 							language = l.id;
 							saveLanguage(l.id);
 							speak(t(l.id, 'lang.name'), l.id);
-						}}>{l.flag}</button
+						}}><Icon name={l.id} size={34} /></button
 					>
 				{/each}
 			</div>
@@ -289,11 +343,11 @@
 		</ol>
 		<section class="stage">
 			{#if si < 0}
-				<div class="scene cover" aria-hidden="true">{story.cover}</div>
+				<div class="scene cover" aria-hidden="true">{#each glyphs(story.cover) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</div>
 				<p class="title">{story.title[language]}</p>
 			{:else}
 				{#key si}
-					<div class="scene" aria-hidden="true">{story.sentences[language][si].scene}</div>
+					<div class="scene" aria-hidden="true">{#each glyphs(story.sentences[language][si].scene) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</div>
 					<p class="sentence" aria-live="polite">
 						{#each sentence as w, i (i)}
 							<button type="button" class="word {wordClass(i)}" onclick={() => tapWord(i)}>{w.shown}</button>
@@ -301,32 +355,63 @@
 					</p>
 				{/key}
 				<div class="controls">
-					<button type="button" class="round" aria-label="Hear the sentence" onclick={() => say(storySentence(language, story!, si))}>🔊</button>
+					<!-- Pip shows the sentence; the tap goes through say() so matching stays muted while the app reads it. -->
+					<div
+						class="pip-say"
+						role="presentation"
+						onclickcapture={(e) => {
+							e.stopPropagation();
+							say(storySentence(language, story!, si));
+						}}
+					>
+						<Pip {language} size={92} line={storySentence(language, story, si)} />
+					</div>
 					{#if listenState === 'paused'}
-						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}>🎤</button>
+						<button type="button" class="round pulse" aria-label="Keep listening" onclick={() => { listener?.resume(); rebase(); }}><Icon name="mic" size={36} /></button>
 					{:else}
-						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening">🎤</span>
+						<span class="listening" class:on={listenState === 'listening'} class:hearing aria-label="Listening"><Icon name="mic" size={40} /></span>
 					{/if}
 				</div>
 			{/if}
 		</section>
+	{:else if phase === 'story' && story}
+		<section class="stage">
+			<ol class="story" aria-label={story.title[language]}>
+				<li class="line title-line" class:now={reading === -1}>
+					<button type="button" onclick={() => readStory(-1)}>
+						<span class="scene small" aria-hidden="true">{#each glyphs(story.cover) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</span>
+						<span class="text title">{story.title[language]}</span>
+					</button>
+				</li>
+				{#each story.sentences[language] as sen, i (i)}
+					<li class="line" class:now={reading === i} class:read={reading > i || storyDone}>
+						<button type="button" onclick={() => readStory(i)}>
+							<span class="scene small" aria-hidden="true">{#each glyphs(sen.scene) as g, i (i)}<Emoji glyph={g} size="1em" />{/each}</span>
+							<span class="text">{sen.text}</span>
+						</button>
+					</li>
+				{/each}
+			</ol>
+			<div class="controls">
+				<Pip {language} size={80} mood={storyDone ? 'happy' : 'idle'} line={storyDone ? t(language, 'read.end') : undefined} />
+				<button type="button" class="big-btn play" class:faint={!storyDone} aria-label={storyDone ? 'Get your sticker' : 'Skip to the sticker'} onclick={toReward}>
+					<Icon name="play" size={56} />
+				</button>
+			</div>
+		</section>
 	{:else if phase === 'problem'}
 		<section class="stage">
-			{@render notice(problem)}
+			<div class="notice" role="alert">
+				<Pip {language} line={t(language, `read.problem.${problem}`)} size={96} />
+				<p class="needs">{t(language, 'read.needs').text}</p>
+			</div>
 			{#if problem !== 'unsupported'}
-				<button type="button" class="big-btn play retry" aria-label="Try again" onclick={play}>↻</button>
+				<button type="button" class="big-btn play retry" aria-label="Try again" onclick={play}><Icon name="retry" size={64} /></button>
 			{/if}
 		</section>
-	{:else if phase === 'reward' && story}
-		{@const golds = grades.filter((g) => g === 'gold').length}
+	{:else if phase === 'reward'}
 		<section class="stage">
-			<div class="trophy" aria-label="Story done">{golds === grades.length ? '🏆' : golds >= grades.length - 2 ? '🥇' : '🥈'}</div>
-			<div class="stars" aria-hidden="true">
-				{#each grades as g, i (i)}
-					<span class={g} style="--d: {i * 120}ms">★</span>
-				{/each}
-			</div>
-			<button type="button" class="big-btn play" aria-label="Next story" onclick={play}>▶</button>
+			<Reward {grades} sticker={newSticker} {language} onAgain={play} sayFirst={[t(language, 'read.end')]} />
 		</section>
 	{/if}
 </main>
@@ -339,6 +424,7 @@
 		place-items: center;
 		padding: 5.5rem 1rem 2rem;
 		overflow: hidden;
+		background: var(--mint);
 	}
 	.stage {
 		display: flex;
@@ -353,16 +439,22 @@
 		left: 1rem;
 	}
 
+	/* Keycaps: white (or sun) with a solid ink shadow that presses down. */
 	.icon,
 	.big-btn,
 	.flag,
 	.lvl,
 	.round {
+		min-width: var(--tap);
+		min-height: var(--tap);
 		border: var(--line) solid var(--ink);
-		background: var(--paper);
-		box-shadow: 0 var(--line) 0 var(--ink);
-		color: inherit;
+		background: var(--white);
+		box-shadow: 0 6px 0 var(--ink);
+		color: var(--ink);
 		text-decoration: none;
+		display: grid;
+		place-items: center;
+		line-height: 1;
 		transition: transform 120ms, box-shadow 120ms;
 	}
 	.icon:active,
@@ -370,30 +462,20 @@
 	.flag:active,
 	.lvl:active,
 	.round:active {
-		transform: translateY(var(--line));
+		transform: translateY(6px);
 		box-shadow: 0 0 0 var(--ink);
 	}
 	.icon {
-		width: 3.5rem;
-		height: 3.5rem;
 		border-radius: 50%;
-		font-size: 1.9rem;
-		line-height: 1;
-		display: grid;
-		place-items: center;
 	}
 	.big-btn {
 		border-radius: 22px;
-		display: grid;
-		place-items: center;
-		line-height: 1;
 	}
 	.play {
 		width: clamp(8rem, 26vw, 12rem);
 		height: clamp(8rem, 26vw, 12rem);
 		background: var(--sun);
-		font-size: clamp(3.5rem, 11vw, 5.5rem);
-		padding-left: 0.4em;
+		padding-left: 0.4rem;
 	}
 	.flags,
 	.levels {
@@ -409,19 +491,17 @@
 		width: 5.5rem;
 		height: 5.5rem;
 		border-radius: 50%;
-		font-size: 2.4rem;
 	}
 	.lvl {
-		width: 3.6rem;
-		height: 3.6rem;
 		border-radius: 50%;
-		font: inherit;
+		font-family: var(--title);
 		font-size: 1.7rem;
 		font-weight: 700;
 	}
 	.flag[aria-pressed='true'],
 	.lvl[aria-pressed='true'] {
-		box-shadow: 0 var(--line) 0 var(--ink), 0 0 0 6px var(--ink);
+		background: var(--sun);
+		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 
 	.dots {
@@ -445,23 +525,22 @@
 		font-size: clamp(0.8rem, 3vw, 1.3rem);
 		line-height: 1;
 	}
-	.dots li.gold,
-	.stars span.gold {
+	.dots li.gold {
 		background: var(--sun);
 	}
-	.dots li.silver,
-	.stars span.silver {
-		background: #c9ced6;
+	.dots li.silver {
+		background: var(--silver);
 	}
-	.dots li.bronze,
-	.stars span.bronze {
-		background: #e0a172;
+	.dots li.bronze {
+		background: var(--bronze);
 	}
 
 	.scene {
 		font-size: clamp(4rem, 16vw, 7.5rem);
 		line-height: 1;
-		letter-spacing: 0.1em;
+		display: flex;
+		justify-content: center;
+		gap: 0.15em;
 		animation: drop 300ms cubic-bezier(0.3, 1.4, 0.6, 1) backwards;
 	}
 	.title {
@@ -519,12 +598,7 @@
 		gap: 1.2rem;
 	}
 	.round {
-		width: 4.2rem;
-		height: 4.2rem;
 		border-radius: 50%;
-		font-size: 1.9rem;
-		display: grid;
-		place-items: center;
 	}
 	/* Can't listen: say so plainly, big enough for a parent to read from across the room. */
 	.notice {
@@ -537,14 +611,13 @@
 	}
 	.nomic {
 		position: relative;
-		font-size: clamp(4rem, 14vw, 6rem);
-		line-height: 1;
+		line-height: 0;
 	}
 	.nomic span {
 		position: absolute;
-		right: -0.35em;
-		bottom: -0.1em;
-		font-size: 0.6em;
+		right: -1rem;
+		bottom: -0.4rem;
+		color: var(--red);
 	}
 	.why {
 		margin: 0;
@@ -562,7 +635,7 @@
 		animation: glow 0.8s ease-in-out infinite alternate;
 	}
 	.listening {
-		font-size: 2rem;
+		display: grid;
 		opacity: 0.3;
 	}
 	.listening.on {
@@ -589,42 +662,69 @@
 			transform: translateY(-0.8rem) scale(0.9);
 		}
 	}
-	@keyframes cheer {
-		30% {
-			transform: scale(1.08);
-		}
-	}
-	.trophy {
-		font-size: clamp(6rem, 24vw, 10rem);
-		line-height: 1;
-		animation: cheer 500ms ease-in-out;
-	}
-	.stars {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 0.6rem;
-	}
-	.stars span {
-		display: grid;
-		place-items: center;
-		width: 2.6rem;
-		height: 2.6rem;
-		border: 3px solid var(--ink);
-		border-radius: 50%;
-		font-size: 1.6rem;
-		line-height: 1;
-		animation: drop 400ms cubic-bezier(0.3, 1.6, 0.6, 1) backwards;
-		animation-delay: var(--d);
-	}
 	@media (prefers-reduced-motion: reduce) {
 		.scene,
 		.word.glow,
 		.pulse,
-		.listening.on,
-		.stars span,
-		.trophy {
+		.listening.on {
 			animation: none;
 		}
+	}
+
+	/* The story page: the whole fable, one line at a time lit as Pip reads it. */
+	.story {
+		list-style: none;
+		margin: 0;
+		padding: 0.8rem;
+		width: min(44rem, 94vw);
+		max-height: calc(100dvh - 15rem);
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 24px;
+		background: var(--white);
+	}
+	.line button {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		width: 100%;
+		padding: 0.6rem 0.9rem;
+		border: 3px solid transparent;
+		border-radius: 18px;
+		background: none;
+		text-align: left;
+		font: inherit;
+		color: var(--mute);
+		transition: background-color 150ms, color 150ms;
+	}
+	.line.read button,
+	.title-line button {
+		color: var(--ink);
+	}
+	.line.now button {
+		background: var(--butter);
+		border-color: var(--ink);
+		color: var(--ink);
+	}
+	.scene.small {
+		font-size: 1.6rem;
+		line-height: 1;
+		flex: none;
+		width: 5.4rem;
+		gap: 0.1em;
+	}
+	.text {
+		font-size: clamp(1.3rem, 3.4vw, 1.8rem);
+		line-height: 1.3;
+	}
+	.text.title {
+		font-family: var(--title);
+		font-weight: 700;
+	}
+	.play.faint {
+		opacity: 0.55;
 	}
 </style>
