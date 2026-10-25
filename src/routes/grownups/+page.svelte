@@ -23,7 +23,7 @@
 
 	const T = {
 		en: {
-			title: 'Grown-ups', hint: 'Opened by holding the gear for three seconds. Everything here stays on this device. The flags set the language of the games and of this page.',
+			title: 'Grown-ups', hint: 'Opened by holding the gear for three seconds. Everything here stays on this device. The app starts in English; pick its language here. Each game also has its own flags, for the child.',
 			players: 'Players', little: 'Little', big: 'Big', auto: 'by age', edit: 'Edit', done: 'Done', remove: 'Remove',
 			confirm: 'Remove this player? Stickers and progress on this device stay.', mode: 'Mode',
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
@@ -34,7 +34,7 @@
 				'Reads like a teacher\'s note, not a dashboard: what the child can do now. The full "How we score" page is here, not on the child\'s home.'
 		},
 		nl: {
-			title: 'Volwassenen', hint: 'Open je door het tandwiel drie seconden vast te houden. Alles hier blijft op dit apparaat. De vlaggen kiezen de taal van de spelletjes en van deze pagina.',
+			title: 'Volwassenen', hint: 'Open je door het tandwiel drie seconden vast te houden. Alles hier blijft op dit apparaat. De app begint in het Engels; kies de taal hier. Elk spelletje heeft ook eigen vlaggen, voor het kind.',
 			players: 'Spelers', little: 'Klein', big: 'Groot', auto: 'op leeftijd', edit: 'Wijzig', done: 'Klaar', remove: 'Verwijder',
 			confirm: 'Deze speler verwijderen? Stickers en voortgang op dit apparaat blijven.', mode: 'Stand',
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
@@ -80,17 +80,16 @@
 	<header>
 		<h1>{s.title}</h1>
 		<span class="hint">{s.hint}</span>
-		<div class="flags" role="group" aria-label="Language">
+		<div class="flags" role="group" aria-label={language === 'nl' ? 'Taal' : 'Language'}>
 			{#each LANGUAGES as l (l.id)}
 				<button
 					type="button"
 					class="flag"
-					aria-label={l.name}
 					aria-pressed={language === l.id}
 					onclick={() => {
 						language = l.id;
 						saveLanguage(l.id);
-					}}><Icon name={l.id} size={28} /></button
+					}}><Icon name={l.id} size={26} /><span>{l.name}</span></button
 				>
 			{/each}
 		</div>
@@ -188,12 +187,17 @@
 	}
 	header {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.6rem 1rem;
 	}
 	h1 {
 		margin: 0;
 		font-size: 2rem;
+		white-space: nowrap;
+	}
+	header .hint {
+		flex: 1 1 16rem;
 	}
 	h2 {
 		margin: 0;
@@ -211,17 +215,20 @@
 		margin-left: auto;
 	}
 	.flag {
-		width: 3rem;
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
 		height: 3rem;
-		padding: 0;
+		padding: 0 0.9rem 0 0.4rem;
 		border: 3px solid var(--ink);
-		border-radius: 50%;
+		border-radius: 999px;
 		background: var(--white);
-		display: grid;
-		place-items: center;
+		font: inherit;
+		font-weight: 700;
 	}
 	.flag[aria-pressed='true'] {
-		box-shadow: 0 0 0 4px var(--ink);
+		background: var(--sun);
+		box-shadow: 0 0 0 3px var(--ink);
 	}
 	.close {
 		width: 3rem;

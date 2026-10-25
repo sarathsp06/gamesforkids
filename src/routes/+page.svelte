@@ -9,9 +9,9 @@
 	import GearHold from '#lib/GearHold.svelte';
 	import { speak, stopSpeech, unlockSpeech } from '#lib/audio.ts';
 	import { t } from '#lib/i18n.ts';
-	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import type { Language } from '#lib/words.ts';
 	import { AVATARS, MAX_AGE, MIN_AGE, newId, type Player } from '#lib/players.ts';
-	import { loadLanguage, loadPlayers, loadSettings, saveLanguage, savePlayers, type Players } from '#lib/storage.ts';
+	import { loadLanguage, loadPlayers, loadSettings, savePlayers, type Players } from '#lib/storage.ts';
 	import { levelOf } from '#lib/levels.ts';
 
 	let language = $state<Language>('en');
@@ -118,21 +118,6 @@
 	{/if}
 
 	<footer>
-		<div class="flags" role="group" aria-label="Language">
-			{#each LANGUAGES as l (l.id)}
-				<button
-					type="button"
-					class="round flag"
-					aria-label={l.name}
-					aria-pressed={language === l.id}
-					onclick={() => {
-						language = l.id;
-						saveLanguage(l.id);
-						speak(t(l.id, 'lang.name'), l.id);
-					}}><Icon name={l.id} size={34} /></button
-				>
-			{/each}
-		</div>
 		<div class="links">
 			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 		</div>
@@ -191,9 +176,6 @@
 		place-items: center;
 		padding: 0;
 		flex: none;
-	}
-	.flag[aria-pressed='true'] {
-		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 	.players {
 		display: grid;
@@ -345,10 +327,6 @@
 		width: 100%;
 		max-width: 56rem;
 	}
-	.flags {
-		display: flex;
-		gap: 0.9rem;
-	}
 	.note {
 		margin: 0;
 		font-size: 0.95rem;
@@ -392,9 +370,6 @@
 		}
 		.ages {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
-		}
-		.links {
-			margin-left: 0;
 		}
 		footer {
 			justify-content: space-between;
