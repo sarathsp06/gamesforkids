@@ -72,8 +72,8 @@
 				{/each}
 			</div>
 			<p class="promise">{language === 'nl'
-				? 'Alles blijft in deze browser; er gaat niets naar buiten. Gemaakt door een ouder voor zijn kinderen: gratis, zonder reclame of accounts, en zo blijft het.'
-				: 'Everything stays in this browser; nothing leaves it. Made by a parent for their own children: free, with no ads or accounts, and it will stay that way.'}</p>
+				? 'Alles wat je kind hier doet blijft gewoon hier, in deze browser. Er gaat niets naar buiten. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe: gratis, zonder reclame, zonder accounts.'
+				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
 			<div class="name">
 				<label class="field">
 					<span>{language === 'nl' ? 'Naam (typt een volwassene, of sla over)' : 'Name (a grown-up types it, or skip)'}</span>
@@ -123,6 +123,7 @@
 		<div class="links">
 			<a class="chip" href={resolve('/how-we-score')}>{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
 			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+			<a class="chip" href={resolve('/small-print')}>{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
 		</div>
 		<GearHold />
 	</footer>

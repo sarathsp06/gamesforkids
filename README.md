@@ -19,9 +19,10 @@ site, everything stays on the device.
 
 ## 🤝 A promise
 
-Everything a child does stays in the browser, on that device. Nothing is sent to a server; there are no
-accounts, no ads and no tracking, and there never will be. This is a parent's project for their own children,
-shared freely under the [MIT licence](LICENSE): no plan to sell it, no obligations either way.
+Everything your child does here stays right here, in the browser, on that device. Nothing goes anywhere, and
+nobody is watching. I made this for my own children and I'm glad to share it with yours: free, no ads, no
+accounts, and that's how it will stay. The code is open under the [MIT licence](LICENSE); the firm version of
+all this is the in-app **Small print** page.
 
 ## 🦉 How it's put together
 

@@ -1,0 +1,110 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
+	import Icon from '#lib/Icon.svelte';
+	import { loadLanguage } from '#lib/storage.ts';
+	import type { Language } from '#lib/words.ts';
+
+	let language = $state<Language>('en');
+	onMount(() => (language = loadLanguage()));
+
+	const T = {
+		en: {
+			title: 'The small print',
+			lead: 'The warm version is on the grown-ups page. This is the firm version, so that nothing is left to guesswork.',
+			sections: [
+				['Your data', 'This app stores a child\'s players, stickers, levels, play history and paintings only in this browser\'s local storage, on this device. It sends nothing to any server. It uses no cookies, no analytics, no accounts and no advertising, and it does not identify you or your child. Clearing the browser\'s site data removes everything; nothing is kept anywhere else. Read Along uses the browser\'s own speech recognition: on some browsers that service (for example Apple\'s or Google\'s) processes speech under that browser\'s terms, outside this app\'s control. The app itself keeps no audio.'],
+				['No warranty', 'The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. In no event shall the author be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or its use.'],
+				['No obligations', 'This is a personal project made by a parent for their own children and shared as it is. It may change, break, pause or disappear at any time without notice. There is no promise of support, updates, uptime, continued availability or compatibility, and no commercial relationship of any kind between you and the author. Nothing here is a product or a service you are entitled to.'],
+				['Not advice', 'These are learning games. They are not a curriculum, an assessment, or educational, medical or psychological advice, and they do not replace a teacher or a professional.'],
+				['Licence', 'The code is open source under the MIT licence. You may use, copy, change and share it, including commercially, as long as the licence notice stays with it. Fonts, icons, flags, emoji and voice models come from their own open licences, listed in the README.']
+			],
+			licence: 'Read the MIT licence',
+			back: 'Back to grown-ups'
+		},
+		nl: {
+			title: 'De kleine lettertjes',
+			lead: 'De warme versie staat op de pagina voor volwassenen. Dit is de strikte versie, zodat er niets te raden overblijft.',
+			sections: [
+				['Je gegevens', 'Deze app bewaart de spelers, stickers, niveaus, speelgeschiedenis en tekeningen van een kind alleen in de lokale opslag van deze browser, op dit apparaat. Er wordt niets naar een server gestuurd. Er zijn geen cookies, geen statistieken, geen accounts en geen reclame, en jij en je kind worden niet geïdentificeerd. Als je de sitegegevens van de browser wist, is alles weg; nergens anders wordt iets bewaard. Lees Mee gebruikt de spraakherkenning van de browser zelf: in sommige browsers verwerkt die dienst (bijvoorbeeld die van Apple of Google) spraak onder de voorwaarden van die browser, buiten deze app om. De app zelf bewaart geen geluid.'],
+				['Geen garantie', 'De software wordt geleverd "zoals ze is", zonder enige garantie, uitdrukkelijk of stilzwijgend, met inbegrip van maar niet beperkt tot garanties van verkoopbaarheid, geschiktheid voor een bepaald doel en niet-inbreuk. De maker is in geen geval aansprakelijk voor enige claim, schade of andere aansprakelijkheid, uit overeenkomst, onrechtmatige daad of anderszins, die voortvloeit uit of verband houdt met de software of het gebruik ervan.'],
+				['Geen verplichtingen', 'Dit is een persoonlijk project, door een ouder gemaakt voor de eigen kinderen en gedeeld zoals het is. Het kan op elk moment zonder aankondiging veranderen, kapotgaan, stilvallen of verdwijnen. Er is geen belofte van ondersteuning, updates, beschikbaarheid of compatibiliteit, en er bestaat geen commerciële relatie van welke aard ook tussen jou en de maker. Niets hier is een product of dienst waar je recht op hebt.'],
+				['Geen advies', 'Dit zijn leerspelletjes. Ze zijn geen lesprogramma, geen toets en geen onderwijskundig, medisch of psychologisch advies, en ze vervangen geen leerkracht of professional.'],
+				['Licentie', 'De code is open source onder de MIT-licentie. Je mag ze gebruiken, kopiëren, aanpassen en delen, ook commercieel, zolang de licentievermelding erbij blijft. Lettertypes, iconen, vlaggen, emoji en stemmodellen vallen onder hun eigen open licenties, opgesomd in de README.']
+			],
+			licence: 'Lees de MIT-licentie',
+			back: 'Terug naar volwassenen'
+		}
+	};
+	const s = $derived(T[language]);
+</script>
+
+<svelte:head><title>The small print — Games for Kids</title></svelte:head>
+
+<main>
+	<a class="icon" href={resolve('/grownups')} aria-label={s.back}><Icon name="back" size={28} /></a>
+	<article>
+		<h1>{s.title}</h1>
+		<p class="lead">{s.lead}</p>
+		{#each s.sections as [heading, body] (heading)}
+			<h2>{heading}</h2>
+			<p>{body}</p>
+		{/each}
+		<p class="links">
+			<a href="https://github.com/sarathsp06/gamesforkids/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">{s.licence} ↗</a>
+			<a href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+		</p>
+	</article>
+</main>
+
+<style>
+	main {
+		min-height: 100dvh;
+		padding: 1.5rem 1.25rem 3rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+	.icon {
+		align-self: flex-start;
+		width: 3.5rem;
+		height: 3.5rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 50%;
+		background: var(--white);
+		box-shadow: 0 var(--line) 0 var(--ink);
+		display: grid;
+		place-items: center;
+		color: inherit;
+	}
+	article {
+		width: min(42rem, 100%);
+		font-size: 1.02rem;
+		line-height: 1.55;
+	}
+	h1 {
+		margin: 0.5rem 0 0.25rem;
+		font-size: 2rem;
+	}
+	h2 {
+		margin: 1.6rem 0 0.3rem;
+		font-size: 1.2rem;
+	}
+	.lead {
+		color: var(--mute);
+	}
+	p {
+		margin: 0;
+	}
+	.links {
+		margin-top: 2rem;
+		display: flex;
+		gap: 1.2rem;
+		flex-wrap: wrap;
+		font-weight: 700;
+	}
+	.links a {
+		color: var(--blue);
+	}
+</style>
