@@ -11,7 +11,7 @@
 	const T = {
 		en: {
 			title: 'The small print',
-			lead: 'The warm version is on the grown-ups page. This is the firm version, so that nothing is left to guesswork.',
+			lead: 'Plainly and completely: what this app does with your child\'s data, and what you can and cannot expect from it.',
 			sections: [
 				['Your data', 'This app stores a child\'s players, stickers, levels, play history and paintings only in this browser\'s local storage, on this device. It sends nothing to any server. It uses no cookies, no analytics, no accounts and no advertising, and it does not identify you or your child. Clearing the browser\'s site data removes everything; nothing is kept anywhere else. Read Along uses the browser\'s own speech recognition: on some browsers that service (for example Apple\'s or Google\'s) processes speech under that browser\'s terms, outside this app\'s control. The app itself keeps no audio.'],
 				['No warranty', 'The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement. In no event shall the author be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or its use.'],
@@ -24,7 +24,7 @@
 		},
 		nl: {
 			title: 'De kleine lettertjes',
-			lead: 'De warme versie staat op de pagina voor volwassenen. Dit is de strikte versie, zodat er niets te raden overblijft.',
+			lead: 'Duidelijk en volledig: wat deze app met de gegevens van je kind doet, en wat je er wel en niet van mag verwachten.',
 			sections: [
 				['Je gegevens', 'Deze app bewaart de spelers, stickers, niveaus, speelgeschiedenis en tekeningen van een kind alleen in de lokale opslag van deze browser, op dit apparaat. Er wordt niets naar een server gestuurd. Er zijn geen cookies, geen statistieken, geen accounts en geen reclame, en jij en je kind worden niet geïdentificeerd. Als je de sitegegevens van de browser wist, is alles weg; nergens anders wordt iets bewaard. Lees Mee gebruikt de spraakherkenning van de browser zelf: in sommige browsers verwerkt die dienst (bijvoorbeeld die van Apple of Google) spraak onder de voorwaarden van die browser, buiten deze app om. De app zelf bewaart geen geluid.'],
 				['Geen garantie', 'De software wordt geleverd "zoals ze is", zonder enige garantie, uitdrukkelijk of stilzwijgend, met inbegrip van maar niet beperkt tot garanties van verkoopbaarheid, geschiktheid voor een bepaald doel en niet-inbreuk. De maker is in geen geval aansprakelijk voor enige claim, schade of andere aansprakelijkheid, uit overeenkomst, onrechtmatige daad of anderszins, die voortvloeit uit of verband houdt met de software of het gebruik ervan.'],
