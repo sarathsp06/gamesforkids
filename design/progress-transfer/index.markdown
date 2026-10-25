@@ -19,7 +19,7 @@ what gets persisted, so it is designed as one format from the start.
 ```mermaid
 flowchart LR
   subgraph L["Laptop: Grown-ups"]
-    E["Export this device"] --> B[("Bundle v1\nplayers, stickers, levels,\nsettings, play log, gallery")]
+    E["Export this device"] --> B[("Bundle v1\nplayers, stickers, levels,\nplay log, gallery")]
   end
   B --> Q["QR code\nsite link + one-time room key\nin the #fragment"]
   B --> F["File\ngamesforkids-2026-10-25.json"]
@@ -37,10 +37,12 @@ flowchart LR
 
 - One export format, a versioned bundle, used by every carrier
   - A new pure module `src/lib/transfer.ts` gathers and validates it: `{v: 1, made, players, stickers,
-    levels, painted, settings, language, plays, gallery}`
+    levels, painted, language, plays, gallery}`, plus `settings` only when a grown-up asks for it
     - Levels are the per-game keys `storage.ts` already has (Letter Leap progress, Number Dash bests, Spell,
       Shape, Chess and Read Along levels), copied as they are
     - The gallery is the list of finished pictures as PNG data URLs, newest twelve, as stored today
+  - The play log travels as the last month by default, or all of it, a choice on the send and save screens
+    (decided in review). The device keeps at most 200 plays either way
   - Left out on purpose: the presence friend key and remembered friends. A friendship belongs to a device;
     copying it would make two devices answer as one
   - One validator for every way in: version, known keys, types, ranges, at most twelve pictures, each a PNG
@@ -60,13 +62,18 @@ flowchart LR
     - Can go wrong: someone photographs the QR code across the room. They would also need the laptop's
       grown-up to tap Send on a match they cannot fake; the room closes after five minutes or one send
   - The bundle goes over the data channel, pictures as binary; Pip is not involved, this is grown-up work
+  - Everything on the network is encrypted: the signalling with the room password, the bundle with WebRTC's
+    own end-to-end encryption, so relays and any TURN server only ever carry ciphertext
+    - The small link and the file are not encrypted: they travel by the grown-up's own hand (AirDrop, email,
+      a folder), so whoever holds them can read them, and the screens say so
   - The phone then asks to merge (below). The room stays open a minute longer, so the phone can offer "Send
     this phone's progress back too?", which makes the two devices match after one scan
   - "Or the other way around" needs nothing extra: whichever device shows the code is the one sending
-  - Can go wrong: both devices behind a strict network and no direct connection. After twenty seconds the
-    laptop offers the small link below instead
+  - Can go wrong: both devices behind a strict network and no direct connection
+    - A free TURN relay, if configured, carries the encrypted stream (see Alternatives); otherwise after
+      twenty seconds the laptop offers the small link below
 - A small link, for when the devices are never online together
-  - The bundle without the gallery and with the newest 100 plays, compressed (`CompressionStream`) and
+  - The bundle without the gallery and with the last month of plays (at most 100), compressed (`CompressionStream`) and
     base64url-encoded into the fragment: `…/gamesforkids/#move=…`
     - Shown as a QR code when it fits (about 2 kB), always as a link to copy to AirDrop, a message or email
   - Opening it imports the same way as a live send; the pictures stay behind and the grown-up is told so
@@ -82,7 +89,10 @@ flowchart LR
   - Players match by id, which already travels with the player; a player not here is added
     - Stickers: union per player. Levels: the higher per game. Painted pictures: union. Gallery: union by
       content, newest twelve. Play log: union by game and start time
-    - Settings and language: kept from this device if it has players, taken from the bundle if it is new
+    - Language: kept from this device if it has players, taken from the bundle if it is new
+  - Settings do not travel by default; each device keeps its own (decided in review)
+    - "Also copy settings" is a checkbox on the send and save screens, off. When on, a new device takes them
+      and a device with players asks before replacing its own
   - Can go wrong: the same child set up separately on both devices has two ids. The confirm screen shows a
     player whose name and age match one already here with "Same child?", and Yes merges the two
   - A stale or repeated import is harmless: every rule is a union or a maximum
@@ -109,9 +119,16 @@ flowchart LR
   less friction and carries a longer key.
 - The small link as the only way: no network needed, but it cannot carry the pictures, and a full play log
   makes the QR code too dense to scan.
-- A cloud mailbox or relay of ours, even a free one: breaks "no accounts, nothing goes anywhere", and holds
-  children's data. The Worker relay from the presence design would only pass encrypted bytes through, so it
-  stays acceptable as a fallback transport, never as storage.
+- A free relay (asked in review): yes, as a pass-through, never as a mailbox.
+  - A free TURN relay, such as a public TURN service's free tier, is the right kind: it only forwards the
+    WebRTC stream, which is end-to-end encrypted (DTLS) between the two devices, and stores nothing
+    - It fixes the one case the design cannot handle today, two devices on strict networks; its terms and
+      limits need checking before we rely on it, and its credentials sit in the app's source
+  - A free mailbox (upload now, download later) is the wrong kind, even encrypted with the key from the QR:
+    the bundle sits on someone else's server for a while, which breaks "nothing goes anywhere" (decided in
+    review: pass-through relays only)
+  - The Worker relay from the presence design is the pass-through kind too, so it stays acceptable as a
+    fallback transport, never as storage
 - Importing without confirmation: a stray link could change a device; rejected.
 
 ## Behaviour
@@ -124,7 +141,3 @@ flowchart LR
 - A file from a newer version of the app: refused with "Update this page and try again"; an older version is
   read and upgraded.
 
-## Open Questions
-
-- Should settings travel at all, or should each device keep its own (a phone may want Pip quieter)?
-- Should the play log travel in full, or only the newest weeks the grown-ups' week view shows?
