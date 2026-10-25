@@ -11,7 +11,7 @@
 	import { t } from '#lib/i18n.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { AVATARS, MAX_AGE, MIN_AGE, newId, type Player } from '#lib/players.ts';
-	import { loadLanguage, loadPlayers, saveLanguage, savePlayers, type Players } from '#lib/storage.ts';
+	import { loadLanguage, loadPlayers, loadSettings, saveLanguage, savePlayers, type Players } from '#lib/storage.ts';
 	import { levelOf } from '#lib/levels.ts';
 
 	let language = $state<Language>('en');
@@ -19,10 +19,13 @@
 	let adding = $state(false);
 	let draft = $state<Player>({ id: '', name: '', avatar: 0, age: 4 });
 	let greeted = $state(false);
+	/** The grown-ups turned on Paint Pot with others: the promise says what that changes. */
+	let online = $state(false);
 
 	onMount(() => {
 		language = loadLanguage();
 		players = loadPlayers();
+		online = loadSettings().online;
 		if (!players.list.length) startAdd();
 		return stopSpeech;
 	});
@@ -74,9 +77,14 @@
 			<p class="promise">{language === 'nl'
 				? 'Alles wat je kind hier doet blijft gewoon hier, in deze browser. Er gaat niets naar buiten. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe: gratis, zonder reclame, zonder accounts.'
 				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
+			{#if online}
+				<p class="promise">{language === 'nl'
+					? 'Behalve dit, want "Samen met anderen" staat aan: in Verfpot ziet dit apparaat andere apparaten rechtstreeks, en die zien zijn internetadres. Gedeeld wordt alleen welk gezichtje je kind koos en de kleuren van afgemaakte tekeningen.'
+					: 'Except this, because "Play with others" is on: in Paint Pot this device connects directly to other devices, which see its internet address. All it shares is which face your child picked and the colours of finished pictures.'}</p>
+			{/if}
 			<div class="info">
-				<a class="chip" href="{resolve('/how-we-score')}?from=start">{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
-				<a class="chip" href="{resolve('/small-print')}?from=start">{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
+				<a class="chip" href="{resolve('/how-we-score')}/?from=start">{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
+				<a class="chip" href="{resolve('/small-print')}/?from=start">{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
 				<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 			</div>
 			<div class="name">

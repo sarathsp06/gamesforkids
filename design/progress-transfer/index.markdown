@@ -49,7 +49,7 @@ flowchart LR
     data URL under 200 kB. Anything else refuses the whole bundle, with a plain grown-up message
 - Scan a QR code: the main way, live over the peer-to-peer channel
   - "Send to another device" in Grown-ups shows a QR code of the site link with a one-time room key in the
-    fragment: `…/gamesforkids/#take=<room>.<key>`
+    fragment: `…/gamesforkids/move/#take=<key>`, and a "No camera? Copy the link instead" button beside it
     - A fragment never leaves the browser, so GitHub Pages never sees the key. The phone's own camera app
       reads the code and opens the browser: no scanner in the app
     - The key is 128 random bits; the room id and the Trystero room password are both derived from it, so

@@ -24,6 +24,9 @@ nobody is watching. I made this for my own children and I'm glad to share it wit
 accounts, and that's how it will stay. The code is open under the [MIT licence](LICENSE); the firm version of
 all this is the in-app **Small print** page.
 
+Two things a grown-up can choose to turn on change that, and the app says so where it makes the promise:
+painting with others in Paint Pot, and moving progress to another device (see Parents below).
+
 ## 🦉 How it's put together
 
 - **Who is playing?** A player is a drawn face, a name and an age, kept on the device. Age picks the mode:
@@ -72,7 +75,10 @@ for t in tests/*.test.ts; do npx tsx "$t"; done
 SvelteKit (Svelte 5), TypeScript, prerendered to a static site. No game engine: boards are DOM and generated SVG,
 animation is CSS. Progress lives in `localStorage`. Runtime dependencies are a font and, for Paint Pot only, two small
 canvas libraries: [Atrament](https://github.com/jakubfiala/atrament) for the brush and
-[q-floodfill](https://github.com/pavelkukov/q-floodfill) for the paint bucket.
+[q-floodfill](https://github.com/pavelkukov/q-floodfill) for the paint bucket. Two more load only when a grown-up
+uses what needs them: [Trystero](https://github.com/dmotz/trystero) for peer-to-peer rooms (Paint Pot with others,
+moving progress) and [qrcode](https://github.com/soldair/node-qrcode) for the move code. Both are MIT. Designs:
+[presence](design/presence/index.markdown), [moving progress](design/progress-transfer/index.markdown).
 
 ## 🚀 Deploy
 
@@ -86,6 +92,13 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
 - **Read Along microphone:** the browser asks once for microphone access. Speech is recognised on the device where
   the browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app
   keeps no audio.
+- **Paint Pot with others** (Grown-ups, off by default): your child sees the faces of other children painting and
+  the pictures they finish, and can paint side by side with a friend you paired with four pictures. Devices
+  connect directly, so they can see each other's internet address; only a drawn face, a screen and one colour
+  per area of a picture are shared. No names, no chat, nothing typed, nothing stored.
+- **Move to another device** (Grown-ups): show a QR code and scan it with the other device's camera; check the
+  two pictures match and tap Send. Or save a file, or copy a small link that works without a connection.
+  Taking progress in always adds to what is there and asks first.
 
 ## 📜 Credits
 

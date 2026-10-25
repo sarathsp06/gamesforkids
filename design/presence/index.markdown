@@ -79,8 +79,9 @@ devices to each other; all messages go peer to peer.
     - In the public room every device online learns the IP of every other, including anyone who opens the
       room with a script
     - That is the cost of running no server, and why the feature is off until a grown-up turns it on
-    - Public rooms are small on purpose: the room id includes the language and a random shard of four, so a
-      child shares a mesh with a handful of devices
+    - The public room is per language, in one shard for now (changed when built: with four random shards,
+      two of the few devices online rarely met). Every device connects to every other, so the shard count is
+      the knob to raise if a room ever gets crowded
   - Plan B if signalling proves flaky on school or home networks: a tiny Cloudflare Worker with one Durable
     Object per room, relaying the same JSON over WebSockets
     - About 80 lines, the free tier covers it, and nothing is peer to peer any more, so other devices never
@@ -167,16 +168,17 @@ devices to each other; all messages go peer to peer.
   - Paired once, the two devices remember each other, so next time no code is needed (added in review)
     - On first use each device makes a random 128-bit friend key and stores it in `localStorage`; the two
       swap keys inside the pair room, and each keeps the other's key and avatar as a remembered friend
-    - In the public room a device's presence carries, per friend, a daily tag: a hash of the friend key and
-      the date. A friend recognises the tag; a stranger cannot invert it or forge it
-    - The friend is online and the switch is on: their avatar shows on the strip with the heart. Tapping it
-      makes Pip ask "Ask your friend to paint with you?" with one big ▶
-    - The invite is `knock {tag, nonce}`; the friend's device checks the tag and Pip says "Your friend wants
-      to play! Come?" with one big ▶. Both derive the private room from the friend key, the date and the nonce
+    - Each friendship has its own private room, named and locked by a hash of both friend keys (changed when
+      built, from daily tags in the public room: friends find each other whichever public shard they are in,
+      and nothing about a friendship appears in the public room at all)
+    - With the switch on, a device in Paint Pot joins each friend's room. The friend is there: their avatar
+      shows on the strip with the heart. Tapping it makes Pip ask "Ask your friend to paint with you?"
+    - The invite goes in that room; the friend's Pip says "Your friend wants to paint with you! Come?" with one
+      big ▶ and a ✕. Yes, and both paint side by side in the same room
     - A grown-up can forget a friend in Grown-ups, in the Players box. The friend key is per device, not per
       player: a friendship is between two family devices, and siblings on one tablet share it
-    - Can go wrong: a child taps the heart avatar again and again. One knock per friend per minute; a knock
-      the friend ignores just fades, with no sound on either side
+    - Can go wrong: a child taps the heart avatar again and again. One invite per friend per minute; an
+      invite the friend ignores just fades, with no sound on either side
   - The one mode in this version is cooperative: `docs/learning.md` says children this age learn poorly from
     losing, so there is never a loser and never a score per child
     - Side by side (Paint Pot): the same picture, but each child paints their own copy, never one shared
@@ -198,7 +200,7 @@ devices to each other; all messages go peer to peer.
       their current fills. After that, a new invite is needed
 - Fits the rest of the app
   - New: `src/lib/presence.ts` (pure: message types, the validator, region labelling, the pair-code hash,
-    the friend tag) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)
+    the friend room) and `src/lib/presence.svelte.ts` (the room: join, leave, send, state for strip and shelf)
     - The strip is its own component, `src/lib/PresenceStrip.svelte`; the switch and pairing go in the
       Grown-ups dialog
   - Moving progress to another device uses the same transport: a QR code opens a one-time private room
@@ -212,8 +214,7 @@ devices to each other; all messages go peer to peer.
     - The validator accepts each good message and rejects an unknown field, a wrong type, an avatar out of
       range, an unknown picture, too few fills, a list over 24
     - The pair-code room id is deterministic and never equals the public room id
-    - The daily friend tag matches for the same key and date, differs for another key or the next day, and
-      a knock with a wrong tag is rejected
+    - Both friends derive the same friend room whichever key is whose, and a third key gives another room
 
 ## Alternatives
 
@@ -272,9 +273,9 @@ devices to each other; all messages go peer to peer.
 - The child changes player mid-session: the avatar in the presence message changes, the peer id does not; the
   shelf is kept.
 - The page is closed or the tab sleeps: Trystero's leave runs on `pagehide`; peers see the avatar go.
-- A device that is not a friend sends a knock, or guesses at one: no tag matches, so it is dropped and
-  nothing shows on the child's screen. Only a grown-up pairing makes a friend; nothing a child does online
-  can, and the tags strangers see change every day, so they cannot follow a device across days either.
+- A device that is not a friend wants to invite: it cannot, because invites only exist inside a friend room,
+  and finding that room takes both friend keys. Only a grown-up pairing makes a friend; nothing a child does
+  online can.
 - Two children pair while the public switch is off: pairing works on its own, since it is a separate room;
   the public strip stays hidden.
 
