@@ -426,7 +426,7 @@
 		.links a,
 		.foot a {
 			display: inline-block;
-			padding: 0.7rem 0;
+			padding: 0.75rem 0;
 		}
 	}
 </style>

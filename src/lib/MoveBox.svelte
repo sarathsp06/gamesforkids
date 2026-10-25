@@ -291,4 +291,11 @@
 		display: flex;
 		gap: 0.8rem;
 	}
+	/* Phones: a finger, not a mouse, so every control is at least 44 px. */
+	@media (max-width: 600px) {
+		button,
+		select {
+			min-height: 2.75rem;
+		}
+	}
 </style>

@@ -112,4 +112,11 @@
 	.links a {
 		color: var(--blue);
 	}
+	/* Phones: the two links are tapped, not clicked, so give them a finger's height. */
+	@media (max-width: 600px) {
+		.links a {
+			display: inline-block;
+			padding: 0.7rem 0;
+		}
+	}
 </style>
