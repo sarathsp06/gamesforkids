@@ -87,6 +87,7 @@
 				onclick={() => open(g.id)}
 			>
 				<GameArt game={g.id} width={mode === 'little' ? 170 : 120} />
+				{#if g.together}<span class="together" title={language === 'nl' ? 'Samen met een vriendje' : 'Play with a friend'}><Icon name="friends" size={26} /></span>{/if}
 				{#if mode === 'big'}
 					<span class="tname">{label(g.id)}</span>
 					<span class="dots" aria-hidden="true">
@@ -200,6 +201,22 @@
 		color: inherit;
 		text-decoration: none;
 		transition: transform 120ms, box-shadow 120ms;
+	}
+	/* A game that can be played with a paired friend says so on its tile. */
+	.tile {
+		position: relative;
+	}
+	.together {
+		position: absolute;
+		top: 0.6rem;
+		right: 0.6rem;
+		width: 2.6rem;
+		height: 2.6rem;
+		display: grid;
+		place-items: center;
+		border: 3px solid var(--ink);
+		border-radius: 50%;
+		background: var(--sky);
 	}
 	.tile:active,
 	.tile.opening {

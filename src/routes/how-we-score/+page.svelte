@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Icon from '#lib/Icon.svelte';
+	// Opened from the first page while adding a child, or from Grown-ups: Back goes where it came from.
+	const back = $derived(page.url.searchParams.get('from') === 'start' ? resolve('/') : resolve('/grownups'));
 </script>
 
 <svelte:head><title>How we score — for parents</title></svelte:head>
 
 <main>
-	<a class="icon" href={resolve('/grownups')} aria-label="Back"><Icon name="back" size={28} /></a>
+	<a class="icon" href={back} aria-label="Back"><Icon name="back" size={28} /></a>
 
 	<article>
 		<h1>How we score</h1>

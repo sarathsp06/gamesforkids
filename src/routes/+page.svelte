@@ -9,9 +9,9 @@
 	import GearHold from '#lib/GearHold.svelte';
 	import { speak, stopSpeech, unlockSpeech } from '#lib/audio.ts';
 	import { t } from '#lib/i18n.ts';
-	import { LANGUAGES, type Language } from '#lib/words.ts';
+	import type { Language } from '#lib/words.ts';
 	import { AVATARS, MAX_AGE, MIN_AGE, newId, type Player } from '#lib/players.ts';
-	import { loadLanguage, loadPlayers, saveLanguage, savePlayers, type Players } from '#lib/storage.ts';
+	import { loadLanguage, loadPlayers, loadSettings, savePlayers, type Players } from '#lib/storage.ts';
 	import { levelOf } from '#lib/levels.ts';
 
 	let language = $state<Language>('en');
@@ -19,10 +19,13 @@
 	let adding = $state(false);
 	let draft = $state<Player>({ id: '', name: '', avatar: 0, age: 4 });
 	let greeted = $state(false);
+	/** The grown-ups turned on Paint Pot with others: the promise says what that changes. */
+	let online = $state(false);
 
 	onMount(() => {
 		language = loadLanguage();
 		players = loadPlayers();
+		online = loadSettings().online;
 		preloadCode('/home'); // the next screen after a tap on a player
 		if (!players.list.length) startAdd();
 		return stopSpeech;
@@ -75,6 +78,16 @@
 			<p class="promise">{language === 'nl'
 				? 'Alles wat je kind hier doet blijft gewoon hier, in deze browser. Er gaat niets naar buiten. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe: gratis, zonder reclame, zonder accounts.'
 				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
+			{#if online}
+				<p class="promise">{language === 'nl'
+					? 'Behalve dit, want "Samen met anderen" staat aan: in Verfpot ziet dit apparaat andere apparaten rechtstreeks, en die zien zijn internetadres. Gedeeld wordt alleen welk gezichtje je kind koos en de kleuren van afgemaakte tekeningen.'
+					: 'Except this, because "Play with others" is on: in Paint Pot this device connects directly to other devices, which see its internet address. All it shares is which face your child picked and the colours of finished pictures.'}</p>
+			{/if}
+			<div class="info">
+				<a class="chip" href="{resolve('/how-we-score')}/?from=start">{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
+				<a class="chip" href="{resolve('/small-print')}/?from=start">{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
+				<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+			</div>
 			<div class="name">
 				<label class="field">
 					<span>{language === 'nl' ? 'Naam (typt een volwassene, of sla over)' : 'Name (a grown-up types it, or skip)'}</span>
@@ -106,25 +119,8 @@
 	{/if}
 
 	<footer>
-		<div class="flags" role="group" aria-label="Language">
-			{#each LANGUAGES as l (l.id)}
-				<button
-					type="button"
-					class="round flag"
-					aria-label={l.name}
-					aria-pressed={language === l.id}
-					onclick={() => {
-						language = l.id;
-						saveLanguage(l.id);
-						speak(t(l.id, 'lang.name'), l.id);
-					}}><Icon name={l.id} size={34} /></button
-				>
-			{/each}
-		</div>
 		<div class="links">
-			<a class="chip" href={resolve('/how-we-score')}>{language === 'nl' ? 'Hoe we scoren ›' : 'How we score ›'}</a>
 			<a class="chip" href="https://github.com/sarathsp06/gamesforkids" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-			<a class="chip" href={resolve('/small-print')}>{language === 'nl' ? 'Kleine lettertjes' : 'Small print'}</a>
 		</div>
 		<GearHold />
 	</footer>
@@ -181,9 +177,6 @@
 		place-items: center;
 		padding: 0;
 		flex: none;
-	}
-	.flag[aria-pressed='true'] {
-		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
 	}
 	.players {
 		display: grid;
@@ -335,10 +328,6 @@
 		width: 100%;
 		max-width: 56rem;
 	}
-	.flags {
-		display: flex;
-		gap: 0.9rem;
-	}
 	.note {
 		margin: 0;
 		font-size: 0.95rem;
@@ -350,6 +339,12 @@
 		display: flex;
 		gap: 0.7rem;
 		margin-left: auto;
+	}
+	.info {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.7rem;
 	}
 	.chip {
 		padding: 0.55rem 1rem;
@@ -376,9 +371,6 @@
 		}
 		.ages {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
-		}
-		.links {
-			margin-left: 0;
 		}
 		footer {
 			justify-content: space-between;

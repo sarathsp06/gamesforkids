@@ -1,10 +1,18 @@
 <script lang="ts">
-	/** The grown-ups' gate: hold the gear for three seconds (a ring fills); a tap does nothing. */
+	/**
+	 * The grown-ups' gate: hold for three seconds (a ring fills); a tap does nothing. By default it is the gear
+	 * that opens Grown-ups; `onHeld` makes the same gate open something else.
+	 */
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Icon from './Icon.svelte';
+	import Icon, { type IconName } from './Icon.svelte';
 
-	let { size = 56 }: { size?: number } = $props();
+	let {
+		size = 56,
+		icon = 'gear',
+		label = 'Grown-ups: hold for three seconds',
+		onHeld = () => goto(resolve('/grownups'))
+	}: { size?: number; icon?: IconName; label?: string; onHeld?: () => void } = $props();
 	const HOLD_MS = 3000;
 	let holding = $state(false);
 	let timer = 0;
@@ -13,7 +21,7 @@
 		holding = true;
 		timer = window.setTimeout(() => {
 			holding = false;
-			goto(resolve('/grownups'));
+			onHeld();
 		}, HOLD_MS);
 	}
 	function stop() {
@@ -27,7 +35,7 @@
 	class="gear"
 	class:holding
 	style="--size: {size}px"
-	aria-label="Grown-ups: hold for three seconds"
+	aria-label={label}
 	onpointerdown={start}
 	onpointerup={stop}
 	onpointerleave={stop}
@@ -37,7 +45,7 @@
 	oncontextmenu={(e) => e.preventDefault()}
 >
 	<svg class="ring" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" /></svg>
-	<Icon name="gear" size={Math.round(size * 0.5)} />
+	<Icon name={icon} size={Math.round(size * 0.5)} />
 </button>
 
 <style>
