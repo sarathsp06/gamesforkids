@@ -21,7 +21,6 @@
 	import retry from '@material-symbols/svg-600/rounded/refresh.svg?raw';
 	import games from '@material-symbols/svg-600/rounded/grid_view.svg?raw';
 	import back from '@material-symbols/svg-600/rounded/arrow_back.svg?raw';
-	import friends from '@material-symbols/svg-600/rounded/group-fill.svg?raw';
 	import timer from '@material-symbols/svg-600/rounded/timer.svg?raw';
 	import zoomIn from '@material-symbols/svg-600/rounded/zoom_in.svg?raw';
 	import zoomOut from '@material-symbols/svg-600/rounded/zoom_out.svg?raw';
@@ -30,7 +29,7 @@
 	import flagNl from 'circle-flags/flags/nl.svg';
 	import flagEn from 'circle-flags/flags/gb.svg';
 
-	const SYMBOLS = { home, play, speaker, star, gear, undo, brush, bucket, check, book, plus, close, lock, mic, retry, games, back, friends, timer, zoomIn, zoomOut, draw, trash };
+	const SYMBOLS = { home, play, speaker, star, gear, undo, brush, bucket, check, book, plus, close, lock, mic, retry, games, back, timer, zoomIn, zoomOut, draw, trash };
 	const FLAGS = { nl: flagNl, en: flagEn };
 	export type IconName = keyof typeof SYMBOLS | keyof typeof FLAGS;
 

@@ -180,13 +180,14 @@ export interface Settings {
 	clock: boolean;
 	/** How fast Pip talks: calm is the recorded pace, normal a little quicker. */
 	pace: 'calm' | 'normal';
-	/** Paint Pot shows other children and their pictures, through encrypted relay messages. Off until a grown-up turns it on. */
-	online: boolean;
 }
-export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, clock: true, pace: 'calm', online: false });
+export const defaultSettings = (): Settings => ({ v: 1, voice: true, sound: true, clock: true, pace: 'calm' });
 export const loadSettings = (): Settings => {
-	const s = read<Partial<Settings> | null>(SETTINGS, null);
-	return s?.v === 1 ? { ...defaultSettings(), ...s } : defaultSettings();
+	const s = read<(Partial<Settings> & { online?: unknown }) | null>(SETTINGS, null);
+	if (s?.v !== 1) return defaultSettings();
+	// Painting with others was a setting once: it is gone, and not carried along.
+	delete s.online;
+	return { ...defaultSettings(), ...s };
 };
 export const saveSettings = (s: Settings) => write(SETTINGS, s);
 

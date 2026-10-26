@@ -389,7 +389,7 @@ export const STAMPS: Stamp[] = [
 
 /**
  * Blank paper: the child draws their own picture. Never done: it gets no star and no chapter dot, and can be drawn
- * on again as often as the child likes. Not one of PICTURES, so it never travels to a friend.
+ * on again as often as the child likes. Not one of PICTURES.
  */
 export const BLANK: Picture = {
 	id: 'blank',

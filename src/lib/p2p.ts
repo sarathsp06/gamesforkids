@@ -1,13 +1,12 @@
 /**
- * The one door to the network (design/presence, design/progress-transfer). Devices never connect to each
+ * The one door to the network (design/progress-transfer). Devices never connect to each
  * other: every message goes through a handful of public Nostr relays, encrypted with a key only the devices
  * in that room know (AES-GCM, from the room name and password). Relays see an opaque topic, scrambled bytes
  * and the device's internet address; other devices see none of that. This works on any network a web page
  * works on, where a direct connection is often blocked (mobile data, guest Wi-Fi, schools).
  *
- * Nothing loads or connects until a room is opened, so with the online switch off no relay is contacted.
+ * Nothing loads or connects until a room is opened: only moving progress to another device opens one.
  */
-import type { Limiter, Kind } from './presence';
 
 export const APP_ID = 'gamesforkids.sarathsp06';
 /** Relays checked to pass these messages without an account (October 2026). Each message goes to all of them. */
@@ -251,35 +250,16 @@ export interface Channel<T> {
 	on: (handler: (data: T, peer: string) => void) => void;
 }
 
-/**
- * A named message type in a room. Anything that fails `check`, or comes faster than the limiter allows, is
- * dropped without a trace a child could see. `every` sends at most one message per that many ms, the latest
- * one winning (a crayon position: only where it is now matters).
- */
-export function channel<T>(room: Room, name: Kind | string, check: (x: unknown) => x is T, limiter?: Limiter, every = 0): Channel<T> {
+/** A named message type in a room. Anything that fails `check` is dropped without a trace a child could see. */
+export function channel<T>(room: Room, name: string, check: (x: unknown) => x is T): Channel<T> {
 	const r = room as RelayRoom;
 	let handler: ((data: T, peer: string) => void) | null = null;
 	r.handlers.set(name, (data, peer) => {
 		if (!check(data)) return;
-		if (limiter && !limiter.allow(peer, name as Kind)) return;
 		handler?.(data, peer);
 	});
-	let last = 0;
-	let pending: { data: T; to?: string } | null = null;
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const flush = () => {
-		if (!pending) return;
-		last = Date.now();
-		void r.send(name, pending.data, pending.to);
-		pending = null;
-	};
 	return {
-		send: (data, to) => {
-			pending = { data, to };
-			const wait = last + every - Date.now();
-			if (wait <= 0) flush();
-			else if (!timer) timer = setTimeout(() => ((timer = undefined), flush()), wait);
-		},
+		send: (data, to) => void r.send(name, data, to),
 		on: (h) => (handler = h)
 	};
 }

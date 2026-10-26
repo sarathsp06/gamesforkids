@@ -4,7 +4,7 @@
  * relays see neither the key nor the data: the bundle crosses them encrypted, in pieces.
  */
 import { channel, openRoom, type Room } from './p2p';
-import { CODE_PICTURES, isKey, sha256 } from './presence';
+import { CODE_PICTURES, isKey, sha256 } from './keys';
 import { validate, type Bundle } from './transfer';
 
 export const HANDOFF_MS = 5 * 60_000;

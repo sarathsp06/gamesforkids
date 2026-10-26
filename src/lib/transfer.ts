@@ -114,7 +114,8 @@ const validLevels = (l: unknown): l is Levels =>
 const validSettings = (s: unknown): s is Settings => {
 	if (!isObj(s) || s.v !== 1) return false;
 	const d = defaultSettings();
-	return Object.entries(s).every(([k, v]) => k in d && typeof v === typeof d[k as keyof Settings]);
+	// `online` comes from earlier versions, where painting with others was a setting; it is ignored.
+	return Object.entries(s).every(([k, v]) => k === 'online' || (k in d && typeof v === typeof d[k as keyof Settings]));
 };
 
 export function validate(x: unknown): Bundle | null {

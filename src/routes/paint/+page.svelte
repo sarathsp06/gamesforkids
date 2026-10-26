@@ -13,12 +13,6 @@
 	import Reward from '#lib/Reward.svelte';
 	import { awardSticker } from '#lib/stickers.ts';
 	import { trackPlay } from '#lib/playlog.ts';
-	import { currentPlayer, loadSettings, saveSettings } from '#lib/storage.ts';
-	import { Together, type Event as TogetherEvent, type Friend } from '#lib/presence.svelte.ts';
-	import PresenceStrip from '#lib/PresenceStrip.svelte';
-	import TogetherSheet from '#lib/TogetherSheet.svelte';
-	import Avatar from '#lib/Avatar.svelte';
-	import { drawFills, fillsOf, pictureUrl, regionsOf } from '#lib/regions.ts';
 	import type { Line } from '#lib/i18n.ts';
 
 	// The paper fills the window: its bitmap is SIZE on the short side and as long as the window on the other, up to
@@ -37,9 +31,6 @@
 	const TOLERANCE = 48; // per colour channel: a fill also takes the soft edges of brush strokes
 	const UNDO_MAX = 8;
 	const THUMB = 480; // gallery pictures, in pixels on their longer side
-	const FILLS_MS = 3000; // how often a friend painting alongside sees this picture's colours
-	const AT_MS = 100; // and this crayon's position
-	const FILLS_AGAIN_MS = 9000; // the same colours again, in case a message was lost
 
 	let phase = $state<'start' | 'paint' | 'done' | 'gallery'>('start');
 	/** The story whose pictures are shown; none: the list of chapters. */
@@ -69,7 +60,7 @@
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
 	let viewing = $state('');
-	/** The child's own picture being viewed, by its place in the gallery; -1: another child's picture. */
+	/** The picture being viewed, by its place in the gallery; -1: none. */
 	let viewingAt = $state(-1);
 	/** The bin was tapped: asking whether to throw the picture away. */
 	let confirming = $state(false);
@@ -100,131 +91,13 @@
 	let pad: Atrament | null = null;
 	let undo: ImageData[] = [];
 
-	// Painting with others (design/presence): only when a grown-up turned it on.
-	let online = $state(false);
-	let together = $state<Together | null>(null);
-	let sheet = $state<TogetherSheet>();
-	let me = $state(0);
-	/** Pip's line about the others, shown and said once; cleared on the next screen. */
+	/** Pip's line for a moment (asking before a picture is thrown away); cleared on the next screen. */
 	let otherLine = $state<Line | null>(null);
-	/** Pip asking something about a friend: the child answers with ▶ or ✕. */
-	let asking = $state<{ kind: 'ask'; key: string } | { kind: 'wants' } | null>(null);
-	let friendCanvas = $state<HTMLCanvasElement>();
-	let shelfSaid = false;
-	let lastFills = '';
-	let lastFillsAt = 0;
-	let lastAt = 0;
-	let fillsTimer: ReturnType<typeof setInterval> | undefined;
-	const screen = $derived(phase === 'paint' ? 'paint' : chapter ? 'pictures' : 'chapters');
-	$effect(() => together?.setScreen(screen));
 
-	function say(
-		key: 'paint.others' | 'paint.delete' | 'friend.here' | 'friend.ask' | 'friend.wants' | 'friend.yes' | 'friend.no' | 'friend.finished' | 'friend.away' | 'friend.how' | 'friend.pick'
-	) {
+	function say(key: 'paint.delete') {
 		otherLine = t(language, key);
 		speak(otherLine, language);
 	}
-
-	function heard(e: TogetherEvent, data?: string) {
-		if (e === 'friendHere' && phase === 'start') say('friend.here');
-		else if (e === 'invited') {
-			asking = { kind: 'wants' };
-			say('friend.wants');
-		} else if (e === 'accepted') {
-			say('friend.yes');
-			// Already on a picture while the yes was on its way: bring the friend to it.
-			if (phase === 'paint') together?.openPicture(picture.id);
-		}
-		else if (e === 'declined') say('friend.no');
-		else if (e === 'friendDone') say('friend.finished');
-		else if (e === 'friendAway') say('friend.away');
-		else if (e === 'open' && data) {
-			const p = PICTURES.find((x) => x.id === data);
-			if (p && (phase !== 'paint' || picture.id !== p.id)) choose(p, false);
-		}
-	}
-
-	function onFriend(key: string) {
-		if (together?.with) return;
-		asking = { kind: 'ask', key };
-		say('friend.ask');
-	}
-	/** The friends button: the sheet shows who is here, and tells a grown-up how to pair. */
-	function openTogether() {
-		asking = null;
-		sheet?.open();
-		say(together && Object.keys(together.online).length ? 'friend.pick' : 'friend.how');
-	}
-	function inviteFromSheet(key: string) {
-		otherLine = null;
-		if (together && !together.with) together.invite(key);
-	}
-	function startTogether() {
-		const tg = new Together();
-		tg.on(heard);
-		together = tg;
-		void tg.start({ language, avatar: me, publicToo: true }).catch((e) => console.warn('Paint Pot together: could not connect', e));
-	}
-	/** The grown-ups switch, turned from the sheet: connect or leave at once, as Grown-ups would on the next visit. */
-	function setOnline(on: boolean) {
-		saveSettings({ ...loadSettings(), online: on });
-		online = on;
-		if (on && !together) startTogether();
-		if (!on) {
-			together?.stop();
-			together = null;
-		}
-	}
-	function friendAdded(f: Friend) {
-		void together?.meet(f);
-	}
-
-	function answerAsk(yes: boolean) {
-		const a = asking;
-		asking = null;
-		otherLine = null;
-		if (!a || !together) return;
-		if (a.kind === 'ask') {
-			if (yes) together.invite(a.key);
-		} else together.answer(yes);
-	}
-
-	/** This picture as region crayons: what a friend sees and what the shelf shows. Null if it can't be read. */
-	function currentFills() {
-		const r = regionsOf(picture.id);
-		return r && paper ? { n: r.count, fills: fillsOf(paper, r, at) } : null;
-	}
-	function sendFills() {
-		if (!together?.painting || phase !== 'paint') return;
-		const f = currentFills();
-		if (!f) return;
-		const key = JSON.stringify(f.fills);
-		// Unchanged colours go again now and then: a message lost on the way never leaves the friend's view stale.
-		if (key === lastFills && Date.now() - lastFillsAt < FILLS_AGAIN_MS) return;
-		lastFills = key;
-		lastFillsAt = Date.now();
-		together.sendFills({ v: 1, picture: picture.id, ...f });
-	}
-	function sendAt(e: PointerEvent) {
-		if (!together?.painting || !e.isPrimary || Date.now() - lastAt < AT_MS) return;
-		lastAt = Date.now();
-		// Where on the picture, not the paper: the friend's copy is just the picture.
-		const x = ((e.offsetX * w) / paper!.offsetWidth - at.x) / at.s;
-		const y = ((e.offsetY * h) / paper!.offsetHeight - at.y) / at.s;
-		if (x >= 0 && x <= 1 && y >= 0 && y <= 1) together.sendAt({ v: 1, x, y });
-	}
-	// The friend's picture, redrawn from their crayons whenever new ones arrive.
-	$effect(() => {
-		const f = together?.friendFills;
-		if (friendCanvas && f && f.picture === picture.id) drawFills(friendCanvas, f.picture, f.n, f.fills);
-	});
-	$effect(() => {
-		if (phase === 'gallery' && together?.shelf.length && !shelfSaid) {
-			shelfSaid = true;
-			say('paint.others');
-		}
-	});
-	const friendView = $derived(!!together?.with && together.with.state !== 'invited' && together.with.state !== 'asking' && phase === 'paint');
 
 	onMount(() => {
 		language = loadLanguage();
@@ -232,14 +105,8 @@
 		done = loadPainted();
 		big = document.documentElement.dataset.mode !== 'little';
 		const stop = trackPlay('paint');
-		me = currentPlayer()?.avatar ?? 0;
-		online = loadSettings().online;
-		if (online) startTogether();
-		fillsTimer = setInterval(sendFills, FILLS_MS);
 		return () => {
 			stop();
-			clearInterval(fillsTimer);
-			together?.stop();
 			clearTimeout(doneTimer);
 			pad?.destroy();
 			stopSpeech();
@@ -266,12 +133,8 @@
 		canUndo = true;
 	}
 
-	async function choose(p: Picture, tellFriend = true) {
+	async function choose(p: Picture) {
 		otherLine = null;
-		asking = null;
-		lastFills = '';
-		// Blank paper is the child's own drawing: nothing of it goes to a friend.
-		if (tellFriend && p.id !== BLANK.id) together?.openPicture(p.id);
 		picture = p;
 		tool = 'brush';
 		tray = false;
@@ -501,7 +364,6 @@
 	}
 
 	function paperMove(e: PointerEvent) {
-		sendAt(e);
 		if (!e.isPrimary || tool !== 'shape') return;
 		const [x, y] = bitmap(e);
 		const g = gesture;
@@ -570,13 +432,6 @@
 		ctx.drawImage(paper!, 0, 0, out.width, out.height);
 		ctx.drawImage(lines!, 0, 0, out.width, out.height);
 		finished = out.toDataURL('image/png');
-		// What others see of it: one crayon per region, never the picture itself.
-		const f = currentFills();
-		if (f && together) {
-			together.share(picture.id, f.n, f.fills);
-			together.sendFills({ v: 1, picture: picture.id, ...f });
-			together.sendDone(picture.id);
-		}
 		if (addToGallery(finished)) gallery = loadGallery();
 		// Blank paper is never done: the child can draw on a fresh one as often as they like.
 		if (picture.id !== BLANK.id && !done.includes(picture.id)) {
@@ -769,8 +624,6 @@
 		clearTimeout(doneTimer);
 		closeView();
 		otherLine = null;
-		asking = null;
-		together?.part();
 		phase = 'start';
 	}
 </script>
@@ -801,35 +654,7 @@
 			<button type="button" class="icon" aria-label="Home" onclick={home}><Icon name="home" size={32} /></button>
 			{#if otherLine}<Pip {language} line={otherLine} size={56} />{/if}
 		{/if}
-		{#if phase === 'start'}
-			<div class="strip-at">
-				{#if together}<PresenceStrip {me} peers={together.peers} friends={together.online} {onFriend} />{/if}
-				<button type="button" class="icon friends" aria-label="Paint with a friend" onclick={openTogether}>
-					<Icon name="friends" size={34} />
-					{#if together && Object.keys(together.online).length}
-						<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3.1 1.8-2 3.3-3.1 5.4-3.1 3.6 0 5.8 3.8 4.2 7.3C19.5 16.4 12 21 12 21z" /></svg>
-					{/if}
-				</button>
-			</div>
-		{/if}
 	</header>
-
-	<TogetherSheet
-		bind:this={sheet}
-		{language}
-		{online}
-		live={together?.online ?? {}}
-		onOnline={setOnline}
-		onInvite={inviteFromSheet}
-		onAdded={friendAdded}
-	/>
-
-	{#if asking}
-		<div class="ask" role="dialog" aria-label={otherLine?.text}>
-			<button type="button" class="big yes" aria-label="Yes" onclick={() => answerAsk(true)}><Icon name="play" size={48} /></button>
-			<button type="button" class="big no" aria-label="No" onclick={() => answerAsk(false)}><Icon name="close" size={36} /></button>
-		</div>
-	{/if}
 
 	{#if phase === 'start'}
 		<section class="stage">
@@ -914,17 +739,6 @@
 						{/each}
 					</div>
 				{/if}
-				{#if friendView}
-					<div class="friend-view" class:away={together?.with?.state === 'away'} aria-label="Your friend's picture">
-						<canvas bind:this={friendCanvas} width="200" height="200"></canvas>
-						{#if together?.friendAt && !together.friendDone && together.with?.state === 'on'}
-							<span class="dot" style="left: {together.friendAt.x * 100}%; top: {together.friendAt.y * 100}%">
-								<Avatar avatar={together.with ? (together.online[together.with.key] ?? 0) : 0} size="100%" />
-							</span>
-						{/if}
-						{#if together?.friendDone}<span class="star" aria-label="Finished"><Icon name="star" size={20} /></span>{/if}
-					</div>
-				{/if}
 			</div>
 			<div class="crayons" role="group" aria-label="Colours" bind:this={palette}>
 				{#each CRAYONS as c (c.id)}
@@ -971,21 +785,6 @@
 			{:else}
 				<div class="empty" aria-label="No pictures yet"><Icon name="book" size={96} /></div>
 			{/if}
-			{#if !viewing && together?.shelf.length}
-				<div class="shelf" aria-label="Other children's pictures">
-					{#if big}<span class="pname">{language === 'nl' ? 'Andere kinderen' : 'Other children'}</span>{/if}
-					<div class="gallery">
-						{#each together.shelf as p (p.id)}
-							{@const url = pictureUrl(p.id, p.picture, p.n, p.fills)}
-							{#if url}
-								<button type="button" class="card" aria-label="A picture by another child" onclick={() => view(url, -1)}>
-									<img src={url} alt="" />
-								</button>
-							{/if}
-						{/each}
-					</div>
-				</div>
-			{/if}
 		</section>
 	{/if}
 </main>
@@ -1026,87 +825,6 @@
 		display: flex;
 		align-items: center;
 		gap: 2rem;
-	}
-	.strip-at {
-		margin-left: auto;
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-	}
-	.friends {
-		position: relative;
-		background: var(--sky);
-	}
-	.friends .heart {
-		position: absolute;
-		right: -6px;
-		top: -6px;
-		width: 26px;
-		height: 26px;
-		fill: var(--red);
-		stroke: var(--ink);
-		stroke-width: 2;
-	}
-	.ask {
-		position: fixed;
-		inset: auto 0 2rem 0;
-		display: flex;
-		justify-content: center;
-		gap: 1.5rem;
-		z-index: 5;
-	}
-	.ask .big {
-		width: calc(var(--tap) * 1.4);
-		height: calc(var(--tap) * 1.4);
-		border: var(--line) solid var(--ink);
-		border-radius: 50%;
-		box-shadow: 0 6px 0 var(--ink);
-		display: grid;
-		place-items: center;
-		color: var(--ink);
-	}
-	.ask .yes {
-		background: var(--sun);
-	}
-	.ask .no {
-		background: var(--white);
-		width: var(--tap);
-		height: var(--tap);
-		align-self: center;
-	}
-	.friend-view {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		z-index: 2;
-		width: min(24vw, 13rem);
-		aspect-ratio: 1;
-		border: 3px solid var(--ink);
-		border-radius: 12px;
-		background: var(--white);
-		pointer-events: none;
-		transition: opacity 300ms;
-	}
-	.friend-view canvas {
-		width: 100%;
-		height: 100%;
-		border-radius: 9px;
-	}
-	.friend-view.away {
-		opacity: 0.45;
-	}
-	.friend-view .dot {
-		position: absolute;
-		width: 26%;
-		height: 26%;
-		transform: translate(-50%, -50%);
-		transition: left 100ms linear, top 100ms linear;
-	}
-	.shelf {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.8rem;
 	}
 
 	/* Keycaps: white, 4 px ink, a 6 px solid shadow that the press sinks into. */

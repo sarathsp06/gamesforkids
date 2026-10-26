@@ -35,12 +35,11 @@ export const AVATARS: Look[] = [
 ];
 
 /** The games on the home screen, in order: every player sees them all. */
-/** `together`: the game can be played with a paired friend (design/presence), shown on its tile. */
-/** `tablet`: needs a tablet's room (painting, playing with a friend), so a phone's home leaves it out. */
-export const GAMES: { id: string; path: string; tint: string; together?: boolean; tablet?: boolean }[] = [
+/** `tablet`: needs a tablet's room (painting), so a phone's home leaves it out. */
+export const GAMES: { id: string; path: string; tint: string; tablet?: boolean }[] = [
 	{ id: 'spell', path: '/spell', tint: 'mint' },
 	{ id: 'shapes', path: '/shapes', tint: 'blush' },
-	{ id: 'paint', path: '/paint', tint: 'butter', together: true, tablet: true },
+	{ id: 'paint', path: '/paint', tint: 'butter', tablet: true },
 	{ id: 'letters', path: '/letter-leap', tint: 'paper' },
 	{ id: 'math', path: '/math', tint: 'sky' },
 	{ id: 'chess', path: '/chess', tint: 'butter' },

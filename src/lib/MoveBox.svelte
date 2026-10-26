@@ -9,7 +9,7 @@
 	import Emoji from './Emoji.svelte';
 	import ImportConfirm from './ImportConfirm.svelte';
 	import { SLOW_MS, handoff, matchPictures, type Handoff } from './handoff';
-	import { newKey } from './presence';
+	import { newKey } from './keys';
 	import { fileName, gather, toLink, validate, type Bundle, type Options } from './transfer';
 	import type { Language } from './words';
 

@@ -121,4 +121,12 @@ assert.equal(back!.gallery.length, 0);
 assert.equal(back!.plays.length, LINK_PLAYS);
 assert.deepEqual(back!.players, big.players);
 assert.equal(await fromLink('not-a-link'), null);
+// The transfer key: 128 random bits as hex, and the match pictures a grown-up compares.
+{
+	const { CODE_PICTURES, isKey, newKey } = await import('../src/lib/keys');
+	assert.ok(isKey(newKey()) && newKey() !== newKey(), 'fresh keys');
+	assert.ok(!isKey('xyz') && !isKey(newKey().toUpperCase()), 'only lower-case hex keys');
+	assert.equal(new Set(CODE_PICTURES).size, 16, 'sixteen different match pictures');
+}
+
 console.log('transfer ok', `(small link ${link.length} chars)`);

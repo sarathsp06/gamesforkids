@@ -9,7 +9,7 @@
 	import Emoji from '#lib/Emoji.svelte';
 	import ImportConfirm from '#lib/ImportConfirm.svelte';
 	import { handoff, matchPictures, type Handoff } from '#lib/handoff.ts';
-	import { isKey } from '#lib/presence.ts';
+	import { isKey } from '#lib/keys.ts';
 	import { fromLink, gather, type Bundle } from '#lib/transfer.ts';
 	import { loadLanguage, loadPlayers } from '#lib/storage.ts';
 	import type { Language } from '#lib/words.ts';
