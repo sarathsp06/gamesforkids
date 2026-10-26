@@ -356,6 +356,37 @@ export const CHAPTERS: Chapter[] = [
 
 export const PICTURES: Picture[] = CHAPTERS.flatMap((c) => c.pictures);
 
+export interface Stamp {
+	id: string;
+	/** Said when the child picks it. */
+	name: Record<Language, string>;
+	/** Outline path in a 100×100 box, stretched to the box the child drags out. */
+	d: string;
+	/**
+	 * How a drag shapes it: `stretch` fills the dragged box, `even` keeps its proportions (the longer side sets
+	 * the size), `ends` runs from where the drag started to where it ended.
+	 */
+	fit: 'stretch' | 'even' | 'ends';
+	/** Its button, when the path alone wouldn't tell it apart (a rectangle drawn in a square box is a square). */
+	icon?: string;
+}
+
+/** Simple shapes the child can put into any picture: drag to place and size one, then paint it in. */
+export const STAMPS: Stamp[] = [
+	{ id: 'circle', name: { en: 'circle', nl: 'cirkel' }, d: ellipse(50, 50, 50, 50), fit: 'even' },
+	{ id: 'square', name: { en: 'square', nl: 'vierkant' }, d: 'M0 0 H100 V100 H0 Z', fit: 'even' },
+	{ id: 'rectangle', name: { en: 'rectangle', nl: 'rechthoek' }, d: 'M0 0 H100 V100 H0 Z', fit: 'stretch', icon: 'M0 22 H100 V78 H0 Z' },
+	{ id: 'triangle', name: { en: 'triangle', nl: 'driehoek' }, d: 'M50 0 L100 100 L0 100 Z', fit: 'stretch' },
+	{ id: 'star', name: { en: 'star', nl: 'ster' }, d: star(50, 52.5, 50), fit: 'even' },
+	{
+		id: 'heart',
+		name: { en: 'heart', nl: 'hart' },
+		d: 'M50 96 C22 76 0 56 0 30 C0 12 12 2 27 2 C38 2 46 9 50 18 C54 9 62 2 73 2 C88 2 100 12 100 30 C100 56 78 76 50 96 Z',
+		fit: 'even'
+	},
+	{ id: 'line', name: { en: 'line', nl: 'lijn' }, d: 'M0 0 L100 100', fit: 'ends' }
+];
+
 /**
  * Blank paper: the child draws their own picture. Never done: it gets no star and no chapter dot, and can be drawn
  * on again as often as the child likes. Not one of PICTURES, so it never travels to a friend.

@@ -4,9 +4,9 @@
 	import Atrament, { MODE_DISABLED, MODE_DRAW } from 'atrament';
 	import FloodFill from 'q-floodfill';
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
-	import { BLANK, CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from '#lib/paint.ts';
+	import { BLANK, CHAPTERS, CRAYONS, PICTURES, STAMPS, type Chapter, type Crayon, type Picture, type Stamp } from '#lib/paint.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
-	import { chapterName, colour, painted, pictureName, t } from '#lib/i18n.ts';
+	import { chapterName, colour, painted, pictureName, stampName, t } from '#lib/i18n.ts';
 	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
 	import Icon from '#lib/Icon.svelte';
 	import Pip from '#lib/Pip.svelte';
@@ -24,6 +24,8 @@
 	const SIZE = 1200; // canvas bitmap; CSS scales it to the screen, sharp enough to zoom into
 	const SCALE = SIZE / 100; // picture paths are drawn on a 100×100 grid
 	const BRUSH = 51; // brush width in bitmap pixels at no zoom, whatever the screen size
+	const STAMP_LINE = 18; // a shape's outline, in bitmap pixels at no zoom
+	const STAMP_SIZE = 0.22; // a tapped shape, as a share of what the board shows
 	const ZOOM_MAX = 4;
 	const ZOOM_STEP = 1.5; // one tap of the zoom buttons
 	// The outline the bucket stops at, and a thicker copy on top that hides the fill's soft edge against it.
@@ -43,7 +45,12 @@
 	let language = $state<Language>('en');
 	let picture = $state<Picture>(PICTURES[0]);
 	let crayon = $state<Crayon>(CRAYONS[0]);
-	let tool = $state<'brush' | 'bucket'>('brush');
+	let tool = $state<'brush' | 'bucket' | 'shape'>('brush');
+	let stamp = $state<Stamp>(STAMPS[0]);
+	/** The row of shapes to pick from, open over the top of the board. */
+	let tray = $state(false);
+	/** A shape being dragged out: where it started, in bitmap and in screen pixels. */
+	let drag: { x: number; y: number; sx: number; sy: number } | null = null;
 	let canUndo = $state(false);
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
@@ -239,6 +246,8 @@
 		if (tellFriend && p.id !== BLANK.id) together?.openPicture(p.id);
 		picture = p;
 		tool = 'brush';
+		tray = false;
+		drag = null;
 		undo = [];
 		canUndo = false;
 		zoom = 1;
@@ -291,9 +300,110 @@
 		speak(colour(language, c), language);
 	}
 
-	function pickTool(next: 'brush' | 'bucket') {
+	function pickTool(next: 'brush' | 'bucket' | 'shape') {
 		tool = next;
+		tray = false;
 		if (pad) pad.mode = next === 'brush' ? MODE_DRAW : MODE_DISABLED;
+	}
+
+	/** The shapes button: the first tap picks the tool and opens the shapes; another opens or closes them. */
+	function shapesTool() {
+		if (tool === 'shape') tray = !tray;
+		else {
+			pickTool('shape');
+			tray = true;
+		}
+	}
+
+	function pickStamp(s: Stamp) {
+		stamp = s;
+		tray = false;
+		speak(stampName(language, s), language);
+	}
+
+	/** The shape in bitmap pixels, from where the drag started to where it is now. */
+	function stampPath(s: Stamp, x0: number, y0: number, x1: number, y1: number) {
+		let w = x1 - x0;
+		let h = y1 - y0;
+		if (s.fit === 'even') {
+			const k = Math.max(Math.abs(w), Math.abs(h));
+			w = Math.sign(w || 1) * k;
+			h = Math.sign(h || 1) * k;
+		}
+		// Dragged up or left: the same shape the other way round, never upside down. A line just follows the finger.
+		if (s.fit !== 'ends') {
+			x0 = Math.min(x0, x0 + w);
+			y0 = Math.min(y0, y0 + h);
+			w = Math.abs(w);
+			h = Math.abs(h);
+		}
+		const p = new Path2D();
+		p.addPath(new Path2D(s.d), new DOMMatrix([w / 100, 0, 0, h / 100, x0, y0]));
+		return p;
+	}
+
+	/** Draw a shape's outline in the crayon: thinner when zoomed in, like the brush. */
+	function drawStamp(ctx: CanvasRenderingContext2D, path: Path2D) {
+		ctx.save();
+		ctx.strokeStyle = crayon.hex;
+		ctx.lineWidth = STAMP_LINE / zoom;
+		ctx.lineCap = 'round';
+		ctx.lineJoin = 'round';
+		ctx.stroke(path);
+		ctx.restore();
+	}
+
+	/** The top canvas: the picture's outline, and the shape being dragged out, if any. */
+	function redrawTop(preview?: Path2D) {
+		const top = lines!.getContext('2d')!;
+		top.clearRect(0, 0, SIZE, SIZE);
+		if (preview) drawStamp(top, preview);
+		outline(top, LINE);
+	}
+
+	const bitmap = (e: PointerEvent) => [(e.offsetX * SIZE) / paper!.offsetWidth, (e.offsetY * SIZE) / paper!.offsetHeight];
+
+	function paperDown(e: PointerEvent) {
+		bucket(e);
+		if (tool !== 'shape' || !e.isPrimary) return;
+		tray = false;
+		const [x, y] = bitmap(e);
+		drag = { x, y, sx: e.clientX, sy: e.clientY };
+		// Keep following the drag when it runs off the edge of the paper.
+		paper!.setPointerCapture(e.pointerId);
+	}
+
+	function paperMove(e: PointerEvent) {
+		sendAt(e);
+		if (!drag || !e.isPrimary) return;
+		const [x, y] = bitmap(e);
+		redrawTop(stampPath(stamp, drag.x, drag.y, x, y));
+	}
+
+	function paperUp(e: PointerEvent) {
+		if (!drag || !e.isPrimary) return;
+		const d = drag;
+		drag = null;
+		let [x, y] = bitmap(e);
+		let x0 = d.x;
+		let y0 = d.y;
+		// A tap, not a drag: a ready-made shape around the finger, the same size on screen whatever the zoom.
+		if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 12) {
+			const r = (SIZE * STAMP_SIZE) / zoom / 2;
+			const rw = stamp.fit === 'stretch' ? r * 1.5 : r;
+			[x0, y0, x, y] = stamp.fit === 'ends' ? [d.x - r, d.y, d.x + r, d.y] : [d.x - rw, d.y - r, d.x + rw, d.y + r];
+		}
+		drawStamp(paperCtx(), stampPath(stamp, x0, y0, x, y));
+		// The shape may cross the picture's lines: draw the edge back in, as after a brush stroke.
+		outline(paperCtx(), EDGE);
+		redrawTop();
+		sfx.tok();
+	}
+
+	function paperCancel() {
+		if (!drag) return;
+		drag = null;
+		redrawTop();
 	}
 
 	function back() {
@@ -370,6 +480,7 @@
 		// A second finger: this is a pinch, not paint. Take back what the first finger already did.
 		if (pad) pad.mode = MODE_DISABLED;
 		back();
+		paperCancel();
 		const f = fingers();
 		const r = scroller!.getBoundingClientRect();
 		pinch = { zoom, dist: f.dist, x: (scroller!.scrollLeft + f.x - r.left) / zoom, y: (scroller!.scrollTop + f.y - r.top) / zoom };
@@ -444,6 +555,12 @@
 {#snippet pic(p: Picture)}
 	<svg viewBox="-4 -4 108 108" aria-hidden="true">
 		<path d={p.d} fill="none" stroke="var(--ink)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+	</svg>
+{/snippet}
+
+{#snippet stampPic(s: Stamp)}
+	<svg class="stamp" viewBox="-10 -10 120 120" aria-hidden="true">
+		<path d={s.icon ?? s.d} fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
 	</svg>
 {/snippet}
 
@@ -545,6 +662,7 @@
 				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back} ><Icon name="undo" size={32} /></button>
 				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}><Icon name="brush" size={32} /></button>
 				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}><Icon name="bucket" size={32} /></button>
+				<button type="button" class="tool" aria-label="Shapes" aria-pressed={tool === 'shape'} aria-expanded={tray} onclick={shapesTool}>{@render stampPic(stamp)}</button>
 				<button type="button" class="tool" aria-label="Zoom in" disabled={zoom >= ZOOM_MAX} onclick={() => zoomAt(zoom * ZOOM_STEP)}><Icon name="zoomIn" size={32} /></button>
 				<button type="button" class="tool" aria-label="Zoom out" disabled={zoom <= 1} onclick={() => zoomAt(zoom / ZOOM_STEP)}><Icon name="zoomOut" size={32} /></button>
 				<button type="button" class="tool ok" aria-label="Finished" onclick={finish}><Icon name="check" size={32} /></button>
@@ -552,10 +670,25 @@
 			<div class="board" class:fill={tool === 'bucket'} role="application" aria-label="Picture" onpointerdown={touchDown} onpointermove={touchMove} onpointerup={touchUp} onpointercancel={touchUp}>
 				<div class="scroll" bind:this={scroller}>
 					<div class="page" style="width: {zoom * 100}%; height: {zoom * 100}%">
-						<canvas bind:this={paper} width={SIZE} height={SIZE} onpointerdown={bucket} onpointermove={sendAt}></canvas>
+						<canvas
+							bind:this={paper}
+							width={SIZE}
+							height={SIZE}
+							onpointerdown={paperDown}
+							onpointermove={paperMove}
+							onpointerup={paperUp}
+							onpointercancel={paperCancel}
+						></canvas>
 						<canvas bind:this={lines} width={SIZE} height={SIZE} class="lines" aria-hidden="true"></canvas>
 					</div>
 				</div>
+				{#if tray}
+					<div class="tray" role="group" aria-label="Pick a shape">
+						{#each STAMPS as s (s.id)}
+							<button type="button" class="tool" aria-label={s.name[language]} aria-pressed={stamp.id === s.id} onclick={() => pickStamp(s)}>{@render stampPic(s)}</button>
+						{/each}
+					</div>
+				{/if}
 				{#if friendView}
 					<div class="friend-view" class:away={together?.with?.state === 'away'} aria-label="Your friend's picture">
 						<canvas bind:this={friendCanvas} width="200" height="200"></canvas>
@@ -897,6 +1030,8 @@
 	}
 	.tools {
 		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
 		gap: 1rem;
 	}
 	.tool {
@@ -930,6 +1065,29 @@
 	}
 	.board.fill {
 		cursor: cell;
+	}
+	.stamp {
+		width: 2rem;
+		height: 2rem;
+	}
+	/* The shapes, open over the top of the board; the board stays as big as it was. */
+	.tray {
+		position: absolute;
+		top: 0.6rem;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.6rem;
+		width: max-content;
+		max-width: calc(100% - 1.2rem);
+		padding: 0.6rem 0.6rem 1rem;
+		border: var(--line) solid var(--ink);
+		border-radius: 18px;
+		background: var(--butter);
+		cursor: default;
 	}
 	.scroll {
 		position: absolute;
@@ -993,6 +1151,12 @@
 		.tools {
 			flex-direction: column;
 			gap: 0.8rem;
+		}
+		/* Seven tools in a column as tall as the board: smaller keys when the screen is short. */
+		.tools .tool {
+			--key: min(max(4.2rem, var(--tap)), calc((100dvh - var(--tap) - 5rem) / 7 - 1.4rem));
+			width: var(--key);
+			height: var(--key);
 		}
 		.crayons {
 			display: grid;

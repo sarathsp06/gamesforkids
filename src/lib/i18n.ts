@@ -10,7 +10,7 @@
 // The full list of lines for the clip generator is in voice-catalog.ts.
 import { STICKERS, type Language } from './words';
 import type { Story } from './stories';
-import type { Chapter, Crayon, Picture } from './paint';
+import type { Chapter, Crayon, Picture, Stamp } from './paint';
 
 /** One spoken line: `id` names its clip, `text` is what is said. */
 export interface Line {
@@ -239,6 +239,7 @@ export const colour = (lang: Language, c: Crayon): Line => ({ id: `colour.${c.id
 export const painted = (lang: Language, p: Picture): Line => ({ id: `paint.done.${p.id}`, text: p.done[lang] });
 export const chapterName = (lang: Language, c: Chapter): Line => ({ id: `paint.chapter.${c.id}`, text: c.name[lang] });
 export const pictureName = (lang: Language, p: Picture): Line => ({ id: `paint.pic.${p.id}`, text: p.name[lang] });
+export const stampName = (lang: Language, s: Stamp): Line => ({ id: `paint.shape.${s.id}`, text: s.name[lang] });
 
 /** The catalog's own lines in a language: every key, every variant, every number of a family. */
 export function catalogLines(lang: Language): Line[] {

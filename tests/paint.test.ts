@@ -1,6 +1,6 @@
 // npx tsx tests/paint.test.ts
 import { strict as assert } from 'node:assert';
-import { CHAPTERS, CRAYONS, PICTURES } from '../src/lib/paint';
+import { CHAPTERS, CRAYONS, PICTURES, STAMPS } from '../src/lib/paint';
 import { allLines } from '../src/lib/voice-catalog';
 
 const numbers = (d: string) => (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
@@ -31,12 +31,22 @@ for (const p of PICTURES) {
 	assert.ok(p.name.en && p.name.nl, `${p.id}: named in both languages`);
 }
 
+assert.equal(new Set(STAMPS.map((s) => s.id)).size, STAMPS.length, 'unique shape ids');
+for (const s of STAMPS) {
+	// Stretched from the 100×100 box to the box the child drags, so it has to fill that box.
+	const ns = numbers(s.d);
+	assert.ok(ns.every((n) => n >= 0 && n <= 100), `${s.id}: fits the box`);
+	assert.match(s.d, /^M/, `${s.id}: path starts with a move`);
+	assert.ok(s.name.en && s.name.nl, `${s.id}: named in both languages`);
+}
+
 for (const lang of ['en', 'nl'] as const) {
 	const ids = new Set(allLines(lang).map((l) => l.id));
 	for (const c of CRAYONS) assert.ok(ids.has(`colour.${c.id}`), `${lang}: colour line for ${c.id}`);
 	for (const p of PICTURES) assert.ok(ids.has(`paint.done.${p.id}`), `${lang}: praise line for ${p.id}`);
 	for (const p of PICTURES) assert.ok(ids.has(`paint.pic.${p.id}`), `${lang}: name line for ${p.id}`);
 	for (const c of CHAPTERS) assert.ok(ids.has(`paint.chapter.${c.id}`), `${lang}: name line for ${c.id}`);
+	for (const s of STAMPS) assert.ok(ids.has(`paint.shape.${s.id}`), `${lang}: name line for ${s.id}`);
 	assert.ok(ids.has('paint.go'), `${lang}: start line`);
 }
 

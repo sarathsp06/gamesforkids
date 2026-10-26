@@ -7,9 +7,9 @@ import { WORDS, STICKERS, type Language } from './words';
 import { SPELL_WORDS } from './spell';
 import { STORIES } from './stories';
 import { wordKey, words } from './readalong';
-import { BLANK, CHAPTERS, CRAYONS, PICTURES } from './paint';
+import { BLANK, CHAPTERS, CRAYONS, PICTURES, STAMPS } from './paint';
 import {
-	animal, catalogLines, chapterName, colour, keyLine, letter, painted, pictureName, storySentence, storyTitle,
+	animal, catalogLines, chapterName, colour, keyLine, letter, painted, pictureName, stampName, storySentence, storyTitle,
 	storyWord, word, type Line
 } from './i18n';
 
@@ -32,5 +32,6 @@ export function allLines(lang: Language): Line[] {
 	for (const c of CHAPTERS) out.push(chapterName(lang, c));
 	for (const p of PICTURES) out.push(pictureName(lang, p));
 	out.push(pictureName(lang, BLANK), painted(lang, BLANK));
+	for (const s of STAMPS) out.push(stampName(lang, s));
 	return out;
 }
