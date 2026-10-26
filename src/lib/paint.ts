@@ -357,6 +357,17 @@ export const CHAPTERS: Chapter[] = [
 export const PICTURES: Picture[] = CHAPTERS.flatMap((c) => c.pictures);
 
 /**
+ * Blank paper: the child draws their own picture. Never done: it gets no star and no chapter dot, and can be drawn
+ * on again as often as the child likes. Not one of PICTURES, so it never travels to a friend.
+ */
+export const BLANK: Picture = {
+	id: 'blank',
+	name: { en: 'Draw anything you like!', nl: 'Teken wat je maar wilt!' },
+	d: '',
+	done: { en: 'What a wonderful drawing!', nl: 'Wat een prachtige tekening!' }
+};
+
+/**
  * Words from the word games that have a colouring picture: lower-case word to picture id. Only words that
  * occur in SPELL_WORDS or WORDS for that language.
  */

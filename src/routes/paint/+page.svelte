@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { flushSync, onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import Atrament, { MODE_DISABLED, MODE_DRAW } from 'atrament';
 	import FloodFill from 'q-floodfill';
 	import { speak, stopSpeech, sfx } from '#lib/audio.ts';
-	import { CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from '#lib/paint.ts';
+	import { BLANK, CHAPTERS, CRAYONS, PICTURES, type Chapter, type Crayon, type Picture } from '#lib/paint.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { chapterName, colour, painted, pictureName, t } from '#lib/i18n.ts';
 	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
@@ -21,9 +21,11 @@
 	import { drawFills, fillsOf, pictureUrl, regionsOf } from '#lib/regions.ts';
 	import type { Line } from '#lib/i18n.ts';
 
-	const SIZE = 800; // canvas bitmap; CSS scales it to the screen
+	const SIZE = 1200; // canvas bitmap; CSS scales it to the screen, sharp enough to zoom into
 	const SCALE = SIZE / 100; // picture paths are drawn on a 100×100 grid
-	const BRUSH = 34; // brush width in bitmap pixels, whatever the screen size
+	const BRUSH = 51; // brush width in bitmap pixels at no zoom, whatever the screen size
+	const ZOOM_MAX = 4;
+	const ZOOM_STEP = 1.5; // one tap of the zoom buttons
 	// The outline the bucket stops at, and a thicker copy on top that hides the fill's soft edge against it.
 	const EDGE = 1.2;
 	const LINE = 1.8;
@@ -54,6 +56,13 @@
 
 	let paper = $state<HTMLCanvasElement>();
 	let lines = $state<HTMLCanvasElement>();
+	/** Scrolls the page when it is zoomed in: two fingers, a trackpad or the mouse wheel move it around. */
+	let scroller = $state<HTMLDivElement>();
+	let zoom = $state(1);
+	/** Fingers on the board, by pointer id: two make a pinch, which zooms and moves the page instead of painting. */
+	const touches = new Map<number, { x: number; y: number }>();
+	/** The pinch under way: the zoom it started at, the distance between the fingers then, and the page point under them. */
+	let pinch: { zoom: number; dist: number; x: number; y: number } | null = null;
 	let pad: Atrament | null = null;
 	let undo: ImageData[] = [];
 
@@ -226,11 +235,15 @@
 		otherLine = null;
 		asking = null;
 		lastFills = '';
-		if (tellFriend) together?.openPicture(p.id);
+		// Blank paper is the child's own drawing: nothing of it goes to a friend.
+		if (tellFriend && p.id !== BLANK.id) together?.openPicture(p.id);
 		picture = p;
 		tool = 'brush';
 		undo = [];
 		canUndo = false;
+		zoom = 1;
+		touches.clear();
+		pinch = null;
 		phase = 'paint';
 		speak(pictureName(language, p), language);
 		await tick();
@@ -253,7 +266,7 @@
 		// Before every stroke or fill: keep a copy to undo to, and size the brush to the screen.
 		pad.addEventListener('pointerdown', () => {
 			remember();
-			pad!.weight = (BRUSH * paper!.offsetWidth) / SIZE;
+			pad!.weight = (BRUSH * paper!.offsetWidth) / SIZE / zoom;
 		});
 		// A stroke over the outline would open a gap for the bucket: draw the edge back in.
 		pad.addEventListener('strokeend', () => outline(paperCtx(), EDGE));
@@ -304,7 +317,8 @@
 			together.sendDone(picture.id);
 		}
 		if (addToGallery(finished)) gallery = loadGallery();
-		if (!done.includes(picture.id)) {
+		// Blank paper is never done: the child can draw on a fresh one as often as they like.
+		if (picture.id !== BLANK.id && !done.includes(picture.id)) {
 			done = [...done, picture.id];
 			savePainted(done);
 		}
@@ -324,6 +338,88 @@
 		doneTimer = setTimeout(show, 4000);
 		speak(painted(language, picture), language, show);
 	}
+
+	const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z));
+
+	/** Zoom to `next`, keeping page point (x, y), in unzoomed board pixels, under board point (px, py). */
+	function place(next: number, x: number, y: number, px: number, py: number) {
+		zoom = clampZoom(next);
+		// The page must have its new size before it can scroll that far.
+		flushSync();
+		scroller!.scrollLeft = x * zoom - px;
+		scroller!.scrollTop = y * zoom - py;
+	}
+
+	/** Zoom around a point on the screen: the cursor, the fingers, or the middle of the board for the buttons. */
+	function zoomAt(next: number, clientX?: number, clientY?: number) {
+		const r = scroller!.getBoundingClientRect();
+		const px = (clientX ?? r.left + r.width / 2) - r.left;
+		const py = (clientY ?? r.top + r.height / 2) - r.top;
+		place(next, (scroller!.scrollLeft + px) / zoom, (scroller!.scrollTop + py) / zoom, px, py);
+	}
+
+	function fingers() {
+		const [a, b] = [...touches.values()];
+		return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
+	}
+
+	function touchDown(e: PointerEvent) {
+		if (e.pointerType !== 'touch') return;
+		touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		if (touches.size !== 2 || pinch) return;
+		// A second finger: this is a pinch, not paint. Take back what the first finger already did.
+		if (pad) pad.mode = MODE_DISABLED;
+		back();
+		const f = fingers();
+		const r = scroller!.getBoundingClientRect();
+		pinch = { zoom, dist: f.dist, x: (scroller!.scrollLeft + f.x - r.left) / zoom, y: (scroller!.scrollTop + f.y - r.top) / zoom };
+	}
+
+	function touchMove(e: PointerEvent) {
+		if (!touches.has(e.pointerId)) return;
+		touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		if (!pinch || touches.size < 2) return;
+		const f = fingers();
+		const r = scroller!.getBoundingClientRect();
+		// Spread or close the fingers to zoom; move them together to slide the page along.
+		place((pinch.zoom * f.dist) / pinch.dist, pinch.x, pinch.y, f.x - r.left, f.y - r.top);
+	}
+
+	function touchUp(e: PointerEvent) {
+		if (!touches.delete(e.pointerId) || touches.size) return;
+		// Paint again only once every finger is off, so the one left behind doesn't scribble.
+		if (pinch && pad) pad.mode = tool === 'brush' ? MODE_DRAW : MODE_DISABLED;
+		pinch = null;
+	}
+
+	// A trackpad pinch (ctrl + wheel in Chrome and Firefox, gesture events in Safari) zooms; plain scrolling pans.
+	$effect(() => {
+		const s = scroller;
+		if (!s) return;
+		let start = 1;
+		const wheel = (e: WheelEvent) => {
+			if (!e.ctrlKey) return;
+			e.preventDefault();
+			zoomAt(zoom * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+		};
+		const gestureStart = (e: Event) => {
+			e.preventDefault();
+			start = zoom;
+		};
+		const gestureChange = (e: Event) => {
+			e.preventDefault();
+			const g = e as Event & { scale: number; clientX: number; clientY: number };
+			zoomAt(start * g.scale, g.clientX, g.clientY);
+		};
+		s.addEventListener('wheel', wheel, { passive: false });
+		s.addEventListener('gesturestart', gestureStart);
+		s.addEventListener('gesturechange', gestureChange);
+		return () => {
+			s.removeEventListener('wheel', wheel);
+			s.removeEventListener('gesturestart', gestureStart);
+			s.removeEventListener('gesturechange', gestureChange);
+		};
+	});
 
 	function openChapter(c: Chapter) {
 		chapter = c;
@@ -407,6 +503,10 @@
 				</div>
 			{:else}
 				<div class="chapters" role="group" aria-label="Pick a story">
+					<button type="button" class="card chapter blank" aria-label={BLANK.name[language]} onclick={() => choose(BLANK)}>
+						<Icon name="draw" size={56} />
+						{#if big}<span class="pname">{language === 'nl' ? 'Tekenen' : 'Draw'}</span>{/if}
+					</button>
 					{#each CHAPTERS as c, i (c.id)}
 						{@const n = c.pictures.filter((p) => done.includes(p.id)).length}
 						<button type="button" class="card chapter c{i % 4}" aria-label={c.name[language]} onclick={() => openChapter(c)}>
@@ -445,11 +545,17 @@
 				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back} ><Icon name="undo" size={32} /></button>
 				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}><Icon name="brush" size={32} /></button>
 				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}><Icon name="bucket" size={32} /></button>
+				<button type="button" class="tool" aria-label="Zoom in" disabled={zoom >= ZOOM_MAX} onclick={() => zoomAt(zoom * ZOOM_STEP)}><Icon name="zoomIn" size={32} /></button>
+				<button type="button" class="tool" aria-label="Zoom out" disabled={zoom <= 1} onclick={() => zoomAt(zoom / ZOOM_STEP)}><Icon name="zoomOut" size={32} /></button>
 				<button type="button" class="tool ok" aria-label="Finished" onclick={finish}><Icon name="check" size={32} /></button>
 			</div>
-			<div class="board" class:fill={tool === 'bucket'}>
-				<canvas bind:this={paper} width={SIZE} height={SIZE} onpointerdown={bucket} onpointermove={sendAt}></canvas>
-				<canvas bind:this={lines} width={SIZE} height={SIZE} class="lines" aria-hidden="true"></canvas>
+			<div class="board" class:fill={tool === 'bucket'} role="application" aria-label="Picture" onpointerdown={touchDown} onpointermove={touchMove} onpointerup={touchUp} onpointercancel={touchUp}>
+				<div class="scroll" bind:this={scroller}>
+					<div class="page" style="width: {zoom * 100}%; height: {zoom * 100}%">
+						<canvas bind:this={paper} width={SIZE} height={SIZE} onpointerdown={bucket} onpointermove={sendAt}></canvas>
+						<canvas bind:this={lines} width={SIZE} height={SIZE} class="lines" aria-hidden="true"></canvas>
+					</div>
+				</div>
 				{#if friendView}
 					<div class="friend-view" class:away={together?.with?.state === 'away'} aria-label="Your friend's picture">
 						<canvas bind:this={friendCanvas} width="200" height="200"></canvas>
@@ -812,25 +918,41 @@
 	/* Square board as big as the screen allows, leaving room for tools and crayons. */
 	.board {
 		position: relative;
-		width: min(94vw, calc(100dvh - 2 * var(--tap) - 14rem), 42rem);
+		width: min(94vw, calc(100dvh - 2 * var(--tap) - 14rem));
 		aspect-ratio: 1;
 		border: var(--line) solid var(--ink);
 		border-radius: 18px;
 		overflow: hidden;
 		background: var(--white);
 		cursor: crosshair;
+		/* Pinching zooms the picture, not the page. */
+		touch-action: none;
 	}
 	.board.fill {
 		cursor: cell;
 	}
-	.board canvas {
+	.scroll {
+		position: absolute;
+		inset: 0;
+		overflow: auto;
+		overscroll-behavior: contain;
+		/* No scroll bars: they would take room from the page and leave it out of square. */
+		scrollbar-width: none;
+	}
+	.scroll::-webkit-scrollbar {
+		display: none;
+	}
+	.page {
+		position: relative;
+	}
+	.page canvas {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
 		display: block;
 	}
-	.board .lines {
+	.page .lines {
 		pointer-events: none;
 	}
 	.crayons {
@@ -856,6 +978,42 @@
 	.crayon[aria-pressed='true'] {
 		transform: translateY(-6px);
 		box-shadow: 0 6px 0 var(--ink), 0 0 0 5px var(--white), 0 0 0 9px var(--ink);
+	}
+
+	/* Wide screens (a tablet on its side, a computer): tools down the left, crayons down the right, and the board
+	   as tall as the screen. */
+	@media (orientation: landscape) and (min-width: 700px) {
+		.studio {
+			display: grid;
+			grid-template-columns: auto auto auto;
+			justify-content: center;
+			align-items: center;
+			gap: 1.5rem;
+		}
+		.tools {
+			flex-direction: column;
+			gap: 0.8rem;
+		}
+		.crayons {
+			display: grid;
+			grid-template-columns: repeat(2, auto);
+			gap: 0.9rem;
+		}
+		.board {
+			width: min(calc(100dvh - var(--tap) - 5rem), calc(100vw - 3 * var(--tap) - 8rem));
+		}
+	}
+	.chapter.blank {
+		grid-column: 1 / -1;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem;
+	}
+	.chapter.blank :global(svg) {
+		width: 3.5rem;
+		height: 3.5rem;
 	}
 
 	.framed {

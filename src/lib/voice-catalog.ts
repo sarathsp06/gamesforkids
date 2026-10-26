@@ -7,7 +7,7 @@ import { WORDS, STICKERS, type Language } from './words';
 import { SPELL_WORDS } from './spell';
 import { STORIES } from './stories';
 import { wordKey, words } from './readalong';
-import { CHAPTERS, CRAYONS, PICTURES } from './paint';
+import { BLANK, CHAPTERS, CRAYONS, PICTURES } from './paint';
 import {
 	animal, catalogLines, chapterName, colour, keyLine, letter, painted, pictureName, storySentence, storyTitle,
 	storyWord, word, type Line
@@ -31,5 +31,6 @@ export function allLines(lang: Language): Line[] {
 	for (const p of PICTURES) out.push(painted(lang, p));
 	for (const c of CHAPTERS) out.push(chapterName(lang, c));
 	for (const p of PICTURES) out.push(pictureName(lang, p));
+	out.push(pictureName(lang, BLANK), painted(lang, BLANK));
 	return out;
 }
