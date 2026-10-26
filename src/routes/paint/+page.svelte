@@ -28,6 +28,7 @@
 	const BRUSH = 51; // brush width in bitmap pixels at no zoom, whatever the screen size
 	const STAMP_LINE = 18; // a shape's outline, in bitmap pixels at no zoom
 	const STAMP_SIZE = 0.22; // a tapped shape, as a share of what the board shows
+	const HANDLE = 16; // radius of a shape's resize handle, in screen pixels
 	const ZOOM_MAX = 4;
 	const ZOOM_STEP = 1.5; // one tap of the zoom buttons
 	// The outline the bucket stops at, and a thicker copy on top that hides the fill's soft edge against it.
@@ -51,8 +52,19 @@
 	let stamp = $state<Stamp>(STAMPS[0]);
 	/** The row of shapes to pick from, open over the top of the board. */
 	let tray = $state(false);
-	/** A shape being dragged out: where it started, in bitmap and in screen pixels. */
-	let drag: { x: number; y: number; sx: number; sy: number } | null = null;
+	/** A shape put down but not yet part of the paper: it can still be moved, resized and recoloured. */
+	let live = $state.raw<Placing | null>(null);
+	/** A drag on the paper with the shapes tool: making a new shape, or moving or resizing the one being placed. */
+	let gesture: {
+		kind: 'new' | 'move' | 'end0' | 'end1';
+		x: number;
+		y: number;
+		sx: number;
+		sy: number;
+		from: Placing | null;
+		/** This touch let go of the shape being placed, so a tap here doesn't also make a new one. */
+		settled: boolean;
+	} | null = null;
 	let canUndo = $state(false);
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
@@ -263,7 +275,8 @@
 		picture = p;
 		tool = 'brush';
 		tray = false;
-		drag = null;
+		live = null;
+		gesture = null;
 		undo = [];
 		canUndo = false;
 		zoom = 1;
@@ -293,6 +306,8 @@
 		outline(top, LINE);
 		// Before every stroke or fill: keep a copy to undo to, and size the brush to the screen.
 		pad.addEventListener('pointerdown', () => {
+			// Shapes keep their copy for when they settle onto the paper, not for every move.
+			if (tool === 'shape') return;
 			remember();
 			pad!.weight = (BRUSH * paper!.offsetWidth) / w / zoom;
 		});
@@ -317,9 +332,12 @@
 		crayon = c;
 		if (pad) pad.color = c.hex;
 		speak(colour(language, c), language);
+		// A shape still being placed takes the new colour.
+		if (live) redrawTop();
 	}
 
 	function pickTool(next: 'brush' | 'bucket' | 'shape') {
+		settle();
 		tool = next;
 		tray = false;
 		if (pad) pad.mode = next === 'brush' ? MODE_DRAW : MODE_DISABLED;
@@ -335,49 +353,135 @@
 	}
 
 	function pickStamp(s: Stamp) {
+		settle();
 		stamp = s;
 		tray = false;
 		speak(stampName(language, s), language);
 	}
 
-	/** The shape in bitmap pixels, from where the drag started to where it is now. */
-	function stampPath(s: Stamp, x0: number, y0: number, x1: number, y1: number) {
-		let w = x1 - x0;
-		let h = y1 - y0;
-		if (s.fit === 'even') {
-			const k = Math.max(Math.abs(w), Math.abs(h));
-			w = Math.sign(w || 1) * k;
-			h = Math.sign(h || 1) * k;
-		}
-		// Dragged up or left: the same shape the other way round, never upside down. A line just follows the finger.
-		if (s.fit !== 'ends') {
-			x0 = Math.min(x0, x0 + w);
-			y0 = Math.min(y0, y0 + h);
-			w = Math.abs(w);
-			h = Math.abs(h);
-		}
-		const p = new Path2D();
-		p.addPath(new Path2D(s.d), new DOMMatrix([w / 100, 0, 0, h / 100, x0, y0]));
-		return p;
+	/** Where a shape goes, in bitmap pixels: corner to corner, or end to end for a line. */
+	interface Placing {
+		s: Stamp;
+		x0: number;
+		y0: number;
+		x1: number;
+		y1: number;
+		/** Its outline width, fixed when it was made: zooming afterwards doesn't change it. */
+		lw: number;
 	}
 
-	/** Draw a shape's outline in the crayon: thinner when zoomed in, like the brush. */
-	function drawStamp(ctx: CanvasRenderingContext2D, path: Path2D) {
+	/** The box a shape is drawn in: dragged up or left it is the same shape the other way round, never upside down. */
+	function box(p: Placing) {
+		let { x0, y0 } = p;
+		let bw = p.x1 - x0;
+		let bh = p.y1 - y0;
+		if (p.s.fit === 'even') {
+			const k = Math.max(Math.abs(bw), Math.abs(bh));
+			bw = Math.sign(bw || 1) * k;
+			bh = Math.sign(bh || 1) * k;
+		}
+		if (p.s.fit !== 'ends') {
+			x0 = Math.min(x0, x0 + bw);
+			y0 = Math.min(y0, y0 + bh);
+			bw = Math.abs(bw);
+			bh = Math.abs(bh);
+		}
+		return { x: x0, y: y0, w: bw, h: bh };
+	}
+
+	/** The same shape with its corners tidied: top left first. A line keeps its two ends. */
+	function tidy(p: Placing): Placing {
+		if (p.s.fit === 'ends') return p;
+		const b = box(p);
+		return { ...p, x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h };
+	}
+
+	function stampPath(p: Placing) {
+		const b = box(p);
+		const path = new Path2D();
+		path.addPath(new Path2D(p.s.d), new DOMMatrix([b.w / 100, 0, 0, b.h / 100, b.x, b.y]));
+		return path;
+	}
+
+	/** Draw a shape's outline in the crayon. */
+	function drawStamp(ctx: CanvasRenderingContext2D, p: Placing) {
 		ctx.save();
 		ctx.strokeStyle = crayon.hex;
-		ctx.lineWidth = STAMP_LINE / zoom;
+		ctx.lineWidth = p.lw;
 		ctx.lineCap = 'round';
 		ctx.lineJoin = 'round';
-		ctx.stroke(path);
+		ctx.stroke(stampPath(p));
 		ctx.restore();
 	}
 
-	/** The top canvas: the picture's outline, and the shape being dragged out, if any. */
-	function redrawTop(preview?: Path2D) {
+	/** Bitmap pixels per screen pixel, so frames and handles look the same size at any zoom. */
+	const perScreen = () => w / paper!.offsetWidth;
+
+	/** The frame round a shape being placed, and the round handles that resize it. */
+	function drawFrame(ctx: CanvasRenderingContext2D, p: Placing) {
+		const k = perScreen();
+		ctx.save();
+		ctx.strokeStyle = '#000000';
+		const handle = (x: number, y: number) => {
+			ctx.setLineDash([]);
+			ctx.beginPath();
+			ctx.arc(x, y, HANDLE * k, 0, 2 * Math.PI);
+			ctx.fillStyle = '#ffffff';
+			ctx.fill();
+			ctx.lineWidth = 4 * k;
+			ctx.stroke();
+		};
+		if (p.s.fit === 'ends') {
+			handle(p.x0, p.y0);
+			handle(p.x1, p.y1);
+		} else {
+			const b = box(p);
+			const m = 10 * k + p.lw / 2;
+			ctx.setLineDash([10 * k, 8 * k]);
+			ctx.lineWidth = 3 * k;
+			ctx.strokeRect(b.x - m, b.y - m, b.w + 2 * m, b.h + 2 * m);
+			handle(b.x + b.w + m, b.y + b.h + m);
+		}
+		ctx.restore();
+	}
+
+	/** The top canvas: the shape being placed and its frame, if any, under the picture's outline. */
+	function redrawTop() {
 		const top = lines!.getContext('2d')!;
 		top.clearRect(0, 0, w, h);
-		if (preview) drawStamp(top, preview);
+		if (live) drawStamp(top, live);
 		outline(top, LINE);
+		if (live && !gesture) drawFrame(top, live);
+	}
+
+	/** What a finger at (x, y) takes hold of on the shape being placed: an end or corner handle, or the whole shape. */
+	function grab(p: Placing, x: number, y: number): 'move' | 'end0' | 'end1' | null {
+		const k = perScreen();
+		const near = (hx: number, hy: number) => Math.hypot(x - hx, y - hy) < (HANDLE + 14) * k;
+		if (p.s.fit === 'ends') {
+			if (near(p.x0, p.y0)) return 'end0';
+			if (near(p.x1, p.y1)) return 'end1';
+			// Close enough to the line itself to pick it up.
+			const dx = p.x1 - p.x0;
+			const dy = p.y1 - p.y0;
+			const t = Math.max(0, Math.min(1, ((x - p.x0) * dx + (y - p.y0) * dy) / (dx * dx + dy * dy || 1)));
+			return Math.hypot(x - p.x0 - t * dx, y - p.y0 - t * dy) < 24 * k ? 'move' : null;
+		}
+		const b = box(p);
+		const m = 10 * k + p.lw / 2;
+		if (near(b.x + b.w + m, b.y + b.h + m)) return 'end1';
+		return x > b.x - m && x < b.x + b.w + m && y > b.y - m && y < b.y + b.h + m ? 'move' : null;
+	}
+
+	/** The shape being placed goes onto the paper for good, and can be undone like any stroke. */
+	function settle() {
+		if (!live) return;
+		remember();
+		drawStamp(paperCtx(), live);
+		// The shape may cross the picture's lines: draw the edge back in, as after a brush stroke.
+		outline(paperCtx(), EDGE);
+		live = null;
+		redrawTop();
 	}
 
 	const bitmap = (e: PointerEvent) => [(e.offsetX * w) / paper!.offsetWidth, (e.offsetY * h) / paper!.offsetHeight];
@@ -387,51 +491,77 @@
 		if (tool !== 'shape' || !e.isPrimary) return;
 		tray = false;
 		const [x, y] = bitmap(e);
-		drag = { x, y, sx: e.clientX, sy: e.clientY };
+		const hold = live && grab(live, x, y);
+		// Somewhere else on the paper: the last shape stays where it is. A drag starts a new one; a tap only lets go.
+		const settled = !hold && !!live;
+		if (!hold) settle();
+		gesture = { kind: hold || 'new', x, y, sx: e.clientX, sy: e.clientY, from: live, settled };
 		// Keep following the drag when it runs off the edge of the paper.
 		paper!.setPointerCapture(e.pointerId);
 	}
 
 	function paperMove(e: PointerEvent) {
 		sendAt(e);
-		if (!drag || !e.isPrimary) return;
+		if (!e.isPrimary || tool !== 'shape') return;
 		const [x, y] = bitmap(e);
-		redrawTop(stampPath(stamp, drag.x, drag.y, x, y));
+		const g = gesture;
+		if (!g) {
+			// A mouse over the shape being placed: show what dragging there would do.
+			const hold = live && grab(live, x, y);
+			paper!.style.cursor = hold === 'move' ? 'move' : hold ? 'nwse-resize' : '';
+			return;
+		}
+		const dx = x - g.x;
+		const dy = y - g.y;
+		const f = g.from;
+		if (g.kind === 'new') live = { s: stamp, x0: g.x, y0: g.y, x1: x, y1: y, lw: STAMP_LINE / zoom };
+		else if (f && g.kind === 'move') live = { ...f, x0: f.x0 + dx, y0: f.y0 + dy, x1: f.x1 + dx, y1: f.y1 + dy };
+		else if (f && g.kind === 'end1') live = { ...f, x1: f.x1 + dx, y1: f.y1 + dy };
+		else if (f && g.kind === 'end0') live = { ...f, x0: f.x0 + dx, y0: f.y0 + dy };
+		redrawTop();
 	}
 
 	function paperUp(e: PointerEvent) {
-		if (!drag || !e.isPrimary) return;
-		const d = drag;
-		drag = null;
-		let [x, y] = bitmap(e);
-		let x0 = d.x;
-		let y0 = d.y;
-		// A tap, not a drag: a ready-made shape around the finger, the same size on screen whatever the zoom.
-		if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 12) {
-			const r = (Math.min(w, h) * STAMP_SIZE) / zoom / 2;
-			const rw = stamp.fit === 'stretch' ? r * 1.5 : r;
-			[x0, y0, x, y] = stamp.fit === 'ends' ? [d.x - r, d.y, d.x + r, d.y] : [d.x - rw, d.y - r, d.x + rw, d.y + r];
+		const g = gesture;
+		if (!g || !e.isPrimary) return;
+		gesture = null;
+		const tap = Math.hypot(e.clientX - g.sx, e.clientY - g.sy) < 12;
+		if (g.kind === 'new' && !(tap && g.settled)) {
+			// A tap, not a drag: a ready-made shape around the finger, the same size on screen whatever the zoom.
+			if (tap) {
+				const r = (Math.min(w, h) * STAMP_SIZE) / zoom / 2;
+				const rw = stamp.fit === 'stretch' ? r * 1.5 : r;
+				const [x0, y0, x1, y1] = stamp.fit === 'ends' ? [g.x - r, g.y, g.x + r, g.y] : [g.x - rw, g.y - r, g.x + rw, g.y + r];
+				live = { s: stamp, x0, y0, x1, y1, lw: STAMP_LINE / zoom };
+			}
+			sfx.tok();
 		}
-		drawStamp(paperCtx(), stampPath(stamp, x0, y0, x, y));
-		// The shape may cross the picture's lines: draw the edge back in, as after a brush stroke.
-		outline(paperCtx(), EDGE);
+		if (live) live = tidy(live);
 		redrawTop();
-		sfx.tok();
 	}
 
+	/** A pinch or a lost pointer: the shape goes back to how it was before this drag. */
 	function paperCancel() {
-		if (!drag) return;
-		drag = null;
+		if (!gesture) return;
+		live = gesture.from;
+		gesture = null;
 		redrawTop();
 	}
 
+	/** Undo: a shape still being placed just goes away; otherwise the last stroke, fill or shape comes off. */
 	function back() {
+		if (live) {
+			live = null;
+			redrawTop();
+			return;
+		}
 		const last = undo.pop();
 		if (last) paperCtx().putImageData(last, 0, 0);
 		canUndo = undo.length > 0;
 	}
 
 	function finish() {
+		settle();
 		const out = document.createElement('canvas');
 		const k = THUMB / Math.max(w, h);
 		out.width = Math.round(w * k);
@@ -538,8 +668,8 @@
 		if (touches.size !== 2 || pinch) return;
 		// A second finger: this is a pinch, not paint. Take back what the first finger already did.
 		if (pad) pad.mode = MODE_DISABLED;
-		back();
-		paperCancel();
+		if (tool === 'shape') paperCancel();
+		else back();
 		const f = fingers();
 		const r = scroller!.getBoundingClientRect();
 		pinch = {
@@ -754,7 +884,7 @@
 	{:else if phase === 'paint'}
 		<section class="studio">
 			<div class="tools" role="group" aria-label="Tools" bind:this={toolbar}>
-				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back} ><Icon name="undo" size={32} /></button>
+				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo && !live} onclick={back} ><Icon name="undo" size={32} /></button>
 				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}><Icon name="brush" size={32} /></button>
 				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}><Icon name="bucket" size={32} /></button>
 				<button type="button" class="tool" aria-label="Shapes" aria-pressed={tool === 'shape'} aria-expanded={tray} onclick={shapesTool}>{@render stampPic(stamp)}</button>
@@ -877,10 +1007,14 @@
 		gap: clamp(1.5rem, 5vh, 3rem);
 		width: 100%;
 	}
+	.corner > * {
+		pointer-events: auto;
+	}
 	.corner {
 		position: absolute;
-		/* Above the paper while painting. */
+		/* Above the paper while painting, but only its buttons catch taps: the strip between them is see-through. */
 		z-index: 3;
+		pointer-events: none;
 		top: 1rem;
 		left: 1rem;
 		right: 1rem;
