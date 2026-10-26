@@ -124,6 +124,13 @@ export function addToGallery(picture: string): boolean {
 	return false;
 }
 
+/** Throws one picture away, by its place in the gallery (newest is 0). */
+export function removeFromGallery(index: number) {
+	const all = loadGallery();
+	all.splice(index, 1);
+	write(GALLERY, all);
+}
+
 /** Paint Pot: ids of the pictures finished at least once, for a star on their card. */
 const PAINTED = 'paintDone';
 export const loadPainted = (): string[] => {

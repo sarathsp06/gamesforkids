@@ -26,10 +26,11 @@
 	import zoomIn from '@material-symbols/svg-600/rounded/zoom_in.svg?raw';
 	import zoomOut from '@material-symbols/svg-600/rounded/zoom_out.svg?raw';
 	import draw from '@material-symbols/svg-600/rounded/draw.svg?raw';
+	import trash from '@material-symbols/svg-600/rounded/delete.svg?raw';
 	import flagNl from 'circle-flags/flags/nl.svg';
 	import flagEn from 'circle-flags/flags/gb.svg';
 
-	const SYMBOLS = { home, play, speaker, star, gear, undo, brush, bucket, check, book, plus, close, lock, mic, retry, games, back, friends, timer, zoomIn, zoomOut, draw };
+	const SYMBOLS = { home, play, speaker, star, gear, undo, brush, bucket, check, book, plus, close, lock, mic, retry, games, back, friends, timer, zoomIn, zoomOut, draw, trash };
 	const FLAGS = { nl: flagNl, en: flagEn };
 	export type IconName = keyof typeof SYMBOLS | keyof typeof FLAGS;
 

@@ -81,6 +81,7 @@ const en = {
 
 	'paint.go': 'Pick a colour and paint!',
 	'paint.others': 'Look what other children painted!',
+	'paint.delete': 'Throw this picture away?',
 	'friend.here': 'Your friend is here!',
 	'friend.ask': 'Ask your friend to paint with you?',
 	'friend.wants': 'Your friend wants to paint with you! Come?',
@@ -161,6 +162,7 @@ const nl: Record<Key, Entry> = {
 
 	'paint.go': 'Kies een kleur en schilder maar!',
 	'paint.others': 'Kijk wat andere kinderen geschilderd hebben!',
+	'paint.delete': 'Deze tekening weggooien?',
 	'friend.here': 'Je vriendje is er!',
 	'friend.ask': 'Vraag je vriendje om samen te schilderen?',
 	'friend.wants': 'Je vriendje wil samen schilderen! Kom je?',

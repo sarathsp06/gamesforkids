@@ -7,7 +7,7 @@
 	import { BLANK, CHAPTERS, CRAYONS, PICTURES, STAMPS, type Chapter, type Crayon, type Picture, type Stamp } from '#lib/paint.ts';
 	import { LANGUAGES, type Language } from '#lib/words.ts';
 	import { chapterName, colour, painted, pictureName, stampName, t } from '#lib/i18n.ts';
-	import { addToGallery, loadGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
+	import { addToGallery, loadGallery, removeFromGallery, loadLanguage, loadPainted, saveLanguage, savePainted } from '#lib/storage.ts';
 	import Icon from '#lib/Icon.svelte';
 	import Pip from '#lib/Pip.svelte';
 	import Reward from '#lib/Reward.svelte';
@@ -55,6 +55,10 @@
 	let finished = $state('');
 	let gallery = $state<string[]>([]);
 	let viewing = $state('');
+	/** The child's own picture being viewed, by its place in the gallery; -1: another child's picture. */
+	let viewingAt = $state(-1);
+	/** The bin was tapped: asking whether to throw the picture away. */
+	let confirming = $state(false);
 	/** Big mode shows the name under each picture and chapter; Little mode shows pictures only. */
 	let big = $state(false);
 	let newSticker = $state('');
@@ -92,7 +96,7 @@
 	$effect(() => together?.setScreen(screen));
 
 	function say(
-		key: 'paint.others' | 'friend.here' | 'friend.ask' | 'friend.wants' | 'friend.yes' | 'friend.no' | 'friend.finished' | 'friend.away' | 'friend.how' | 'friend.pick'
+		key: 'paint.others' | 'paint.delete' | 'friend.here' | 'friend.ask' | 'friend.wants' | 'friend.yes' | 'friend.no' | 'friend.finished' | 'friend.away' | 'friend.how' | 'friend.pick'
 	) {
 		otherLine = t(language, key);
 		speak(otherLine, language);
@@ -532,6 +536,29 @@
 		};
 	});
 
+	function view(url: string, at: number) {
+		viewing = url;
+		viewingAt = at;
+		confirming = false;
+	}
+	function closeView() {
+		viewing = '';
+		viewingAt = -1;
+		confirming = false;
+		otherLine = null;
+	}
+	/** Throwing a picture away is asked first: one stray tap shouldn't lose it. */
+	function askRemove() {
+		confirming = true;
+		say('paint.delete');
+	}
+	function removePicture() {
+		removeFromGallery(viewingAt);
+		gallery = loadGallery();
+		sfx.tok();
+		closeView();
+	}
+
 	function openChapter(c: Chapter) {
 		chapter = c;
 		otherLine = null;
@@ -544,7 +571,7 @@
 		undo = [];
 		stopSpeech();
 		clearTimeout(doneTimer);
-		viewing = '';
+		closeView();
 		otherLine = null;
 		asking = null;
 		together?.part();
@@ -722,13 +749,23 @@
 	{:else}
 		<section class="stage">
 			{#if viewing}
-				<button type="button" class="framed-btn" aria-label="Close" onclick={() => (viewing = '')}>
+				<button type="button" class="framed-btn" aria-label="Close" onclick={closeView}>
 					<img class="framed" src={viewing} alt="" />
 				</button>
+				{#if viewingAt >= 0}
+					<div class="row">
+						{#if confirming}
+							<button type="button" class="flag bin" aria-label="Yes, throw it away" onclick={removePicture}><Icon name="trash" size={34} /></button>
+							<button type="button" class="flag" aria-label="No, keep it" onclick={() => { confirming = false; otherLine = null; }}><Icon name="close" size={34} /></button>
+						{:else}
+							<button type="button" class="flag" aria-label="Throw it away" onclick={askRemove}><Icon name="trash" size={34} /></button>
+						{/if}
+					</div>
+				{/if}
 			{:else if gallery.length}
 				<div class="gallery">
 					{#each gallery as g, i (i)}
-						<button type="button" class="card" aria-label="Picture {i + 1}" onclick={() => (viewing = g)}>
+						<button type="button" class="card" aria-label="Picture {i + 1}" onclick={() => view(g, i)}>
 							<img src={g} alt="" />
 						</button>
 					{/each}
@@ -743,7 +780,7 @@
 						{#each together.shelf as p (p.id)}
 							{@const url = pictureUrl(p.id, p.picture, p.n, p.fills)}
 							{#if url}
-								<button type="button" class="card" aria-label="A picture by another child" onclick={() => (viewing = url)}>
+								<button type="button" class="card" aria-label="A picture by another child" onclick={() => view(url, -1)}>
 									<img src={url} alt="" />
 								</button>
 							{/if}
@@ -907,6 +944,10 @@
 		border-radius: 50%;
 		display: grid;
 		place-items: center;
+	}
+	.flag.bin {
+		background: var(--red);
+		color: var(--white);
 	}
 	.flag[aria-pressed='true'],
 	.tool[aria-pressed='true'] {
