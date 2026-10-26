@@ -63,7 +63,13 @@ export const valid = {
 export type Kind = keyof typeof valid;
 
 /** How often each peer may send each kind, in ms. Faster messages are dropped; a flood ignores the peer. */
-export const RATE: Partial<Record<Kind, number>> = { hi: 2000, pic: 10000, want: 10000, list: 10000, invite: 60000, at: 200, fills: 900 };
+export const RATE: Partial<Record<Kind, number>> = { hi: 2000, pic: 10000, want: 10000, list: 10000, invite: 60000, at: 100, fills: 400 };
+/**
+ * Kinds where only the newest message matters (a crayon position, a picture's colours). Sent at most every
+ * 250 ms and 1 s, but relays bunch them up on the way, so one that comes early is just dropped: it never
+ * counts towards ignoring the friend, which would also hide their painting for a minute.
+ */
+export const LATEST_ONLY: Partial<Record<Kind, true>> = { at: true, fills: true };
 export const PENALTY_MS = 60000;
 /** Dropped messages within a minute before a peer is ignored for one. */
 export const FLOOD = 10;
@@ -80,6 +86,7 @@ export class Limiter {
 		const k = `${peer}:${kind}`;
 		const prev = this.last.get(k);
 		if (prev !== undefined && now - prev < gap) {
+			if (LATEST_ONLY[kind]) return false;
 			const recent = [...(this.drops.get(peer) ?? []).filter((t) => now - t < PENALTY_MS), now];
 			this.drops.set(peer, recent);
 			if (recent.length >= FLOOD) this.banned.set(peer, now + PENALTY_MS);
@@ -156,6 +163,8 @@ export async function sha256(text: string): Promise<string> {
 }
 /** 128 random bits as hex: a device's friend key, a transfer key. */
 export const newKey = (): string => [...globalThis.crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+/** Today as YYYY-MM-DD in the device's own time zone. */
+export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 /** A short random id for a shared picture. */
 export const newPicId = (): string => newKey().slice(0, 12);
 
@@ -171,9 +180,18 @@ export const PUBLIC_PASSWORD = 'gamesforkids-paint-v1';
 /** Sixteen sticker drawings a grown-up can match without reading (the two pictures of a progress move). */
 export const CODE_PICTURES = ['🐱', '🐶', '🐟', '🦆', '🐮', '🐴', '🐻', '🦉', '🐷', '🦁', '🐘', '🦒', '🐰', '🦋', '🐢', '🐸'] as const;
 if (!CODE_PICTURES.every((c) => c in STICKERS)) throw new Error('code pictures must be stickers');
-/** The pairing room and its password, from the one-time key in the QR code; the key itself is never sent. */
-export async function pairRoom(key: string) {
-	return { room: `pair-${(await sha256(`pair|${key}`)).slice(0, 24)}`, password: await sha256(`pw|pair|${key}`) };
+/** The six-digit code one device shows and the other types (or opens as an invite link), board 7b. */
+export const PAIR_DIGITS = 6;
+export const newPairCode = (): string =>
+	String(globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 10 ** PAIR_DIGITS).padStart(PAIR_DIGITS, '0');
+export const isPairCode = (x: unknown): x is string => typeof x === 'string' && new RegExp(`^\\d{${PAIR_DIGITS}}$`).test(x);
+/**
+ * The pairing room and its password, from the code and the day; the code itself is never sent. A million
+ * codes, open for ten minutes: guessing one in time through the relays is out of reach.
+ */
+export async function pairRoom(code: string, date = today()) {
+	const base = `pair|${code}|${date}`;
+	return { room: `pair-${(await sha256(base)).slice(0, 24)}`, password: await sha256(`pw|${base}`) };
 }
 /** The private room of two friends: the same on both devices whichever key is whose. */
 export async function friendRoom(a: string, b: string) {

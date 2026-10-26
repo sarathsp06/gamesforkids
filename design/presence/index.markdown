@@ -6,8 +6,8 @@ co-review: design
 > **Update, October 2026 (built):** the transport is now relay-only. Real phones on mobile data or guest Wi-Fi
 > could find each other but never connect directly (no TURN server), so every message now goes through public
 > Nostr relays as an ephemeral event, AES-GCM encrypted with a key from the room name and password; large
-> messages are split into pieces. Devices no longer see each other's IP address. Pairing is one QR code with a
-> one-time key (canvas board 7b) instead of four pictures. See `src/lib/p2p.ts`.
+> messages are split into pieces. Devices no longer see each other's IP address. Pairing is a six-digit code typed on
+> the other device, or an invite link carrying it (canvas board 7b), instead of four pictures. See `src/lib/p2p.ts`.
 
 ## Context
 

@@ -247,7 +247,8 @@ export class Together {
 		});
 		link.open.on((o, peer) => {
 			if (!fromFriend(peer) || this.with?.key !== k || this.with.state !== 'on') return;
-			this.friendFills = null;
+			// Relays don't keep order: the friend's colours for this picture may already be here.
+			if (this.friendFills?.picture !== o.picture) this.friendFills = null;
 			this.friendDone = false;
 			this.emit('open', o.picture);
 		});

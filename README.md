@@ -94,7 +94,7 @@ Every push to `main` builds and publishes to GitHub Pages ([deploy.yml](.github/
   the browser can (Chrome), otherwise by the browser's speech service (Apple on iPad, Google in Chrome). The app
   keeps no audio.
 - **Paint Pot with others** (Grown-ups, off by default): your child sees the faces of other children painting and
-  the pictures they finish, and can paint side by side with a friend you added by scanning one QR code. Messages
+  the pictures they finish, and can paint side by side with a friend you added with a six-digit code or an invite link. Messages
   go through public relays, encrypted; devices never connect to each other or see each other's internet address.
   Only a drawn face, a screen and one colour per area of a picture are shared. No names, no chat, nothing typed, nothing stored.
 - **Move to another device** (Grown-ups): show a QR code and scan it with the other device's camera; check the

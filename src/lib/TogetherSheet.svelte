@@ -52,7 +52,7 @@
 			intro: 'Your child can paint side by side with a friend on another family\'s device. Set it up once, together with the other grown-up:',
 			steps: [
 				'Hold the button below for three seconds.',
-				'Tap "Add a friend" and scan the QR code with the other device\'s camera.'
+				'Tap "Add a friend" here, and type the code it shows on the other device ("Enter a code"), or send the invite link.'
 			],
 			after: 'After that, no code is needed: when the friend opens Paint Pot, their face shows here with a heart, and your child taps it to paint together.',
 			more: 'Pair another friend, or change this: hold the button for three seconds.',
@@ -70,7 +70,7 @@
 			intro: 'Je kind kan naast een vriendje schilderen, op het apparaat van een ander gezin. Stel het één keer in, samen met de andere volwassene:',
 			steps: [
 				'Houd de knop hieronder drie seconden vast.',
-				'Tik op "Voeg een vriendje toe" en scan de QR-code met de camera van het andere apparaat.'
+				'Tik hier op "Voeg een vriendje toe" en typ de code op het andere apparaat ("Voer een code in"), of stuur de uitnodigingslink.'
 			],
 			after: 'Daarna is er geen code meer nodig: als het vriendje Verfpot opent, staat zijn gezichtje hier met een hartje, en je kind tikt erop om samen te schilderen.',
 			more: 'Nog een vriendje koppelen, of dit aanpassen: houd de knop drie seconden vast.',

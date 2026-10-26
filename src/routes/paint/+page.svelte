@@ -32,6 +32,7 @@
 	const THUMB = 320; // gallery pictures, in pixels
 	const FILLS_MS = 3000; // how often a friend painting alongside sees this picture's colours
 	const AT_MS = 100; // and this crayon's position
+	const FILLS_AGAIN_MS = 9000; // the same colours again, in case a message was lost
 
 	let phase = $state<'start' | 'paint' | 'done' | 'gallery'>('start');
 	/** The story whose pictures are shown; none: the list of chapters. */
@@ -68,6 +69,7 @@
 	let friendCanvas = $state<HTMLCanvasElement>();
 	let shelfSaid = false;
 	let lastFills = '';
+	let lastFillsAt = 0;
 	let lastAt = 0;
 	let fillsTimer: ReturnType<typeof setInterval> | undefined;
 	const screen = $derived(phase === 'paint' ? 'paint' : chapter ? 'pictures' : 'chapters');
@@ -154,8 +156,10 @@
 		const f = currentFills();
 		if (!f) return;
 		const key = JSON.stringify(f.fills);
-		if (key === lastFills) return;
+		// Unchanged colours go again now and then: a message lost on the way never leaves the friend's view stale.
+		if (key === lastFills && Date.now() - lastFillsAt < FILLS_AGAIN_MS) return;
 		lastFills = key;
+		lastFillsAt = Date.now();
 		together.sendFills({ v: 1, picture: picture.id, ...f });
 	}
 	function sendAt(e: PointerEvent) {

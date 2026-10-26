@@ -1,7 +1,7 @@
 // npx tsx tests/presence.test.ts
 import { strict as assert } from 'node:assert';
 import {
-	FLOOD, Limiter, PENALTY_MS, SHELF_MAX, crayonAt, friendRoom, isKey, labelRegions, newKey, pairRoom, publicRoom, valid
+	FLOOD, Limiter, PENALTY_MS, SHELF_MAX, crayonAt, friendRoom, isPairCode, labelRegions, newKey, newPairCode, pairRoom, publicRoom, valid
 } from '../src/lib/presence';
 import { CRAYONS } from '../src/lib/paint';
 
@@ -76,19 +76,25 @@ assert.ok(!valid.pic(null) && !valid.pic('pic') && !valid.pic([pic]));
 	assert.ok(!l.allow('a', 'hi', 2600), 'too fast is dropped');
 	assert.ok(l.allow('a', 'pic', 2700), 'one fast message is not a ban');
 	assert.ok(l.allow('a', 'hi', 4600), 'and the peer is heard again');
-	for (let t = 0; t < FLOOD; t++) l.allow('a', 'at', 5000 + t);
+	for (let t = 0; t < FLOOD; t++) l.allow('a', 'want', 5000 + t);
 	assert.ok(!l.allow('a', 'pic', 50000), 'a flood ignores the peer for a while');
 	assert.ok(l.allow('a', 'pic', 5000 + FLOOD + PENALTY_MS), 'and hears it again a minute after the flood');
 	assert.ok(l.allow('b', 'hi', 2600), 'other peers are unaffected');
+	// Crayon positions bunched up by the relays are dropped, but never get the friend ignored.
+	const m = new Limiter();
+	for (let t = 0; t < 40; t++) m.allow('f', 'at', t * 60);
+	assert.ok(m.allow('f', 'fills', 5000) && m.allow('f', 'at', 5200), 'a friend sending positions fast is still heard');
 }
 
 // Keys and rooms.
-const key = newKey();
-assert.ok(isKey(key));
-const a = await pairRoom(key);
-assert.deepEqual(a, await pairRoom(key), 'both devices find the same room from the QR key');
-assert.notEqual(a.room, (await pairRoom(newKey())).room);
-assert.ok(![a.room, a.password].some((x) => x.includes(key)), 'the key itself never shows');
+for (let i = 0; i < 200; i++) assert.ok(isPairCode(newPairCode()));
+assert.ok(!isPairCode('12345') && !isPairCode('1234567') && !isPairCode('12a456') && !isPairCode(123456));
+const code = '048213';
+const a = await pairRoom(code, '2026-10-26');
+assert.deepEqual(a, await pairRoom(code, '2026-10-26'), 'both devices find the same room from the code');
+assert.notEqual(a.room, (await pairRoom(code, '2026-10-27')).room, 'a new day, a new room');
+assert.notEqual(a.room, (await pairRoom('048214', '2026-10-26')).room);
+assert.ok(![a.room, a.password].some((x) => x.includes(code)), 'the code itself never shows');
 assert.notEqual(a.room, publicRoom('en', 0));
 const [k1, k2] = [newKey(), newKey()];
 assert.deepEqual(await friendRoom(k1, k2), await friendRoom(k2, k1), 'both friends find the same room');

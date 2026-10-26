@@ -1,14 +1,14 @@
 <script lang="ts">
 	/**
-	 * Where the "Add a friend" QR code lands on the friend's device (design/presence, board 7b). The one-time
-	 * key is in the #fragment, which the browser never sends anywhere; it is read once and removed from the
-	 * address bar. Scanning is the grown-up's yes: the two devices swap faces and are friends.
+	 * Where the invite link from "Add a friend" lands on the friend's device (design/presence, board 7b). The
+	 * code is in the #fragment, which the browser never sends anywhere; it is read once and removed from the
+	 * address bar. Opening the link is the grown-up's yes: the two devices swap faces and are friends.
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import Avatar from '#lib/Avatar.svelte';
 	import { pair } from '#lib/pairing.ts';
-	import { isKey } from '#lib/presence.ts';
+	import { isPairCode } from '#lib/presence.ts';
 	import { addFriend } from '#lib/presence.svelte.ts';
 	import { currentPlayer, loadLanguage, loadPlayers, loadSettings, saveSettings } from '#lib/storage.ts';
 	import type { Language } from '#lib/words.ts';
@@ -21,20 +21,20 @@
 	const T = {
 		en: {
 			title: 'Add a friend',
-			none: 'Open this page by scanning the QR code on the other device: Grown-ups, Add a friend.',
+			none: 'Open this page from the invite link the other device made (Grown-ups, Add a friend), or type its code there in Grown-ups, Enter a code.',
 			connecting: 'Finding the other device…',
 			now: 'Friends now!',
 			nowHint: 'Your child sees this friend with a heart in Paint Pot and can ask them to paint together. "Play with others" is now on; you can turn it off in Grown-ups.',
-			gone: 'The other device didn\'t answer. Make a new code there and scan it again.',
+			gone: 'The other device didn\'t answer, or the code has expired. Make a new one there.',
 			play: 'Who is playing?'
 		},
 		nl: {
 			title: 'Voeg een vriendje toe',
-			none: 'Open deze pagina door de QR-code op het andere apparaat te scannen: Volwassenen, Voeg een vriendje toe.',
+			none: 'Open deze pagina met de uitnodigingslink van het andere apparaat (Volwassenen, Voeg een vriendje toe), of typ de code bij Volwassenen, Voer een code in.',
 			connecting: 'Het andere apparaat zoeken…',
 			now: 'Nu vriendjes!',
 			nowHint: 'Je kind ziet dit vriendje met een hartje in Verfpot en kan vragen om samen te schilderen. "Samen met anderen" staat nu aan; je kunt het uitzetten bij Volwassenen.',
-			gone: 'Het andere apparaat antwoordde niet. Maak daar een nieuwe code en scan die opnieuw.',
+			gone: 'Het andere apparaat antwoordde niet, of de code is verlopen. Maak daar een nieuwe.',
 			play: 'Wie speelt er?'
 		}
 	};
@@ -46,17 +46,17 @@
 		const hash = location.hash.slice(1);
 		// Read once, then off the address bar, so a reload or a shared screenshot doesn't carry it.
 		history.replaceState(null, '', location.pathname);
-		const key = hash.startsWith('pair=') ? hash.slice(5) : '';
-		if (!isKey(key)) return;
+		const code = hash.startsWith('pair=') ? hash.slice(5) : '';
+		if (!isPairCode(code)) return;
 		mode = 'connecting';
 		void pair(
-			key,
+			code,
 			myAvatar(),
 			(h) => {
 				if (mode !== 'connecting') return;
 				addFriend(h.key, h.avatar);
 				friendAvatar = h.avatar;
-				// Painting with a friend needs the switch: scanning the code is the grown-up saying yes to it.
+				// Painting with a friend needs the switch: opening the invite is the grown-up saying yes to it.
 				const settings = loadSettings();
 				if (!settings.online) saveSettings({ ...settings, online: true });
 				mode = 'added';
