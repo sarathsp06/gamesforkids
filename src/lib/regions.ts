@@ -49,12 +49,16 @@ export function regionsOf(id: string): Regions | null {
 	return r;
 }
 
-/** One crayon per region of a painted canvas: the colour most of its pixels have, or -1 where none is a crayon. */
-export function fillsOf(painted: HTMLCanvasElement, r: Regions): number[] {
+/**
+ * One crayon per region of a painted canvas: the colour most of its pixels have, or -1 where none is a crayon.
+ * `at` is where the picture sits on the canvas, in canvas pixels.
+ */
+export function fillsOf(painted: HTMLCanvasElement, r: Regions, at = { x: 0, y: 0, s: painted.width }): number[] {
 	const ctx = grid().getContext('2d', { willReadFrequently: true })!;
 	// Nearest-neighbour scaling keeps every pixel an exact crayon colour.
 	ctx.imageSmoothingEnabled = false;
-	ctx.drawImage(painted, 0, 0, GRID, GRID);
+	// Only the picture's own square of the page: the paper around it can be any size.
+	ctx.drawImage(painted, at.x, at.y, at.s, at.s, 0, 0, GRID, GRID);
 	const px = ctx.getImageData(0, 0, GRID, GRID).data;
 	const votes = Array.from({ length: r.count }, () => new Int32Array(CRAYONS.length));
 	for (let i = 0; i < r.labels.length; i += 3) {

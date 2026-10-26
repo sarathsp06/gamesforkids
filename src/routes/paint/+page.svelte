@@ -21,8 +21,10 @@
 	import { drawFills, fillsOf, pictureUrl, regionsOf } from '#lib/regions.ts';
 	import type { Line } from '#lib/i18n.ts';
 
-	const SIZE = 1200; // canvas bitmap; CSS scales it to the screen, sharp enough to zoom into
-	const SCALE = SIZE / 100; // picture paths are drawn on a 100×100 grid
+	// The paper fills the window: its bitmap is SIZE on the short side and as long as the window on the other, up to
+	// ASPECT_MAX times as long. Sharp enough to zoom into.
+	const SIZE = 1200;
+	const ASPECT_MAX = 2.4;
 	const BRUSH = 51; // brush width in bitmap pixels at no zoom, whatever the screen size
 	const STAMP_LINE = 18; // a shape's outline, in bitmap pixels at no zoom
 	const STAMP_SIZE = 0.22; // a tapped shape, as a share of what the board shows
@@ -33,7 +35,7 @@
 	const LINE = 1.8;
 	const TOLERANCE = 48; // per colour channel: a fill also takes the soft edges of brush strokes
 	const UNDO_MAX = 8;
-	const THUMB = 320; // gallery pictures, in pixels
+	const THUMB = 480; // gallery pictures, in pixels on their longer side
 	const FILLS_MS = 3000; // how often a friend painting alongside sees this picture's colours
 	const AT_MS = 100; // and this crayon's position
 	const FILLS_AGAIN_MS = 9000; // the same colours again, in case a message was lost
@@ -69,6 +71,15 @@
 	let lines = $state<HTMLCanvasElement>();
 	/** Scrolls the page when it is zoomed in: two fingers, a trackpad or the mouse wheel move it around. */
 	let scroller = $state<HTMLDivElement>();
+	let page = $state<HTMLDivElement>();
+	let toolbar = $state<HTMLDivElement>();
+	let palette = $state<HTMLDivElement>();
+	/** The paper's bitmap, and its size on the screen at no zoom. */
+	let w = $state(SIZE);
+	let h = $state(SIZE);
+	let fit = $state({ w: 0, h: 0 });
+	/** Where the picture's 100×100 grid sits on the paper, in bitmap pixels: clear of the tools. */
+	let at = { x: 0, y: 0, s: SIZE };
 	let zoom = $state(1);
 	/** Fingers on the board, by pointer id: two make a pinch, which zooms and moves the page instead of painting. */
 	const touches = new Map<number, { x: number; y: number }>();
@@ -169,7 +180,7 @@
 	/** This picture as region crayons: what a friend sees and what the shelf shows. Null if it can't be read. */
 	function currentFills() {
 		const r = regionsOf(picture.id);
-		return r && paper ? { n: r.count, fills: fillsOf(paper, r) } : null;
+		return r && paper ? { n: r.count, fills: fillsOf(paper, r, at) } : null;
 	}
 	function sendFills() {
 		if (!together?.painting || phase !== 'paint') return;
@@ -185,8 +196,9 @@
 	function sendAt(e: PointerEvent) {
 		if (!together?.painting || !e.isPrimary || Date.now() - lastAt < AT_MS) return;
 		lastAt = Date.now();
-		const x = e.offsetX / paper!.offsetWidth;
-		const y = e.offsetY / paper!.offsetHeight;
+		// Where on the picture, not the paper: the friend's copy is just the picture.
+		const x = ((e.offsetX * w) / paper!.offsetWidth - at.x) / at.s;
+		const y = ((e.offsetY * h) / paper!.offsetHeight - at.y) / at.s;
 		if (x >= 0 && x <= 1 && y >= 0 && y <= 1) together.sendAt({ v: 1, x, y });
 	}
 	// The friend's picture, redrawn from their crayons whenever new ones arrive.
@@ -225,7 +237,7 @@
 	function outline(ctx: CanvasRenderingContext2D, width: number) {
 		ctx.save();
 		ctx.globalCompositeOperation = 'source-over';
-		ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+		ctx.setTransform(at.s / 100, 0, 0, at.s / 100, at.x, at.y);
 		ctx.strokeStyle = '#000000';
 		ctx.lineWidth = width;
 		ctx.lineCap = 'round';
@@ -237,7 +249,7 @@
 	const paperCtx = () => paper!.getContext('2d', { willReadFrequently: true })!;
 
 	function remember() {
-		undo.push(paperCtx().getImageData(0, 0, SIZE, SIZE));
+		undo.push(paperCtx().getImageData(0, 0, w, h));
 		if (undo.length > UNDO_MAX) undo.shift();
 		canUndo = true;
 	}
@@ -262,7 +274,10 @@
 		await tick();
 		pad?.destroy();
 		// Atrament sets the canvas size, which wipes it: create it before drawing the picture.
-		pad = new Atrament(paper!, { width: SIZE, height: SIZE, color: crayon.hex });
+		layout();
+		// The canvases take their new size now: resizing one later would wipe what is drawn on it.
+		flushSync();
+		pad = new Atrament(paper!, { width: w, height: h, color: crayon.hex });
 		pad.adaptiveStroke = false;
 		// One line width whatever the pressure: some touchscreens report none, which would draw a hairline.
 		pad.pressureLow = 1;
@@ -271,15 +286,15 @@
 		pad.mode = MODE_DRAW;
 		const ctx = paperCtx();
 		ctx.fillStyle = '#ffffff';
-		ctx.fillRect(0, 0, SIZE, SIZE);
+		ctx.fillRect(0, 0, w, h);
 		outline(ctx, EDGE);
 		const top = lines!.getContext('2d')!;
-		top.clearRect(0, 0, SIZE, SIZE);
+		top.clearRect(0, 0, w, h);
 		outline(top, LINE);
 		// Before every stroke or fill: keep a copy to undo to, and size the brush to the screen.
 		pad.addEventListener('pointerdown', () => {
 			remember();
-			pad!.weight = (BRUSH * paper!.offsetWidth) / SIZE / zoom;
+			pad!.weight = (BRUSH * paper!.offsetWidth) / w / zoom;
 		});
 		// A stroke over the outline would open a gap for the bucket: draw the edge back in.
 		pad.addEventListener('strokeend', () => outline(paperCtx(), EDGE));
@@ -288,11 +303,11 @@
 	/** The bucket fills where the finger lands (Atrament's own fill uses the last pointer move). */
 	function bucket(e: PointerEvent) {
 		if (tool !== 'bucket' || !e.isPrimary) return;
-		const x = Math.floor((e.offsetX * SIZE) / paper!.offsetWidth);
-		const y = Math.floor((e.offsetY * SIZE) / paper!.offsetHeight);
-		if (x < 0 || y < 0 || x >= SIZE || y >= SIZE) return;
+		const x = Math.floor((e.offsetX * w) / paper!.offsetWidth);
+		const y = Math.floor((e.offsetY * h) / paper!.offsetHeight);
+		if (x < 0 || y < 0 || x >= w || y >= h) return;
 		const ctx = paperCtx();
-		const image = ctx.getImageData(0, 0, SIZE, SIZE);
+		const image = ctx.getImageData(0, 0, w, h);
 		new FloodFill(image).fill(crayon.hex, x, y, TOLERANCE);
 		ctx.putImageData(image, 0, 0);
 		sfx.tok();
@@ -360,12 +375,12 @@
 	/** The top canvas: the picture's outline, and the shape being dragged out, if any. */
 	function redrawTop(preview?: Path2D) {
 		const top = lines!.getContext('2d')!;
-		top.clearRect(0, 0, SIZE, SIZE);
+		top.clearRect(0, 0, w, h);
 		if (preview) drawStamp(top, preview);
 		outline(top, LINE);
 	}
 
-	const bitmap = (e: PointerEvent) => [(e.offsetX * SIZE) / paper!.offsetWidth, (e.offsetY * SIZE) / paper!.offsetHeight];
+	const bitmap = (e: PointerEvent) => [(e.offsetX * w) / paper!.offsetWidth, (e.offsetY * h) / paper!.offsetHeight];
 
 	function paperDown(e: PointerEvent) {
 		bucket(e);
@@ -393,7 +408,7 @@
 		let y0 = d.y;
 		// A tap, not a drag: a ready-made shape around the finger, the same size on screen whatever the zoom.
 		if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 12) {
-			const r = (SIZE * STAMP_SIZE) / zoom / 2;
+			const r = (Math.min(w, h) * STAMP_SIZE) / zoom / 2;
 			const rw = stamp.fit === 'stretch' ? r * 1.5 : r;
 			[x0, y0, x, y] = stamp.fit === 'ends' ? [d.x - r, d.y, d.x + r, d.y] : [d.x - rw, d.y - r, d.x + rw, d.y + r];
 		}
@@ -418,10 +433,12 @@
 
 	function finish() {
 		const out = document.createElement('canvas');
-		out.width = out.height = THUMB;
+		const k = THUMB / Math.max(w, h);
+		out.width = Math.round(w * k);
+		out.height = Math.round(h * k);
 		const ctx = out.getContext('2d')!;
-		ctx.drawImage(paper!, 0, 0, THUMB, THUMB);
-		ctx.drawImage(lines!, 0, 0, THUMB, THUMB);
+		ctx.drawImage(paper!, 0, 0, out.width, out.height);
+		ctx.drawImage(lines!, 0, 0, out.width, out.height);
 		finished = out.toDataURL('image/png');
 		// What others see of it: one crayon per region, never the picture itself.
 		const f = currentFills();
@@ -453,6 +470,44 @@
 		speak(painted(language, picture), language, show);
 	}
 
+	/** The paper's size on the screen: as big as the window, keeping its shape. */
+	function contain() {
+		const cw = scroller!.clientWidth;
+		const ch = scroller!.clientHeight;
+		return cw / ch > w / h ? { w: (ch * w) / h, h: ch } : { w: cw, h: (cw * h) / w };
+	}
+
+	/**
+	 * Sizes the paper to the window, and finds the picture's place on it: the biggest square clear of the tools down
+	 * the side and the crayons along the bottom, in the middle of the window where it fits. The child can still paint
+	 * anywhere on the paper.
+	 */
+	function layout() {
+		const cw = scroller!.clientWidth;
+		const ch = scroller!.clientHeight;
+		const a = Math.min(Math.max(cw, ch) / Math.min(cw, ch), ASPECT_MAX);
+		[w, h] = cw >= ch ? [Math.round(SIZE * a), SIZE] : [SIZE, Math.round(SIZE * a)];
+		fit = contain();
+		const box = scroller!.getBoundingClientRect();
+		const ox = box.left + (cw - fit.w) / 2;
+		const oy = box.top + (ch - fit.h) / 2;
+		const m = 16;
+		const left = Math.max(m, toolbar!.getBoundingClientRect().right - ox + m);
+		const right = fit.w - m;
+		const top = m;
+		const bottom = Math.min(fit.h - m, palette!.getBoundingClientRect().top - oy - m);
+		const side = Math.max(100, Math.min(right - left, bottom - top));
+		const x = Math.min(Math.max(fit.w / 2 - side / 2, left), right - side);
+		const y = top + (bottom - top - side) / 2;
+		const k = w / fit.w;
+		at = { x: x * k, y: y * k, s: side * k };
+	}
+
+	/** The window turned or resized: the paper keeps its bitmap and only scales to the new window. */
+	function refit() {
+		if (phase === 'paint' && scroller) fit = contain();
+	}
+
 	const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(1, z));
 
 	/** Zoom to `next`, keeping page point (x, y), in unzoomed board pixels, under board point (px, py). */
@@ -460,8 +515,8 @@
 		zoom = clampZoom(next);
 		// The page must have its new size before it can scroll that far.
 		flushSync();
-		scroller!.scrollLeft = x * zoom - px;
-		scroller!.scrollTop = y * zoom - py;
+		scroller!.scrollLeft = page!.offsetLeft + x * zoom - px;
+		scroller!.scrollTop = page!.offsetTop + y * zoom - py;
 	}
 
 	/** Zoom around a point on the screen: the cursor, the fingers, or the middle of the board for the buttons. */
@@ -469,7 +524,7 @@
 		const r = scroller!.getBoundingClientRect();
 		const px = (clientX ?? r.left + r.width / 2) - r.left;
 		const py = (clientY ?? r.top + r.height / 2) - r.top;
-		place(next, (scroller!.scrollLeft + px) / zoom, (scroller!.scrollTop + py) / zoom, px, py);
+		place(next, (scroller!.scrollLeft + px - page!.offsetLeft) / zoom, (scroller!.scrollTop + py - page!.offsetTop) / zoom, px, py);
 	}
 
 	function fingers() {
@@ -487,7 +542,12 @@
 		paperCancel();
 		const f = fingers();
 		const r = scroller!.getBoundingClientRect();
-		pinch = { zoom, dist: f.dist, x: (scroller!.scrollLeft + f.x - r.left) / zoom, y: (scroller!.scrollTop + f.y - r.top) / zoom };
+		pinch = {
+			zoom,
+			dist: f.dist,
+			x: (scroller!.scrollLeft + f.x - r.left - page!.offsetLeft) / zoom,
+			y: (scroller!.scrollTop + f.y - r.top - page!.offsetTop) / zoom
+		};
 	}
 
 	function touchMove(e: PointerEvent) {
@@ -535,6 +595,12 @@
 			s.removeEventListener('gesturechange', gestureChange);
 		};
 	});
+
+	/** A picture's own shape, so the frame can scale it up to the screen whatever shape the window was. */
+	function shape(e: Event) {
+		const img = e.currentTarget as HTMLImageElement;
+		img.style.setProperty('--r', String(img.naturalWidth / img.naturalHeight));
+	}
 
 	function view(url: string, at: number) {
 		viewing = url;
@@ -591,7 +657,9 @@
 	</svg>
 {/snippet}
 
-<main>
+<svelte:window onresize={refit} />
+
+<main class:full={phase === 'paint'}>
 	<header class="corner">
 		{#if phase === 'start' && !chapter}
 			<a class="icon" href={resolve('/home')} aria-label="All games"><Icon name="home" size={32} /></a>
@@ -685,7 +753,7 @@
 		</section>
 	{:else if phase === 'paint'}
 		<section class="studio">
-			<div class="tools" role="group" aria-label="Tools">
+			<div class="tools" role="group" aria-label="Tools" bind:this={toolbar}>
 				<button type="button" class="tool" aria-label="Undo" disabled={!canUndo} onclick={back} ><Icon name="undo" size={32} /></button>
 				<button type="button" class="tool" aria-label="Brush" aria-pressed={tool === 'brush'} onclick={() => pickTool('brush')}><Icon name="brush" size={32} /></button>
 				<button type="button" class="tool" aria-label="Paint bucket" aria-pressed={tool === 'bucket'} onclick={() => pickTool('bucket')}><Icon name="bucket" size={32} /></button>
@@ -696,17 +764,17 @@
 			</div>
 			<div class="board" class:fill={tool === 'bucket'} role="application" aria-label="Picture" onpointerdown={touchDown} onpointermove={touchMove} onpointerup={touchUp} onpointercancel={touchUp}>
 				<div class="scroll" bind:this={scroller}>
-					<div class="page" style="width: {zoom * 100}%; height: {zoom * 100}%">
+					<div class="page" bind:this={page} style="width: {fit.w * zoom}px; height: {fit.h * zoom}px">
 						<canvas
 							bind:this={paper}
-							width={SIZE}
-							height={SIZE}
+							width={w}
+							height={h}
 							onpointerdown={paperDown}
 							onpointermove={paperMove}
 							onpointerup={paperUp}
 							onpointercancel={paperCancel}
 						></canvas>
-						<canvas bind:this={lines} width={SIZE} height={SIZE} class="lines" aria-hidden="true"></canvas>
+						<canvas bind:this={lines} width={w} height={h} class="lines" aria-hidden="true"></canvas>
 					</div>
 				</div>
 				{#if tray}
@@ -728,7 +796,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="crayons" role="group" aria-label="Colours">
+			<div class="crayons" role="group" aria-label="Colours" bind:this={palette}>
 				{#each CRAYONS as c (c.id)}
 					<button
 						type="button"
@@ -750,7 +818,7 @@
 		<section class="stage">
 			{#if viewing}
 				<button type="button" class="framed-btn" aria-label="Close" onclick={closeView}>
-					<img class="framed" src={viewing} alt="" />
+					<img class="framed" src={viewing} alt="" onload={shape} />
 				</button>
 				{#if viewingAt >= 0}
 					<div class="row">
@@ -811,6 +879,8 @@
 	}
 	.corner {
 		position: absolute;
+		/* Above the paper while painting. */
+		z-index: 3;
 		top: 1rem;
 		left: 1rem;
 		right: 1rem;
@@ -872,9 +942,10 @@
 	}
 	.friend-view {
 		position: absolute;
-		right: 0.5rem;
-		bottom: 0.5rem;
-		width: 28%;
+		top: 1rem;
+		right: 1rem;
+		z-index: 2;
+		width: min(24vw, 13rem);
 		aspect-ratio: 1;
 		border: 3px solid var(--ink);
 		border-radius: 12px;
@@ -1056,28 +1127,35 @@
 	}
 	.card img {
 		border-radius: 10px;
+		object-fit: contain;
 	}
 	.empty {
 		line-height: 0;
 		opacity: 0.35;
 	}
 
+	/* Painting: the paper is the whole window, with the tools down the left and the crayons along the bottom on top. */
+	main.full {
+		padding: 0;
+	}
 	.studio {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		width: 100%;
+		position: fixed;
+		inset: 0;
 	}
 	.tools {
+		position: absolute;
+		top: calc(var(--tap) + 2rem);
+		left: 1rem;
+		z-index: 2;
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 1rem;
+		flex-direction: column;
+		gap: 0.8rem;
 	}
 	.tool {
-		width: max(4.2rem, var(--tap));
-		height: max(4.2rem, var(--tap));
+		/* Seven keys between the home button and the crayons: smaller when the window is short. */
+		--key: min(max(4.2rem, var(--tap)), calc((100dvh - 2 * var(--tap) - 6rem) / 7 - 0.8rem));
+		width: var(--key);
+		height: var(--key);
 		border-radius: 18px;
 		line-height: 1;
 		display: grid;
@@ -1091,15 +1169,11 @@
 		background: var(--leaf);
 		color: var(--white);
 	}
-	/* Square board as big as the screen allows, leaving room for tools and crayons. */
 	.board {
-		position: relative;
-		width: min(94vw, calc(100dvh - 2 * var(--tap) - 14rem));
-		aspect-ratio: 1;
-		border: var(--line) solid var(--ink);
-		border-radius: 18px;
+		position: absolute;
+		inset: 0;
 		overflow: hidden;
-		background: var(--white);
+		background: var(--butter);
 		cursor: crosshair;
 		/* Pinching zooms the picture, not the page. */
 		touch-action: none;
@@ -1111,10 +1185,10 @@
 		width: 2rem;
 		height: 2rem;
 	}
-	/* The shapes, open over the top of the board; the board stays as big as it was. */
+	/* The shapes, open along the top of the paper. */
 	.tray {
 		position: absolute;
-		top: 0.6rem;
+		top: 1rem;
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 2;
@@ -1123,7 +1197,7 @@
 		justify-content: center;
 		gap: 0.6rem;
 		width: max-content;
-		max-width: calc(100% - 1.2rem);
+		max-width: calc(100% - 2 * var(--tap) - 4rem);
 		padding: 0.6rem 0.6rem 1rem;
 		border: var(--line) solid var(--ink);
 		border-radius: 18px;
@@ -1133,9 +1207,10 @@
 	.scroll {
 		position: absolute;
 		inset: 0;
+		display: flex;
 		overflow: auto;
 		overscroll-behavior: contain;
-		/* No scroll bars: they would take room from the page and leave it out of square. */
+		/* No scroll bars: two fingers, a trackpad or the wheel move the paper. */
 		scrollbar-width: none;
 	}
 	.scroll::-webkit-scrollbar {
@@ -1143,6 +1218,10 @@
 	}
 	.page {
 		position: relative;
+		flex: none;
+		/* Centred when smaller than the window (after turning it), and still scrolls to every edge when zoomed. */
+		margin: auto;
+		background: var(--white);
 	}
 	.page canvas {
 		position: absolute;
@@ -1155,14 +1234,20 @@
 		pointer-events: none;
 	}
 	.crayons {
+		position: absolute;
+		bottom: 1rem;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2;
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: min(0.7rem, 1vw);
-		max-width: 100%;
+		width: max-content;
+		max-width: calc(100% - 2rem);
 	}
 	.crayon {
-		/* Nine in a row: as big as the mode asks, unless the screen is narrower than that. */
+		/* Ten in a row: as big as the mode asks, unless the screen is narrower than that. */
 		--crayon: min(var(--tap), 7.8vw);
 		width: var(--crayon);
 		height: var(--crayon);
@@ -1178,36 +1263,6 @@
 		transform: translateY(-6px);
 		box-shadow: 0 6px 0 var(--ink), 0 0 0 5px var(--white), 0 0 0 9px var(--ink);
 	}
-
-	/* Wide screens (a tablet on its side, a computer): tools down the left, crayons down the right, and the board
-	   as tall as the screen. */
-	@media (orientation: landscape) and (min-width: 700px) {
-		.studio {
-			display: grid;
-			grid-template-columns: auto auto auto;
-			justify-content: center;
-			align-items: center;
-			gap: 1.5rem;
-		}
-		.tools {
-			flex-direction: column;
-			gap: 0.8rem;
-		}
-		/* Seven tools in a column as tall as the board: smaller keys when the screen is short. */
-		.tools .tool {
-			--key: min(max(4.2rem, var(--tap)), calc((100dvh - var(--tap) - 5rem) / 7 - 1.4rem));
-			width: var(--key);
-			height: var(--key);
-		}
-		.crayons {
-			display: grid;
-			grid-template-columns: repeat(2, auto);
-			gap: 0.9rem;
-		}
-		.board {
-			width: min(calc(100dvh - var(--tap) - 5rem), calc(100vw - 3 * var(--tap) - 8rem));
-		}
-	}
 	.chapter.blank {
 		grid-column: 1 / -1;
 		flex-direction: row;
@@ -1221,16 +1276,17 @@
 		height: 3.5rem;
 	}
 
+	/* Pictures keep the shape of the window they were painted in. */
 	.framed {
-		width: min(80vw, calc(100dvh - 16rem), 30rem);
-		aspect-ratio: 1;
+		width: min(90vw, 48rem, calc((100dvh - 18rem) * var(--r, 1)));
+		height: auto;
 		border: var(--line) solid var(--ink);
 		border-radius: 18px;
 		box-shadow: 0 8px 0 var(--ink);
 		display: block;
 	}
 	.framed.small {
-		width: min(40vw, 16rem);
+		width: min(50vw, 20rem);
 	}
 	.framed-btn {
 		padding: 0;
