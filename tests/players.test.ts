@@ -1,21 +1,14 @@
 // npx tsx tests/players.test.ts
 import { strict as assert } from 'node:assert';
-import { AVATARS, GAMES, LITTLE_MAX_AGE, MAX_AGE, MIN_AGE, gamesFor, modeFor } from '../src/lib/players';
+import { AVATARS, GAMES, modeFor } from '../src/lib/players';
 import { week } from '../src/lib/playlog';
 import { allLines } from '../src/lib/voice-catalog';
 
-// Age picks the mode; a pinned mode wins.
-for (let age = MIN_AGE; age <= MAX_AGE; age++) {
-	assert.equal(modeFor({ age }), age <= LITTLE_MAX_AGE ? 'little' : 'big', `age ${age}`);
-	assert.equal(modeFor({ age, mode: 'big' }), 'big', 'pinned big');
-	assert.equal(modeFor({ age, mode: 'little' }), 'little', 'pinned little');
-}
+// No age: Big unless a grown-up chose Little. An age kept from an earlier version changes nothing.
+assert.equal(modeFor({}), 'big', 'Big by default');
+assert.equal(modeFor({ mode: 'little' }), 'little', 'Little when chosen');
+assert.equal(modeFor({ age: 3 } as { age: number }), 'big', 'an old age is ignored');
 
-// Little mode leaves out the games that need reading; Big shows everything, in the same order.
-const little = gamesFor('little').map((g) => g.id);
-assert.ok(!little.includes('chess') && !little.includes('read'), 'Little hides chess and reading');
-assert.ok(little.includes('spell') && little.includes('paint'), 'Little keeps the tap games');
-assert.deepEqual(gamesFor('big').map((g) => g.id), GAMES.map((g) => g.id));
 assert.equal(new Set(GAMES.map((g) => g.id)).size, GAMES.length, 'unique game ids');
 assert.ok(AVATARS.length >= 4, 'a few faces to pick from');
 

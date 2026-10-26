@@ -62,7 +62,7 @@
 		{#each bundle.players as p (p.id)}
 			<li>
 				<Avatar avatar={p.avatar} size={44} />
-				<span class="who">{p.name} · {p.age} · {s.stickers(bundle.stickers[p.id]?.length ?? 0)}</span>
+				<span class="who">{p.name} · {s.stickers(bundle.stickers[p.id]?.length ?? 0)}</span>
 				{#if twins[p.id]}
 					<label class="fine">
 						<input type="checkbox" checked={!!same[p.id]} onchange={(e) => (same = { ...same, [p.id]: e.currentTarget.checked ? twins[p.id] : '' })} />

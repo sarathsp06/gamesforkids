@@ -4,7 +4,7 @@
 	import Icon from '#lib/Icon.svelte';
 	import Avatar from '#lib/Avatar.svelte';
 	import { soundOn, voiceOn } from '#lib/sound.ts';
-	import { GAMES, MAX_AGE, MIN_AGE, modeFor, type Player } from '#lib/players.ts';
+	import { GAMES, modeFor, type Player } from '#lib/players.ts';
 	import { loadLanguage, loadPlayLog, loadPlayers, loadSettings, saveLanguage, savePlayers, saveSettings, type Players, type Settings } from '#lib/storage.ts';
 	import { week } from '#lib/playlog.ts';
 	import { levelOf } from '#lib/levels.ts';
@@ -24,7 +24,7 @@
 	const T = {
 		en: {
 			title: 'Grown-ups', hint: 'Opened by holding the gear for three seconds. Everything here stays on this device. The app starts in English; pick its language here. Each game also has its own flags, for the child.',
-			players: 'Players', little: 'Little', big: 'Big', auto: 'by age', edit: 'Edit', done: 'Done', remove: 'Remove',
+			players: 'Players', little: 'Little', big: 'Big', edit: 'Edit', done: 'Done', remove: 'Remove',
 			confirm: 'Remove this player? Stickers and progress on this device stay.', mode: 'Mode',
 			sound: 'Sound', voice: "Pip's voice", effects: 'Sound effects', pace: 'Speaking pace', calm: 'Calm', normal: 'Normal',
 			clock: 'Clock in Number Dash (under a minute fills a star)', week: 'This week', weekHint: 'Minutes played and where each game stands. No scores are shown to the child.',
@@ -35,7 +35,7 @@
 		},
 		nl: {
 			title: 'Volwassenen', hint: 'Open je door het tandwiel drie seconden vast te houden. Alles hier blijft op dit apparaat. De app begint in het Engels; kies de taal hier. Elk spelletje heeft ook eigen vlaggen, voor het kind.',
-			players: 'Spelers', little: 'Klein', big: 'Groot', auto: 'op leeftijd', edit: 'Wijzig', done: 'Klaar', remove: 'Verwijder',
+			players: 'Spelers', little: 'Klein', big: 'Groot', edit: 'Wijzig', done: 'Klaar', remove: 'Verwijder',
 			confirm: 'Deze speler verwijderen? Stickers en voortgang op dit apparaat blijven.', mode: 'Stand',
 			sound: 'Geluid', voice: 'De stem van Pip', effects: 'Geluidseffecten', pace: 'Spreektempo', calm: 'Rustig', normal: 'Normaal',
 			clock: 'Klok in Rekenrace (binnen een minuut geeft een ster)', week: 'Deze week', weekHint: 'Gespeelde minuten en waar elk spel staat. Het kind ziet geen scores.',
@@ -105,22 +105,19 @@
 						<Avatar avatar={p.avatar} size={34} />
 						{#if editing === p.id}
 							<label class="field">{s.mode}
-								<select value={p.mode ?? 'auto'} onchange={(e) => patchPlayer(p.id, { mode: e.currentTarget.value === 'auto' ? undefined : (e.currentTarget.value as 'little' | 'big') })}>
-									<option value="auto">{s.auto}</option><option value="little">{s.little}</option><option value="big">{s.big}</option>
+								<select value={modeFor(p)} onchange={(e) => patchPlayer(p.id, { mode: e.currentTarget.value as 'little' | 'big' })}>
+									<option value="little">{s.little}</option><option value="big">{s.big}</option>
 								</select>
 							</label>
-							<select value={p.age} aria-label="Age" onchange={(e) => patchPlayer(p.id, { age: Number(e.currentTarget.value) })}>
-								{#each Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, j) => j + MIN_AGE) as a (a)}<option value={a}>{a}</option>{/each}
-							</select>
 							<button type="button" class="small" onclick={() => remove(p.id)}>{s.remove}</button>
 							<button type="button" class="small" onclick={() => (editing = null)}>{s.done}</button>
 						{:else}
-							<span class="who">{p.name} · {p.age} · {modeFor(p) === 'little' ? s.little : s.big}</span>
+							<span class="who">{p.name} · {modeFor(p) === 'little' ? s.little : s.big}</span>
 							<button type="button" class="small" onclick={() => (editing = p.id)}>{s.edit}</button>
 						{/if}
 					</div>
 				{/each}
-				<span class="fine">{language === 'nl' ? 'De stand volgt de leeftijd (3–5 klein, 6–9 groot) en kan vastgezet worden.' : 'Mode follows age (3–5 Little, 6–9 Big) and can be pinned.'}</span>
+				<span class="fine">{language === 'nl' ? 'Klein toont alleen plaatjes, Groot ook korte woorden. Alle spellen zijn voor iedereen.' : 'Little shows pictures only; Big adds short words. Every game is open to everyone.'}</span>
 			</section>
 
 			<section class="box">

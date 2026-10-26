@@ -150,7 +150,7 @@ export interface Players {
 export const loadPlayers = (): Players => {
 	const p = read<Partial<Players> | null>(PLAYERS, null);
 	if (p?.v !== 1 || !Array.isArray(p.list)) return { v: 1, list: [], current: null };
-	const list = p.list.filter((x): x is Player => !!x && typeof x.id === 'string' && typeof x.age === 'number');
+	const list = p.list.filter((x): x is Player => !!x && typeof x.id === 'string');
 	return { v: 1, list, current: list.some((x) => x.id === p.current) ? p.current! : null };
 };
 export const savePlayers = (p: Players) => write(PLAYERS, p);

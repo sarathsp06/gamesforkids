@@ -4,20 +4,19 @@
 	import { resolve } from '$app/paths';
 	import Pip from '#lib/Pip.svelte';
 	import Avatar from '#lib/Avatar.svelte';
-	import Cake from '#lib/Cake.svelte';
 	import Icon from '#lib/Icon.svelte';
 	import GearHold from '#lib/GearHold.svelte';
 	import { speak, stopSpeech, unlockSpeech } from '#lib/audio.ts';
 	import { t } from '#lib/i18n.ts';
 	import type { Language } from '#lib/words.ts';
-	import { AVATARS, MAX_AGE, MIN_AGE, newId, type Player } from '#lib/players.ts';
+	import { AVATARS, newId, type Player } from '#lib/players.ts';
 	import { loadLanguage, loadPlayers, loadSettings, savePlayers, type Players } from '#lib/storage.ts';
 	import { levelOf } from '#lib/levels.ts';
 
 	let language = $state<Language>('en');
 	let players = $state<Players>({ v: 1, list: [], current: null });
 	let adding = $state(false);
-	let draft = $state<Player>({ id: '', name: '', avatar: 0, age: 4 });
+	let draft = $state<Player>({ id: '', name: '', avatar: 0 });
 	let greeted = $state(false);
 	/** The grown-ups turned on Paint Pot with others: the promise says what that changes. */
 	let online = $state(false);
@@ -43,7 +42,7 @@
 	}
 
 	function startAdd() {
-		draft = { id: newId(), name: '', avatar: players.list.length % AVATARS.length, age: 4 };
+		draft = { id: newId(), name: '', avatar: players.list.length % AVATARS.length };
 		adding = true;
 	}
 
@@ -59,22 +58,14 @@
 
 <main>
 	<div class="top">
-		<Pip line={t(language, adding ? 'home.age' : 'home.who')} {language} autoSay={greeted} />
-		<button type="button" class="round" aria-label="Hear it again" onclick={() => { greeted = true; speak(t(language, adding ? 'home.age' : 'home.who'), language); }}>
+		<Pip line={t(language, 'home.who')} {language} autoSay={greeted} />
+		<button type="button" class="round" aria-label="Hear it again" onclick={() => { greeted = true; speak(t(language, 'home.who'), language); }}>
 			<Icon name="speaker" size={36} />
 		</button>
 	</div>
 
 	{#if adding}
 		<section class="new" aria-label="New player">
-			<div class="ages" role="group" aria-label="Age">
-				{#each Array.from({ length: MAX_AGE - MIN_AGE + 1 }, (_, i) => i + MIN_AGE) as a (a)}
-					<button type="button" class="age" aria-label="{a} years old" aria-pressed={draft.age === a} onclick={() => (draft.age = a)}>
-						<Cake candles={a} lit={draft.age === a} />
-						<span class="num">{a}</span>
-					</button>
-				{/each}
-			</div>
 			<p class="promise">{language === 'nl'
 				? 'Alles wat je kind hier doet blijft gewoon hier, in deze browser. Er gaat niets naar buiten. Ik heb dit voor mijn eigen kinderen gemaakt en deel het graag met de jouwe: gratis, zonder reclame, zonder accounts.'
 				: 'Everything your child does here stays right here, in this browser. Nothing goes anywhere. I made this for my own children and I\'m glad to share it with yours: free, no ads, no accounts.'}</p>
@@ -103,7 +94,7 @@
 		<section class="players">
 			{#each players.list as p, i (p.id)}
 				{@const dots = played()}
-				<button type="button" class="card c{i % 4}" aria-label="{p.name}, age {p.age}" onclick={() => choose(p)}>
+				<button type="button" class="card c{i % 4}" aria-label={p.name} onclick={() => choose(p)}>
 					<Avatar avatar={p.avatar} size={150} />
 					<span class="pname">{p.name}</span>
 					<span class="dots" aria-hidden="true">
@@ -154,7 +145,6 @@
 	.round,
 	.card,
 	.face,
-	.age,
 	.go {
 		border: var(--line) solid var(--ink);
 		background: var(--white);
@@ -165,7 +155,6 @@
 	.round:active,
 	.card:active,
 	.face:active,
-	.age:active,
 	.go:active {
 		transform: translateY(6px);
 		box-shadow: none;
@@ -252,35 +241,6 @@
 		gap: 1.4rem;
 		width: 100%;
 		max-width: 52rem;
-	}
-	.ages {
-		display: grid;
-		grid-template-columns: repeat(7, minmax(0, 1fr));
-		gap: 1rem;
-		width: 100%;
-	}
-	.age {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.4rem;
-		min-height: var(--tap);
-		padding: 0.9rem 0.3rem 0.7rem;
-		border-radius: 26px;
-	}
-	.age[aria-pressed='true'] {
-		background: var(--sun);
-		box-shadow: 0 6px 0 var(--ink), 0 0 0 6px var(--ink);
-	}
-	.age :global(svg) {
-		width: 100%;
-		max-width: 5.5rem;
-	}
-	.num {
-		font-family: var(--title);
-		font-weight: 700;
-		font-size: 2.5rem;
-		line-height: 1;
 	}
 	.name {
 		display: flex;
@@ -372,18 +332,7 @@
 		.note {
 			display: none;
 		}
-		.ages {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
-			gap: 0.7rem;
-		}
-		.age {
-			padding: 0.5rem 0.2rem 0.4rem;
-			border-radius: 20px;
-		}
-		.age :global(svg) {
-			width: 78%;
-		}
-		/* The name and the ✓ come straight after the ages, so Done is on screen without scrolling. */
+		/* The name and the ✓ come first, so Done is on screen without scrolling. */
 		.name {
 			order: 1;
 			flex-wrap: nowrap;

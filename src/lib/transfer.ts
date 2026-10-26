@@ -3,7 +3,7 @@
  * a one-time encrypted room on the relays, by a small link, or by a file. Taking one in is always a merge a grown-up
  * confirms. Reads and writes go through storage.ts, so this module runs anywhere `localStorage` exists.
  */
-import { AVATARS, MAX_AGE, MIN_AGE, type Player } from './players';
+import { AVATARS, type Player } from './players';
 import { CHESS_LEVELS } from './chess';
 import { SHAPE_LEVELS } from './shapes';
 import { SPELL_LEVELS } from './spell';
@@ -103,7 +103,8 @@ const PICTURE_IDS = new Set(PICTURES.map((p) => p.id));
 
 const validPlayer = (p: unknown): p is Player =>
 	isObj(p) && str(p.id, 32) && /^[0-9a-z]+$/.test(p.id as string) && str(p.name, 20) && int(p.avatar, 0, AVATARS.length - 1) &&
-	int(p.age, MIN_AGE, MAX_AGE) && (p.mode === undefined || p.mode === 'little' || p.mode === 'big');
+	// Age: sent by earlier versions only, and not used any more.
+	(p.age === undefined || int(p.age, 0, 120)) && (p.mode === undefined || p.mode === 'little' || p.mode === 'big');
 const validPlay = (p: unknown): p is Play => isObj(p) && str(p.game, 20) && str(p.at, 40) && !isNaN(Date.parse(p.at as string)) && typeof p.ms === 'number' && p.ms >= 0;
 const validSession = (s: unknown): s is SessionStats => isObj(s) && str(s.id, 64) && str(s.date, 40) && typeof s.accuracy === 'number';
 const validLevels = (l: unknown): l is Levels =>
@@ -132,12 +133,12 @@ export function validate(x: unknown): Bundle | null {
 	return b as unknown as Bundle;
 }
 
-/** Incoming players who look like a child already here under another id: same name (any case) and age. */
+/** Incoming players who look like a child already here under another id: the same name, in any case. */
 export function lookalikes(incoming: Bundle, local = loadPlayers().list): Record<string, string> {
 	const out: Record<string, string> = {};
 	for (const p of incoming.players) {
 		if (local.some((l) => l.id === p.id)) continue;
-		const twin = local.find((l) => l.name.trim().toLowerCase() === p.name.trim().toLowerCase() && l.age === p.age);
+		const twin = local.find((l) => l.name.trim().toLowerCase() === p.name.trim().toLowerCase());
 		if (twin) out[p.id] = twin.id;
 	}
 	return out;

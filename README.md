@@ -29,9 +29,9 @@ painting with others in Paint Pot, and moving progress to another device (see Pa
 
 ## 🦉 How it's put together
 
-- **Who is playing?** A player is a drawn face, a name and an age, kept on the device. Age picks the mode:
-  **Little (3–5)** shows five tap games with no words on the tiles; **Big (6–9)** shows all seven with labels and
-  level dots. A grown-up can pin the mode.
+- **Who is playing?** A player is a drawn face and a name, kept on the device; no age is asked. Every player sees
+  all seven games. A grown-up can switch a player to **Little**, which leaves the words off the tiles; **Big**, the
+  default, shows labels and level dots.
 - **Pip the owl** is the one voice: every prompt is spoken, and tapping Pip says it again.
 - **Read Along** ends by reading the whole fable back slowly, one line lit at a time; **Letter Leap** says every key
   as it is pressed; **Paint Pot** has a white crayon that works as an eraser.

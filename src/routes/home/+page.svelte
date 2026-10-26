@@ -10,7 +10,7 @@
 	import { speak, stopSpeech } from '#lib/audio.ts';
 	import { gameName, t } from '#lib/i18n.ts';
 	import type { Language } from '#lib/words.ts';
-	import { GAMES, gamesFor, modeFor, type Mode, type Player } from '#lib/players.ts';
+	import { GAMES, modeFor, type Mode, type Player } from '#lib/players.ts';
 	import { currentPlayer, loadLanguage, loadPlayLog } from '#lib/storage.ts';
 	import { levelOf, type Level } from '#lib/levels.ts';
 	import { stickerCount } from '#lib/stickers.ts';
@@ -80,7 +80,7 @@
 
 	<!-- Each game's code loads while home is on screen, so a tap opens it at once. -->
 	<section class="tiles" class:cols3={mode === 'little'} class:cols4={mode === 'big'} data-sveltekit-preload-code="viewport">
-		{#each gamesFor(mode) as g (g.id)}
+		{#each GAMES as g (g.id)}
 			<a
 				href={resolve(g.path as '/')}
 				class="tile {g.tint}"
@@ -99,12 +99,7 @@
 				{/if}
 			</a>
 		{/each}
-		{#if mode === 'little'}
-			<div class="tile locked" aria-label="More games in Big mode">
-				<Icon name="lock" size={80} />
-				<span class="tname faint">{language === 'nl' ? 'Schaakpad, Lees Mee: grote stand' : 'Chess, Read Along: Big mode'}</span>
-			</div>
-		{:else}
+		{#if mode === 'big'}
 			<div class="tile card">
 				<Pip line={t(language, 'home.try')} {language} size={64} />
 				{#if suggest}
@@ -241,12 +236,6 @@
 	.tile.paper {
 		background: var(--white);
 	}
-	.tile.locked {
-		border-style: dashed;
-		box-shadow: none;
-		opacity: 0.55;
-		cursor: default;
-	}
 	.tile.card {
 		box-shadow: none;
 		cursor: default;
@@ -325,7 +314,6 @@
 			gap: 1.2rem;
 		}
 		.tile.tablet,
-		.tile.locked,
 		.tile.card {
 			display: none;
 		}
